@@ -516,9 +516,9 @@ export default function PartnerOnboardingWizard() {
           );
           setVenueMobile(
             data.business_details.venue_mobile_number ||
-              data.partner_details?.mobile_number ||
-              data.mobile_number ||
-              '',
+            data.partner_details?.mobile_number ||
+            data.mobile_number ||
+            '',
           );
           setVenueAddress(data.business_details.venue_address || '');
           setVenueGoogleMaps(
@@ -1184,36 +1184,33 @@ export default function PartnerOnboardingWizard() {
                       {/* Vertical line connecting steps */}
                       {idx < STEPS.length - 1 && (
                         <div
-                          className={`absolute left-[19px] top-10 w-0.5 h-6 z-0 ${
-                            isDone ? 'bg-emerald-400' : 'bg-slate-200'
-                          }`}
+                          className={`absolute left-[19px] top-10 w-0.5 h-6 z-0 ${isDone ? 'bg-emerald-400' : 'bg-slate-200'
+                            }`}
                         />
                       )}
 
                       <button
                         type="button"
                         onClick={() => setCurrentStep(s.id)}
-                        className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-all relative z-10 cursor-pointer ${
-                          isCurrent
+                        className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-all relative z-10 cursor-pointer ${isCurrent
                             ? 'bg-[#F94001] text-white shadow-md shadow-[#F94001]/20 font-bold'
                             : isRejected
-                            ? 'bg-rose-50 text-rose-900 border border-rose-200 hover:bg-rose-100'
-                            : isDone
-                            ? 'hover:bg-slate-50 text-[#021526]'
-                            : 'hover:bg-slate-50 text-slate-500'
-                        }`}
+                              ? 'bg-rose-50 text-rose-900 border border-rose-200 hover:bg-rose-100'
+                              : isDone
+                                ? 'hover:bg-slate-50 text-[#021526]'
+                                : 'hover:bg-slate-50 text-slate-500'
+                          }`}
                       >
                         {/* Step Icon Badge */}
                         <span
-                          className={`h-8 w-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 transition-transform ${
-                            isCurrent
+                          className={`h-8 w-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 transition-transform ${isCurrent
                               ? 'bg-white text-[#F94001] shadow-xs'
                               : isRejected
-                              ? 'bg-rose-600 text-white shadow-xs'
-                              : isDone
-                              ? 'bg-emerald-600 text-white shadow-xs'
-                              : 'bg-slate-100 text-slate-500 border border-slate-200'
-                          }`}
+                                ? 'bg-rose-600 text-white shadow-xs'
+                                : isDone
+                                  ? 'bg-emerald-600 text-white shadow-xs'
+                                  : 'bg-slate-100 text-slate-500 border border-slate-200'
+                            }`}
                         >
                           {isDone ? (
                             <Check className="h-4 w-4 stroke-[3]" />
@@ -1228,11 +1225,10 @@ export default function PartnerOnboardingWizard() {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-1">
                             <span
-                              className={`text-xs truncate block ${
-                                isCurrent
+                              className={`text-xs truncate block ${isCurrent
                                   ? 'text-white font-bold'
                                   : 'text-[#021526] font-bold'
-                              }`}
+                                }`}
                             >
                               {s.title}
                             </span>
@@ -1243,9 +1239,8 @@ export default function PartnerOnboardingWizard() {
                             )}
                           </div>
                           <span
-                            className={`text-[10px] truncate block font-normal ${
-                              isCurrent ? 'text-white/80' : 'text-[#5F6368]'
-                            }`}
+                            className={`text-[10px] truncate block font-normal ${isCurrent ? 'text-white/80' : 'text-[#5F6368]'
+                              }`}
                           >
                             {s.desc}
                           </span>
@@ -1274,1335 +1269,1226 @@ export default function PartnerOnboardingWizard() {
           {/* RIGHT COLUMN: MAIN FORM CANVAS                               */}
           {/* ============================================================ */}
           <main className="lg:col-span-8 xl:col-span-9 space-y-6">
-        {/* REJECTION BANNER (IF APPLICABLE) */}
-        {applicationStatus === 'REJECTED' && rejectionReasons.length > 0 && (
-          <div className="rounded-2xl bg-rose-50 border border-rose-200 p-5 space-y-3 shadow-xs animate-in fade-in duration-200">
-            <div className="flex items-center gap-2 text-rose-900 font-bold text-sm">
-              <XCircle className="h-5 w-5 text-rose-600 shrink-0" />
-              <span>Application Requires Corrections</span>
-            </div>
-            <p className="text-xs text-rose-800">
-              The reviewer requested adjustments for the following item(s).
-              Click <strong>&quot;Fix Issue&quot;</strong> to jump directly to the field.
-            </p>
-            <div className="space-y-2.5 pt-1">
-              {rejectionReasons.map((r, i) => {
-                const targetStep = mapRejectionToStep(r);
-                const stepMeta = STEPS.find((s) => s.id === targetStep);
-                return (
-                  <div
-                    key={i}
-                    className="rounded-2xl bg-white p-4 border border-rose-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-xs"
-                  >
-                    <div className="space-y-1">
-                      <span className="font-bold text-[#021526]">
-                        Step {targetStep}: {stepMeta?.title || r.section} &bull; Field:{' '}
-                        <code className="font-mono text-[#F94001]">{r.field}</code>
-                      </span>
-                      <p className="text-[#5F6368] font-normal leading-relaxed">{r.reason}</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setCurrentStep(targetStep)}
-                      className="px-4 py-2 rounded-xl bg-[#F94001] hover:bg-[#D93600] text-white font-bold text-xs transition-all shadow-xs shrink-0 flex items-center gap-1.5 cursor-pointer active:scale-95"
-                    >
-                      <span>Fix Issue</span>
-                      <span>&rarr;</span>
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ============================================================ */}
-        {/* STEP 1: PARTNER DETAILS (WITH STRICT TYPE & REQUIRED VALIDATION)*/}
-        {/* ============================================================ */}
-        {currentStep === 1 && (
-          <div className="rounded-2xl bg-white p-6 sm:p-8 border border-[#E5E7EB] shadow-xs space-y-6">
-            <div className="border-b border-[#E5E7EB] pb-4 flex items-center justify-between">
-              <div>
-                <span className="text-[11px] font-bold font-mono text-[#F94001] uppercase tracking-wider">
-                  Step 1 of 7 &bull; Personal & Identity Information
-                </span>
-                <h2 className="text-xl font-black text-[#021526] font-display mt-1">
-                  Partner Profile & Identification
-                </h2>
-                <p className="text-xs text-[#5F6368] mt-1">
-                  All fields marked with <span className="text-rose-500 font-black">*</span> are mandatory.
+            {/* REJECTION BANNER (IF APPLICABLE) */}
+            {applicationStatus === 'REJECTED' && rejectionReasons.length > 0 && (
+              <div className="rounded-2xl bg-rose-50 border border-rose-200 p-5 space-y-3 shadow-xs animate-in fade-in duration-200">
+                <div className="flex items-center gap-2 text-rose-900 font-bold text-sm">
+                  <XCircle className="h-5 w-5 text-rose-600 shrink-0" />
+                  <span>Application Requires Corrections</span>
+                </div>
+                <p className="text-xs text-rose-800">
+                  The reviewer requested adjustments for the following item(s).
+                  Click <strong>&quot;Fix Issue&quot;</strong> to jump directly to the field.
                 </p>
-              </div>
-              <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> Identity Protected
-              </span>
-            </div>
-
-            {renderStepRejectionAlert(1)}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Full Legal Name */}
-              <div>
-                <label className="text-xs font-bold text-[#021526] block mb-1">
-                  Full Legal Name <span className="text-rose-500 font-black">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={partnerName}
-                  onChange={(e) => setPartnerName(e.target.value.replace(/[^a-zA-Z\s.]/g, ''))}
-                  placeholder="e.g. Karthik Rajan"
-                  className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
-                />
-                {partnerName.length > 0 && !isValidName(partnerName) && (
-                  <p className="text-[10px] text-amber-600 mt-1">Must be at least 3 letters (letters & spaces only)</p>
-                )}
-              </div>
-
-              {/* Email Address */}
-              <div>
-                <label className="text-xs font-bold text-[#021526] block mb-1">
-                  Email Address <span className="text-rose-500 font-black">*</span>
-                </label>
-                <input
-                  type="email"
-                  value={partnerEmail}
-                  onChange={(e) => setPartnerEmail(e.target.value.trim().toLowerCase())}
-                  placeholder="partner@arena.com"
-                  className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
-                />
-                {partnerEmail.length > 0 && !isValidEmail(partnerEmail) && (
-                  <p className="text-[10px] text-amber-600 mt-1">Please enter a valid email format</p>
-                )}
-              </div>
-
-              {/* Verified Mobile Number */}
-              <div>
-                <label className="text-xs font-bold text-[#021526] block mb-1">
-                  Verified Mobile Number <span className="text-rose-500 font-black">*</span>
-                </label>
-                <div className="relative flex items-center">
-                  <input
-                    type="text"
-                    readOnly
-                    tabIndex={-1}
-                    value={mobileNumber ? `+91 ${mobileNumber.replace(/^\+91\s*/, '')}` : ''}
-                    className="w-full rounded-xl border border-[#CBD5E1] bg-[#F8F9FA] px-3.5 pr-10 py-2.5 text-xs font-mono font-bold tracking-wider text-[#021526] cursor-not-allowed select-none focus:outline-none"
-                  />
-                  <div className="absolute right-3.5 flex items-center text-emerald-600" title="Verified via Login OTP">
-                    <CheckCircle2 className="h-4 w-4" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Postal Pincode */}
-              <div>
-                <label className="text-xs font-bold text-[#021526] block mb-1">
-                  Postal Pincode <span className="text-rose-500 font-black">*</span>
-                </label>
-                <input
-                  type="text"
-                  maxLength={6}
-                  value={partnerPincode}
-                  onChange={(e) => setPartnerPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="641018"
-                  className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs font-mono text-[#021526] focus:border-[#F94001] focus:outline-none"
-                />
-                {partnerPincode.length > 0 && !isValidPincode(partnerPincode) && (
-                  <p className="text-[10px] text-amber-600 mt-1">Must be exactly 6 numeric digits ({partnerPincode.length}/6)</p>
-                )}
-              </div>
-
-              {/* Residential Address */}
-              <div className="sm:col-span-2">
-                <label className="text-xs font-bold text-[#021526] block mb-1">
-                  Residential Address <span className="text-rose-500 font-black">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={partnerAddress}
-                  onChange={(e) => setPartnerAddress(e.target.value)}
-                  placeholder="Door No, Street Name, Area"
-                  className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
-                />
-              </div>
-
-              {/* State */}
-              <div>
-                <label className="text-xs font-bold text-[#021526] block mb-1">
-                  State <span className="text-rose-500 font-black">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={partnerState}
-                  onChange={(e) => setPartnerState(e.target.value.replace(/[^a-zA-Z\s]/g, ''))}
-                  placeholder="e.g. Tamil Nadu"
-                  className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
-                />
-              </div>
-
-              {/* District */}
-              <div>
-                <label className="text-xs font-bold text-[#021526] block mb-1">
-                  District <span className="text-rose-500 font-black">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={partnerDistrict}
-                  onChange={(e) => setPartnerDistrict(e.target.value.replace(/[^a-zA-Z\s]/g, ''))}
-                  placeholder="e.g. Coimbatore"
-                  className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
-                />
-              </div>
-
-              {/* Aadhaar Upload Card: Mandatory */}
-              <div>
-                <label className="text-xs font-bold text-[#021526] block mb-1 flex items-center justify-between">
-                  <span>Aadhaar Card Document <span className="text-rose-500 font-black">*</span></span>
-                  <span className="text-[10px] font-mono text-[#5F6368] uppercase">PDF/JPG Max 5MB</span>
-                </label>
-                <input
-                  type="file"
-                  ref={aadhaarFileInputRef}
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  onChange={(e) =>
-                    handleFileUpload(
-                      e,
-                      'AADHAAR',
-                      (id, name, previewUrl) => {
-                        setAadhaarDocId(id);
-                        setAadhaarFileName(name);
-                        if (previewUrl) setAadhaarPreviewUrl(previewUrl);
-                      },
-                      setAadhaarUploading,
-                    )
-                  }
-                  className="hidden"
-                />
-                {aadhaarUploading ? (
-                  <div className="flex items-center gap-2 p-2.5 rounded-xl border border-dashed border-[#F94001] bg-[#FFF1EC]/30 text-xs font-bold text-[#F94001]">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Uploading document...</span>
-                  </div>
-                ) : aadhaarDocId ? (
-                  <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-emerald-300 bg-emerald-50/50 shadow-xs">
-                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      {aadhaarPreviewUrl && !aadhaarFileName?.toLowerCase().endsWith('.pdf') ? (
-                        <div className="h-8 w-8 rounded-lg overflow-hidden shrink-0 border border-emerald-300 bg-white">
-                          <img
-                            src={aadhaarPreviewUrl}
-                            alt="Aadhaar"
-                            className="h-full w-full object-cover"
-                          />
-                        </div>
-                      ) : (
-                        <FileText className="h-4 w-4 text-emerald-600 shrink-0" />
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <p className="font-mono text-xs font-bold text-[#021526] truncate">
-                          {aadhaarFileName || aadhaarDocId}
-                        </p>
-                        <span className="text-[10px] text-emerald-700 font-medium">✓ Uploaded & Verified</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleOpenDocumentPreview(
-                            aadhaarPreviewUrl,
-                            aadhaarFileName,
-                            aadhaarDocId,
-                            'AADHAAR',
-                          )
-                        }
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-[#CBD5E1] text-[11px] font-bold text-[#021526] hover:bg-[#F3F4F4] hover:text-[#F94001] transition-colors shadow-xs cursor-pointer"
+                <div className="space-y-2.5 pt-1">
+                  {rejectionReasons.map((r, i) => {
+                    const targetStep = mapRejectionToStep(r);
+                    const stepMeta = STEPS.find((s) => s.id === targetStep);
+                    return (
+                      <div
+                        key={i}
+                        className="rounded-2xl bg-white p-4 border border-rose-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-xs"
                       >
-                        <Eye className="h-3.5 w-3.5 text-[#5F6368]" />
-                        <span>View</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAadhaarDocId('');
-                          setAadhaarFileName('');
-                          setAadhaarPreviewUrl(null);
-                        }}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-rose-200 text-[11px] font-bold text-rose-600 hover:bg-rose-50 hover:border-rose-300 transition-colors shadow-xs"
-                      >
-                        <Trash2 className="h-3.5 w-3.5 text-rose-600" />
-                        <span>Delete</span>
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between gap-2 p-2 rounded-xl border border-dashed border-[#CBD5E1] bg-[#F8F9FA]">
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <FileText className="h-4 w-4 text-[#5F6368] shrink-0" />
-                      <span className="font-mono text-[11px] text-[#5F6368] truncate">
-                        No Aadhaar document uploaded
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => aadhaarFileInputRef.current?.click()}
-                      className="px-3 py-1.5 rounded-lg bg-[#F94001] hover:bg-[#D93600] text-white text-[11px] font-bold transition-all shadow-xs shrink-0"
-                    >
-                      Upload Aadhaar
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Profile Photo Upload Card: Mandatory */}
-              <div>
-                <label className="text-xs font-bold text-[#021526] block mb-1 flex items-center justify-between">
-                  <span>Profile Photo ID <span className="text-rose-500 font-black">*</span></span>
-                  <span className="text-[10px] font-mono text-[#5F6368] uppercase">JPG/PNG Max 5MB</span>
-                </label>
-                <input
-                  type="file"
-                  ref={profilePhotoInputRef}
-                  accept=".jpg,.jpeg,.png"
-                  onChange={(e) =>
-                    handleFileUpload(
-                      e,
-                      'PROFILE_PHOTO',
-                      (id, name, previewUrl) => {
-                        setProfilePhotoDocId(id);
-                        setProfilePhotoFileName(name);
-                        if (previewUrl) setProfilePhotoPreviewUrl(previewUrl);
-                      },
-                      setProfilePhotoUploading,
-                    )
-                  }
-                  className="hidden"
-                />
-                {profilePhotoUploading ? (
-                  <div className="flex items-center gap-2 p-2.5 rounded-xl border border-dashed border-[#F94001] bg-[#FFF1EC]/30 text-xs font-bold text-[#F94001]">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Uploading photo...</span>
-                  </div>
-                ) : profilePhotoDocId ? (
-                  <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-emerald-300 bg-emerald-50/50 shadow-xs">
-                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      {profilePhotoPreviewUrl ? (
-                        <div className="h-8 w-8 rounded-full overflow-hidden shrink-0 border border-emerald-300 bg-white">
-                          <img
-                            src={profilePhotoPreviewUrl}
-                            alt="Profile"
-                            className="h-full w-full object-cover"
-                          />
-                        </div>
-                      ) : (
-                        <ImageIcon className="h-4 w-4 text-emerald-600 shrink-0" />
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <p className="font-mono text-xs font-bold text-[#021526] truncate">
-                          {profilePhotoFileName || profilePhotoDocId}
-                        </p>
-                        <span className="text-[10px] text-emerald-700 font-medium">✓ Uploaded & Verified</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleOpenDocumentPreview(
-                            profilePhotoPreviewUrl,
-                            profilePhotoFileName,
-                            profilePhotoDocId,
-                            'PROFILE_PHOTO',
-                          )
-                        }
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-[#CBD5E1] text-[11px] font-bold text-[#021526] hover:bg-[#F3F4F4] hover:text-[#F94001] transition-colors shadow-xs cursor-pointer"
-                      >
-                        <Eye className="h-3.5 w-3.5 text-[#5F6368]" />
-                        <span>View</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setProfilePhotoDocId('');
-                          setProfilePhotoFileName('');
-                          setProfilePhotoPreviewUrl(null);
-                        }}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-rose-200 text-[11px] font-bold text-rose-600 hover:bg-rose-50 hover:border-rose-300 transition-colors shadow-xs"
-                      >
-                        <Trash2 className="h-3.5 w-3.5 text-rose-600" />
-                        <span>Delete</span>
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between gap-2 p-2 rounded-xl border border-dashed border-[#CBD5E1] bg-[#F8F9FA]">
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <ImageIcon className="h-4 w-4 text-[#5F6368] shrink-0" />
-                      <span className="font-mono text-[11px] text-[#5F6368] truncate">
-                        No profile photo uploaded
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => profilePhotoInputRef.current?.click()}
-                      className="px-3 py-1.5 rounded-lg bg-[#F94001] hover:bg-[#D93600] text-white text-[11px] font-bold transition-all shadow-xs shrink-0"
-                    >
-                      Upload Photo
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end pt-4 border-t border-[#E5E7EB]">
-              <button
-                type="button"
-                disabled={
-                  loading ||
-                  !isValidName(partnerName) ||
-                  !isValidEmail(partnerEmail) ||
-                  !isValidIndianMobile(mobileNumber) ||
-                  !isValidPincode(partnerPincode) ||
-                  !aadhaarDocId ||
-                  !profilePhotoDocId
-                }
-                onClick={handleSavePartnerDetails}
-                className="px-6 py-2.5 rounded-xl bg-[#F94001] hover:bg-[#D93600] text-white text-xs font-bold shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
-              >
-                {loading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>Save & Continue to Step 2 &rarr;</>
-                )}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ============================================================ */}
-        {/* STEP 2: BUSINESS & VENUE DETAILS (WITH STRICT VALIDATION)    */}
-        {/* ============================================================ */}
-        {currentStep === 2 && (
-          <div className="rounded-2xl bg-white p-6 sm:p-8 border border-[#E5E7EB] shadow-xs space-y-6">
-            <div className="border-b border-[#E5E7EB] pb-4">
-              <span className="text-[11px] font-bold font-mono text-[#F94001] uppercase tracking-wider">
-                Step 2 of 7 &bull; Facility & Tax Information
-              </span>
-              <h2 className="text-xl font-black text-[#021526] font-display mt-1">
-                Venue & Business Details
-              </h2>
-            </div>
-
-            {renderStepRejectionAlert(2)}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Venue Name */}
-              <div>
-                <label className="text-xs font-bold text-[#021526] block mb-1">
-                  Venue / Arena Name <span className="text-rose-500 font-black">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={venueName}
-                  onChange={(e) => setVenueName(e.target.value)}
-                  placeholder="Sky Sports Arena"
-                  className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
-                />
-              </div>
-
-              {/* Venue Email */}
-              <div>
-                <label className="text-xs font-bold text-[#021526] block mb-1">
-                  Official Venue Email <span className="text-rose-500 font-black">*</span>
-                </label>
-                <input
-                  type="email"
-                  value={venueEmail}
-                  onChange={(e) => setVenueEmail(e.target.value.trim().toLowerCase())}
-                  placeholder="contact@skysports.com"
-                  className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
-                />
-                {venueEmail.length > 0 && !isValidEmail(venueEmail) && (
-                  <p className="text-[10px] text-amber-600 mt-1">Please enter a valid email format</p>
-                )}
-              </div>
-
-              {/* Contact Mobile */}
-              <div>
-                <label className="text-xs font-bold text-[#021526] block mb-1">
-                  Contact Mobile Number <span className="text-rose-500 font-black">*</span>
-                </label>
-                <div className="relative flex items-center">
-                  <input
-                    type="text"
-                    readOnly
-                    tabIndex={-1}
-                    value={venueMobile || mobileNumber ? `+91 ${(venueMobile || mobileNumber).replace(/^\+91\s*/, '')}` : ''}
-                    className="w-full rounded-xl border border-[#CBD5E1] bg-[#F8F9FA] px-3.5 pr-10 py-2.5 text-xs font-mono font-bold tracking-wider text-[#021526] cursor-not-allowed select-none focus:outline-none"
-                  />
-                  <div className="absolute right-3.5 flex items-center text-emerald-600" title="Verified via Login OTP">
-                    <CheckCircle2 className="h-4 w-4" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Google Maps Location Link */}
-              <div>
-                <label className="text-xs font-bold text-[#021526] block mb-1">
-                  Google Maps Location Link <span className="text-rose-500 font-black">*</span>
-                </label>
-                <input
-                  type="url"
-                  value={venueGoogleMaps}
-                  onChange={(e) => setVenueGoogleMaps(e.target.value.trim())}
-                  placeholder="https://maps.app.goo.gl/..."
-                  className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
-                />
-                {venueGoogleMaps.length > 0 && !isValidGoogleMapsUrl(venueGoogleMaps) && (
-                  <p className="text-[10px] text-amber-600 mt-1">Must be a valid Google Maps URL</p>
-                )}
-              </div>
-
-              {/* Full Venue Address */}
-              <div className="sm:col-span-2">
-                <label className="text-xs font-bold text-[#021526] block mb-1">
-                  Full Venue Physical Address <span className="text-rose-500 font-black">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={venueAddress}
-                  onChange={(e) => setVenueAddress(e.target.value)}
-                  placeholder="Full physical address of the sports arena"
-                  className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
-                />
-              </div>
-
-              {/* GST Section with Interactive Upload & Strict 15-char Regex */}
-              <div className="sm:col-span-2 pt-2 border-t border-[#E5E7EB]">
-                <label className="flex items-center gap-2 cursor-pointer mb-3">
-                  <input
-                    type="checkbox"
-                    checked={hasGst}
-                    onChange={(e) => setHasGst(e.target.checked)}
-                    className="h-4 w-4 rounded text-[#F94001] focus:ring-[#F94001]"
-                  />
-                  <span className="text-xs font-bold text-[#021526]">
-                    This business has a Registered GST Number (Optional)
-                  </span>
-                </label>
-
-                {hasGst && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-[#F8F9FA] border border-[#CBD5E1]">
-                    <div>
-                      <label className="text-xs font-bold text-[#021526] block mb-1">
-                        15-Character GSTIN <span className="text-rose-500 font-black">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        maxLength={15}
-                        value={gstNumber}
-                        onChange={(e) => setGstNumber(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 15))}
-                        placeholder="33ABCDE1234F1Z5"
-                        className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs font-mono tracking-wider text-[#021526] focus:border-[#F94001] focus:outline-none"
-                      />
-                      {gstNumber.length > 0 && !isValidGSTIN(gstNumber) && (
-                        <p className="text-[10px] text-amber-600 mt-1">Format: 15 alphanumeric characters (e.g. 33ABCDE1234F1Z5)</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-bold text-[#021526] block mb-1 flex items-center justify-between">
-                        <span>GST Registration Certificate <span className="text-rose-500 font-black">*</span></span>
-                        <span className="text-[10px] font-mono text-[#5F6368] uppercase">PDF/JPG Max 5MB</span>
-                      </label>
-                      <input
-                        type="file"
-                        ref={gstFileInputRef}
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        onChange={(e) =>
-                          handleFileUpload(
-                            e,
-                            'GST_CERTIFICATE',
-                            (id, name, previewUrl) => {
-                              setGstDocId(id);
-                              setGstFileName(name);
-                              if (previewUrl) setGstPreviewUrl(previewUrl);
-                            },
-                            setGstUploading,
-                          )
-                        }
-                        className="hidden"
-                      />
-                      {gstUploading ? (
-                        <div className="flex items-center gap-2 p-2.5 rounded-xl border border-dashed border-[#F94001] bg-[#FFF1EC]/30 text-xs font-bold text-[#F94001]">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          <span>Uploading GST certificate...</span>
-                        </div>
-                      ) : gstDocId ? (
-                        <div className="flex items-center justify-between gap-2 p-2 rounded-xl border border-emerald-300 bg-emerald-50/50 shadow-xs">
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <FileText className="h-4 w-4 text-emerald-600 shrink-0" />
-                            <div className="min-w-0 flex-1">
-                              <p className="font-mono text-xs font-bold text-[#021526] truncate">
-                                {gstFileName || gstDocId}
-                              </p>
-                              <span className="text-[10px] text-emerald-700 font-medium">✓ Uploaded & Verified</span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleOpenDocumentPreview(
-                                  gstPreviewUrl,
-                                  gstFileName,
-                                  gstDocId,
-                                  'GST',
-                                )
-                              }
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-[#CBD5E1] text-[11px] font-bold text-[#021526] hover:bg-[#F3F4F4] hover:text-[#F94001] transition-colors shadow-xs cursor-pointer"
-                            >
-                              <Eye className="h-3.5 w-3.5 text-[#5F6368]" />
-                              <span>View</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setGstDocId('');
-                                setGstFileName('');
-                                setGstPreviewUrl(null);
-                              }}
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-rose-200 text-[11px] font-bold text-rose-600 hover:bg-rose-50 hover:border-rose-300 transition-colors shadow-xs"
-                            >
-                              <Trash2 className="h-3.5 w-3.5 text-rose-600" />
-                              <span>Delete</span>
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-between gap-2 p-2 rounded-xl border border-dashed border-[#CBD5E1] bg-white">
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <FileText className="h-4 w-4 text-[#5F6368] shrink-0" />
-                            <span className="font-mono text-[11px] text-[#5F6368] truncate">
-                              No GST document uploaded
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => gstFileInputRef.current?.click()}
-                            className="px-3 py-1.5 rounded-lg bg-[#F94001] hover:bg-[#D93600] text-white text-[11px] font-bold transition-all shadow-xs shrink-0 flex items-center gap-1"
-                          >
-                            <FileUp className="h-3.5 w-3.5" />
-                            <span>Upload GST</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between pt-4 border-t border-[#E5E7EB]">
-              <button
-                type="button"
-                onClick={() => setCurrentStep(1)}
-                className="px-4 py-2 rounded-xl border border-[#E5E7EB] text-xs font-bold text-[#5F6368] hover:bg-[#F3F4F4]"
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                disabled={
-                  loading ||
-                  !venueName.trim() ||
-                  !isValidEmail(venueEmail) ||
-                  !isValidIndianMobile((venueMobile || mobileNumber || '').replace(/^\+91\s*/, '').trim()) ||
-                  !isValidGoogleMapsUrl(venueGoogleMaps) ||
-                  (hasGst && (!isValidGSTIN(gstNumber) || !gstDocId))
-                }
-                onClick={handleSaveBusinessDetails}
-                className="px-6 py-2.5 rounded-xl bg-[#F94001] hover:bg-[#D93600] text-white text-xs font-bold shadow-md transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
-              >
-                Save & Continue to Step 3 &rarr;
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ============================================================ */}
-        {/* STEP 3: COURT PHOTOS (DYNAMIC UPLOAD - NO DUMMY DEFAULTS)    */}
-        {/* ============================================================ */}
-        {currentStep === 3 && (
-          <div className="rounded-2xl bg-white p-6 sm:p-8 border border-[#E5E7EB] shadow-xs space-y-6">
-            <div className="border-b border-[#E5E7EB] pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <span className="text-[11px] font-bold font-mono text-[#F94001] uppercase tracking-wider">
-                  Step 3 of 7 &bull; Facility Visual Gallery
-                </span>
-                <h2 className="text-xl font-black text-[#021526] font-display mt-1">
-                  Court & Turf Photos (4 to 8 Images) <span className="text-rose-500 font-black">*</span>
-                </h2>
-                <p className="text-xs text-[#5F6368] mt-0.5">
-                  Upload photos of turf playing surfaces, floodlights, seating, and parking.
-                </p>
-              </div>
-
-              {courtPhotoList.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-bold ${
-                      courtPhotoList.length >= 4
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : 'bg-amber-100 text-amber-800'
-                    }`}
-                  >
-                    {courtPhotoList.length >= 4
-                      ? `✓ ${courtPhotoList.length} / 8 Photos Uploaded`
-                      : `${courtPhotoList.length} / 4 Min Photos (${4 - courtPhotoList.length} more needed)`}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {renderStepRejectionAlert(3)}
-
-            <input
-              type="file"
-              ref={courtPhotoInputRef}
-              accept=".jpg,.jpeg,.png"
-              multiple
-              onChange={handleCourtPhotosUpload}
-              className="hidden"
-            />
-
-            {/* EMPTY STATE: WHEN NO PHOTOS HAVE BEEN UPLOADED */}
-            {courtPhotoList.length === 0 ? (
-              <div
-                onClick={() => courtPhotoInputRef.current?.click()}
-                className="rounded-2xl border-2 border-dashed border-[#CBD5E1] hover:border-[#F94001] bg-[#F8F9FA] hover:bg-[#FFF1EC]/20 p-8 sm:p-12 text-center space-y-4 cursor-pointer transition-all shadow-xs"
-              >
-                <div className="h-16 w-16 rounded-2xl bg-white border border-[#CBD5E1] flex items-center justify-center mx-auto text-[#F94001] shadow-xs">
-                  {courtPhotoUploading ? (
-                    <Loader2 className="h-8 w-8 animate-spin text-[#F94001]" />
-                  ) : (
-                    <Camera className="h-8 w-8 text-[#F94001]" />
-                  )}
-                </div>
-                <div className="space-y-1">
-                  <h3 className="text-base font-black text-[#021526] font-display">
-                    {courtPhotoUploading ? 'Uploading Photos...' : 'No Facility Photos Uploaded'}
-                  </h3>
-                  <p className="text-xs text-[#5F6368] max-w-md mx-auto">
-                    Please upload a minimum of 4 photos (and up to 8) showing your turf playing surfaces, floodlights, seating, and parking.
-                  </p>
-                </div>
-                <div>
-                  <button
-                    type="button"
-                    disabled={courtPhotoUploading}
-                    className="px-5 py-2.5 rounded-xl bg-[#F94001] hover:bg-[#D93600] text-white text-xs font-bold shadow-md transition-all inline-flex items-center gap-2"
-                  >
-                    <Upload className="h-4 w-4" />
-                    <span>{courtPhotoUploading ? 'Uploading...' : 'Select Photos from Device'}</span>
-                  </button>
-                </div>
-                <p className="text-[11px] text-[#5F6368]">JPG, PNG &bull; Max 5MB each &bull; Select multiple files at once</p>
-              </div>
-            ) : (
-              /* PHOTO GRID: WHEN USER HAS UPLOADED PHOTOS */
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-                  {courtPhotoList.map((item, index) => (
-                    <div
-                      key={item.id || index}
-                      className="rounded-2xl border border-[#CBD5E1] bg-white overflow-hidden text-center relative group hover:border-[#F94001] transition-all shadow-xs flex flex-col justify-between"
-                    >
-                      {/* REAL VIEWABLE PHOTO CONTAINER */}
-                      <div className="relative h-28 sm:h-32 w-full bg-slate-100 overflow-hidden group/img">
-                        {item.previewUrl ? (
-                          <img
-                            src={item.previewUrl}
-                            alt={item.name || `Photo ${index + 1}`}
-                            className="h-full w-full object-cover group-hover/img:scale-105 transition-transform duration-300 cursor-pointer"
-                            onClick={() =>
-                              setPreviewModalImage({
-                                url: item.previewUrl!,
-                                title: item.name || `Court Photo #${index + 1}`,
-                              })
-                            }
-                          />
-                        ) : (
-                          <div className="h-full w-full bg-slate-100 flex flex-col items-center justify-center text-slate-500">
-                            <Camera className="h-7 w-7 text-slate-400 mb-1" />
-                            <span className="text-[10px] font-mono font-bold text-slate-600">Photo #{index + 1}</span>
-                          </div>
-                        )}
-                        <div className="absolute top-2 left-2 bg-black/70 backdrop-blur-xs text-white text-[10px] font-mono font-bold px-2 py-0.5 rounded-md shadow-xs">
-                          Photo #{index + 1}
-                        </div>
-                      </div>
-
-                      {/* PHOTO METADATA & ACTIONS */}
-                      <div className="p-3 bg-white space-y-1.5 border-t border-slate-100">
-                        <span
-                          className="text-xs font-semibold text-[#021526] block truncate text-left"
-                          title={item.name || item.id}
-                        >
-                          {item.name || item.id}
-                        </span>
-
-                        <div className="flex items-center justify-between pt-1">
-                          <span className="text-[9px] font-mono text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">
-                            ✓ Ready
+                        <div className="space-y-1">
+                          <span className="font-bold text-[#021526]">
+                            Step {targetStep}: {stepMeta?.title || r.section} &bull; Field:{' '}
+                            <code className="font-mono text-[#F94001]">{r.field}</code>
                           </span>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setCourtPhotoList((prev) => prev.filter((_, i) => i !== index))
-                            }
-                            className="text-rose-600 hover:text-rose-800 text-xs font-bold inline-flex items-center gap-1 hover:underline"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            <span>Remove</span>
-                          </button>
+                          <p className="text-[#5F6368] font-normal leading-relaxed">{r.reason}</p>
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => setCurrentStep(targetStep)}
+                          className="px-4 py-2 rounded-xl bg-[#F94001] hover:bg-[#D93600] text-white font-bold text-xs transition-all shadow-xs shrink-0 flex items-center gap-1.5 cursor-pointer active:scale-95"
+                        >
+                          <span>Fix Issue</span>
+                          <span>&rarr;</span>
+                        </button>
                       </div>
-                    </div>
-                  ))}
-
-                  {courtPhotoList.length < 8 && (
-                    <button
-                      type="button"
-                      disabled={courtPhotoUploading}
-                      onClick={() => courtPhotoInputRef.current?.click()}
-                      className="h-full min-h-[110px] rounded-xl border-2 border-dashed border-[#CBD5E1] hover:border-[#F94001] bg-white flex flex-col items-center justify-center text-xs font-bold text-[#5F6368] hover:text-[#F94001] transition-all p-3 shadow-xs hover:bg-[#FFF1EC]/30"
-                    >
-                      {courtPhotoUploading ? (
-                        <Loader2 className="h-5 w-5 mb-1 animate-spin text-[#F94001]" />
-                      ) : (
-                        <Plus className="h-5 w-5 mb-1 text-[#F94001]" />
-                      )}
-                      <span>{courtPhotoUploading ? 'Uploading...' : 'Add More Photos'}</span>
-                      <span className="text-[10px] font-normal text-[#5F6368] mt-0.5">JPG, PNG (Max 5MB)</span>
-                    </button>
-                  )}
+                    );
+                  })}
                 </div>
               </div>
             )}
 
-            <div className="flex items-center justify-between pt-4 border-t border-[#E5E7EB]">
-              <button
-                type="button"
-                onClick={() => setCurrentStep(2)}
-                className="px-4 py-2 rounded-xl border border-[#E5E7EB] text-xs font-bold text-[#5F6368] hover:bg-[#F3F4F4]"
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                disabled={loading || courtPhotoList.length < 4}
-                onClick={handleSaveCourtPhotos}
-                className="px-6 py-2.5 rounded-xl bg-[#F94001] hover:bg-[#D93600] text-white text-xs font-bold shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
-              >
-                {courtPhotoList.length < 4
-                  ? `Upload ${4 - courtPhotoList.length} More Photo(s) to Continue`
-                  : 'Save & Continue to Step 4 \u2192'}
-              </button>
-            </div>
-          </div>
-        )}
+            {/* ============================================================ */}
+            {/* STEP 1: PARTNER DETAILS (WITH STRICT TYPE & REQUIRED VALIDATION)*/}
+            {/* ============================================================ */}
+            {currentStep === 1 && (
+              <div className="rounded-2xl bg-white p-6 sm:p-8 border border-[#E5E7EB] shadow-xs space-y-6">
+                <div className="border-b border-[#E5E7EB] pb-4 flex items-center justify-between">
+                  <div>
+                    <span className="text-[11px] font-bold font-mono text-[#F94001] uppercase tracking-wider">
+                      Step 1 of 7 &bull; Personal & Identity Information
+                    </span>
+                    <h2 className="text-xl font-black text-[#021526] font-display mt-1">
+                      Partner Profile & Identification
+                    </h2>
+                    <p className="text-xs text-[#5F6368] mt-1">
+                      All fields marked with <span className="text-rose-500 font-black">*</span> are mandatory.
+                    </p>
+                  </div>
+                  <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
+                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> Identity Protected
+                  </span>
+                </div>
 
-        {/* ============================================================ */}
-        {/* STEP 4: OPERATING HOURS (DAY-WISE SCHEDULE MATCHING SPEC)    */}
-        {/* ============================================================ */}
-        {currentStep === 4 && (
-          <div className="rounded-2xl bg-white p-6 sm:p-8 border border-[#E5E7EB] shadow-xs space-y-6">
-            <div className="border-b border-[#E5E7EB] pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <span className="text-[11px] font-bold font-mono text-[#F94001] uppercase tracking-wider">
-                  Step 4 of 7 &bull; Schedule & Availability
-                </span>
-                <h2 className="text-xl font-black text-[#021526] font-display mt-1">
-                  Operating Days & Timings <span className="text-rose-500 font-black">*</span>
-                </h2>
-                <p className="text-xs text-[#5F6368] mt-0.5">
-                  Set daily operating hours or mark non-operational days as Closed.
-                </p>
-              </div>
+                {renderStepRejectionAlert(1)}
 
-              {/* Quick Actions */}
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={handleCopyMondayHoursToAll}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#CBD5E1] bg-[#F8F9FA] hover:bg-[#FFF1EC] text-xs font-bold text-[#021526] hover:text-[#F94001] transition-all shadow-xs"
-                  title="Copy Monday operating hours to all open days"
-                >
-                  <Copy className="h-3.5 w-3.5 text-[#F94001]" />
-                  <span>Copy Mon to All</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleOpenAllDays}
-                  className="px-2.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold hover:bg-emerald-100 transition-colors"
-                >
-                  Open All Days
-                </button>
-                <button
-                  type="button"
-                  onClick={handleWeekdaysOnly}
-                  className="px-2.5 py-1.5 rounded-lg bg-[#F3F4F4] border border-[#E5E7EB] text-[#5F6368] text-xs font-bold hover:bg-[#E5E7EB] transition-colors"
-                >
-                  Weekdays Only
-                </button>
-              </div>
-            </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Full Legal Name */}
+                  <div>
+                    <label className="text-xs font-bold text-[#021526] block mb-1">
+                      Full Legal Name <span className="text-rose-500 font-black">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={partnerName}
+                      onChange={(e) => setPartnerName(e.target.value.replace(/[^a-zA-Z\s.]/g, ''))}
+                      placeholder="e.g. Karthik Rajan"
+                      className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
+                    />
+                    {partnerName.length > 0 && !isValidName(partnerName) && (
+                      <p className="text-[10px] text-amber-600 mt-1">Must be at least 3 letters (letters & spaces only)</p>
+                    )}
+                  </div>
 
-            {renderStepRejectionAlert(4)}
+                  {/* Email Address */}
+                  <div>
+                    <label className="text-xs font-bold text-[#021526] block mb-1">
+                      Email Address <span className="text-rose-500 font-black">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      value={partnerEmail}
+                      onChange={(e) => setPartnerEmail(e.target.value.trim().toLowerCase())}
+                      placeholder="partner@arena.com"
+                      className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
+                    />
+                    {partnerEmail.length > 0 && !isValidEmail(partnerEmail) && (
+                      <p className="text-[10px] text-amber-600 mt-1">Please enter a valid email format</p>
+                    )}
+                  </div>
 
-            {/* Split Schedule Editor & Live Visual Table */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              {/* Left: Interactive Day-by-Day Controls */}
-              <div className="lg:col-span-7 space-y-2.5">
-                {dailySchedules.map((schedule, idx) => (
-                  <div
-                    key={schedule.day}
-                    className={`p-3.5 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                      schedule.isOpen
-                        ? 'bg-white border-[#CBD5E1] shadow-xs'
-                        : 'bg-[#F8F9FA] border-[#E5E7EB] opacity-75'
-                    }`}
+                  {/* Verified Mobile Number */}
+                  <div>
+                    <label className="text-xs font-bold text-[#021526] block mb-1">
+                      Verified Mobile Number <span className="text-rose-500 font-black">*</span>
+                    </label>
+                    <div className="relative flex items-center">
+                      <input
+                        type="text"
+                        readOnly
+                        tabIndex={-1}
+                        value={mobileNumber ? `+91 ${mobileNumber.replace(/^\+91\s*/, '')}` : ''}
+                        className="w-full rounded-xl border border-[#CBD5E1] bg-[#F8F9FA] px-3.5 pr-10 py-2.5 text-xs font-mono font-bold tracking-wider text-[#021526] cursor-not-allowed select-none focus:outline-none"
+                      />
+                      <div className="absolute right-3.5 flex items-center text-emerald-600" title="Verified via Login OTP">
+                        <CheckCircle2 className="h-4 w-4" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Postal Pincode */}
+                  <div>
+                    <label className="text-xs font-bold text-[#021526] block mb-1">
+                      Postal Pincode <span className="text-rose-500 font-black">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      value={partnerPincode}
+                      onChange={(e) => setPartnerPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      placeholder="641018"
+                      className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs font-mono text-[#021526] focus:border-[#F94001] focus:outline-none"
+                    />
+                    {partnerPincode.length > 0 && !isValidPincode(partnerPincode) && (
+                      <p className="text-[10px] text-amber-600 mt-1">Must be exactly 6 numeric digits ({partnerPincode.length}/6)</p>
+                    )}
+                  </div>
+
+                  {/* Residential Address */}
+                  <div className="sm:col-span-2">
+                    <label className="text-xs font-bold text-[#021526] block mb-1">
+                      Residential Address <span className="text-rose-500 font-black">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={partnerAddress}
+                      onChange={(e) => setPartnerAddress(e.target.value)}
+                      placeholder="Door No, Street Name, Area"
+                      className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
+                    />
+                  </div>
+
+                  {/* State */}
+                  <div>
+                    <label className="text-xs font-bold text-[#021526] block mb-1">
+                      State <span className="text-rose-500 font-black">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={partnerState}
+                      onChange={(e) => setPartnerState(e.target.value.replace(/[^a-zA-Z\s]/g, ''))}
+                      placeholder="e.g. Tamil Nadu"
+                      className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
+                    />
+                  </div>
+
+                  {/* District */}
+                  <div>
+                    <label className="text-xs font-bold text-[#021526] block mb-1">
+                      District <span className="text-rose-500 font-black">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={partnerDistrict}
+                      onChange={(e) => setPartnerDistrict(e.target.value.replace(/[^a-zA-Z\s]/g, ''))}
+                      placeholder="e.g. Coimbatore"
+                      className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Aadhaar Upload Card: Mandatory */}
+                  <div>
+                    <label className="text-xs font-bold text-[#021526] block mb-1 flex items-center justify-between">
+                      <span>Aadhaar Card Document <span className="text-rose-500 font-black">*</span></span>
+                      <span className="text-[10px] font-mono text-[#5F6368] uppercase">PDF/JPG Max 5MB</span>
+                    </label>
+                    <input
+                      type="file"
+                      ref={aadhaarFileInputRef}
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) =>
+                        handleFileUpload(
+                          e,
+                          'AADHAAR',
+                          (id, name, previewUrl) => {
+                            setAadhaarDocId(id);
+                            setAadhaarFileName(name);
+                            if (previewUrl) setAadhaarPreviewUrl(previewUrl);
+                          },
+                          setAadhaarUploading,
+                        )
+                      }
+                      className="hidden"
+                    />
+                    {aadhaarUploading ? (
+                      <div className="flex items-center gap-2 p-2.5 rounded-xl border border-dashed border-[#F94001] bg-[#FFF1EC]/30 text-xs font-bold text-[#F94001]">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Uploading document...</span>
+                      </div>
+                    ) : aadhaarDocId ? (
+                      <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-emerald-300 bg-emerald-50/50 shadow-xs">
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          {aadhaarPreviewUrl && !aadhaarFileName?.toLowerCase().endsWith('.pdf') ? (
+                            <div className="h-8 w-8 rounded-lg overflow-hidden shrink-0 border border-emerald-300 bg-white">
+                              <img
+                                src={aadhaarPreviewUrl}
+                                alt="Aadhaar"
+                                className="h-full w-full object-cover"
+                              />
+                            </div>
+                          ) : (
+                            <FileText className="h-4 w-4 text-emerald-600 shrink-0" />
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="font-mono text-xs font-bold text-[#021526] truncate">
+                              {aadhaarFileName || aadhaarDocId}
+                            </p>
+                            <span className="text-[10px] text-emerald-700 font-medium">✓ Uploaded & Verified</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleOpenDocumentPreview(
+                                aadhaarPreviewUrl,
+                                aadhaarFileName,
+                                aadhaarDocId,
+                                'AADHAAR',
+                              )
+                            }
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-[#CBD5E1] text-[11px] font-bold text-[#021526] hover:bg-[#F3F4F4] hover:text-[#F94001] transition-colors shadow-xs cursor-pointer"
+                          >
+                            <Eye className="h-3.5 w-3.5 text-[#5F6368]" />
+                            <span>View</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAadhaarDocId('');
+                              setAadhaarFileName('');
+                              setAadhaarPreviewUrl(null);
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-rose-200 text-[11px] font-bold text-rose-600 hover:bg-rose-50 hover:border-rose-300 transition-colors shadow-xs"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-rose-600" />
+                            <span>Delete</span>
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-2 p-2 rounded-xl border border-dashed border-[#CBD5E1] bg-[#F8F9FA]">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <FileText className="h-4 w-4 text-[#5F6368] shrink-0" />
+                          <span className="font-mono text-[11px] text-[#5F6368] truncate">
+                            No Aadhaar document uploaded
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => aadhaarFileInputRef.current?.click()}
+                          className="px-3 py-1.5 rounded-lg bg-[#F94001] hover:bg-[#D93600] text-white text-[11px] font-bold transition-all shadow-xs shrink-0"
+                        >
+                          Upload Aadhaar
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Profile Photo Upload Card: Mandatory */}
+                  <div>
+                    <label className="text-xs font-bold text-[#021526] block mb-1 flex items-center justify-between">
+                      <span>Profile Photo ID <span className="text-rose-500 font-black">*</span></span>
+                      <span className="text-[10px] font-mono text-[#5F6368] uppercase">JPG/PNG Max 5MB</span>
+                    </label>
+                    <input
+                      type="file"
+                      ref={profilePhotoInputRef}
+                      accept=".jpg,.jpeg,.png"
+                      onChange={(e) =>
+                        handleFileUpload(
+                          e,
+                          'PROFILE_PHOTO',
+                          (id, name, previewUrl) => {
+                            setProfilePhotoDocId(id);
+                            setProfilePhotoFileName(name);
+                            if (previewUrl) setProfilePhotoPreviewUrl(previewUrl);
+                          },
+                          setProfilePhotoUploading,
+                        )
+                      }
+                      className="hidden"
+                    />
+                    {profilePhotoUploading ? (
+                      <div className="flex items-center gap-2 p-2.5 rounded-xl border border-dashed border-[#F94001] bg-[#FFF1EC]/30 text-xs font-bold text-[#F94001]">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Uploading photo...</span>
+                      </div>
+                    ) : profilePhotoDocId ? (
+                      <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-emerald-300 bg-emerald-50/50 shadow-xs">
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          {profilePhotoPreviewUrl ? (
+                            <div className="h-8 w-8 rounded-full overflow-hidden shrink-0 border border-emerald-300 bg-white">
+                              <img
+                                src={profilePhotoPreviewUrl}
+                                alt="Profile"
+                                className="h-full w-full object-cover"
+                              />
+                            </div>
+                          ) : (
+                            <ImageIcon className="h-4 w-4 text-emerald-600 shrink-0" />
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="font-mono text-xs font-bold text-[#021526] truncate">
+                              {profilePhotoFileName || profilePhotoDocId}
+                            </p>
+                            <span className="text-[10px] text-emerald-700 font-medium">✓ Uploaded & Verified</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleOpenDocumentPreview(
+                                profilePhotoPreviewUrl,
+                                profilePhotoFileName,
+                                profilePhotoDocId,
+                                'PROFILE_PHOTO',
+                              )
+                            }
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-[#CBD5E1] text-[11px] font-bold text-[#021526] hover:bg-[#F3F4F4] hover:text-[#F94001] transition-colors shadow-xs cursor-pointer"
+                          >
+                            <Eye className="h-3.5 w-3.5 text-[#5F6368]" />
+                            <span>View</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setProfilePhotoDocId('');
+                              setProfilePhotoFileName('');
+                              setProfilePhotoPreviewUrl(null);
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-rose-200 text-[11px] font-bold text-rose-600 hover:bg-rose-50 hover:border-rose-300 transition-colors shadow-xs"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-rose-600" />
+                            <span>Delete</span>
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-2 p-2 rounded-xl border border-dashed border-[#CBD5E1] bg-[#F8F9FA]">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <ImageIcon className="h-4 w-4 text-[#5F6368] shrink-0" />
+                          <span className="font-mono text-[11px] text-[#5F6368] truncate">
+                            No profile photo uploaded
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => profilePhotoInputRef.current?.click()}
+                          className="px-3 py-1.5 rounded-lg bg-[#F94001] hover:bg-[#D93600] text-white text-[11px] font-bold transition-all shadow-xs shrink-0"
+                        >
+                          Upload Photo
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end pt-4 border-t border-[#E5E7EB]">
+                  <button
+                    type="button"
+                    disabled={
+                      loading ||
+                      !isValidName(partnerName) ||
+                      !isValidEmail(partnerEmail) ||
+                      !isValidIndianMobile(mobileNumber) ||
+                      !isValidPincode(partnerPincode) ||
+                      !aadhaarDocId ||
+                      !profilePhotoDocId
+                    }
+                    onClick={handleSavePartnerDetails}
+                    className="px-6 py-2.5 rounded-xl bg-[#F94001] hover:bg-[#D93600] text-white text-xs font-bold shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
                   >
-                    {/* Day Name & Toggle */}
-                    <div className="flex items-center gap-3 w-32 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setDailySchedules((prev) =>
-                            prev.map((item, i) =>
-                              i === idx ? { ...item, isOpen: !item.isOpen } : item,
-                            ),
-                          )
-                        }
-                        className={`h-6 w-11 rounded-full p-0.5 transition-colors shrink-0 flex items-center ${
-                          schedule.isOpen ? 'bg-[#F94001]' : 'bg-[#CBD5E1]'
-                        }`}
-                      >
-                        <div
-                          className={`h-5 w-5 rounded-full bg-white shadow-xs transform transition-transform ${
-                            schedule.isOpen ? 'translate-x-5' : 'translate-x-0'
+                    {loading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>Save & Continue to Step 2 &rarr;</>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ============================================================ */}
+            {/* STEP 2: BUSINESS & VENUE DETAILS (WITH STRICT VALIDATION)    */}
+            {/* ============================================================ */}
+            {currentStep === 2 && (
+              <div className="rounded-2xl bg-white p-6 sm:p-8 border border-[#E5E7EB] shadow-xs space-y-6">
+                <div className="border-b border-[#E5E7EB] pb-4">
+                  <span className="text-[11px] font-bold font-mono text-[#F94001] uppercase tracking-wider">
+                    Step 2 of 7 &bull; Facility & Tax Information
+                  </span>
+                  <h2 className="text-xl font-black text-[#021526] font-display mt-1">
+                    Venue & Business Details
+                  </h2>
+                </div>
+
+                {renderStepRejectionAlert(2)}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Venue Name */}
+                  <div>
+                    <label className="text-xs font-bold text-[#021526] block mb-1">
+                      Venue / Arena Name <span className="text-rose-500 font-black">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={venueName}
+                      onChange={(e) => setVenueName(e.target.value)}
+                      placeholder="Sky Sports Arena"
+                      className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Venue Email */}
+                  <div>
+                    <label className="text-xs font-bold text-[#021526] block mb-1">
+                      Official Venue Email <span className="text-rose-500 font-black">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      value={venueEmail}
+                      onChange={(e) => setVenueEmail(e.target.value.trim().toLowerCase())}
+                      placeholder="contact@skysports.com"
+                      className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
+                    />
+                    {venueEmail.length > 0 && !isValidEmail(venueEmail) && (
+                      <p className="text-[10px] text-amber-600 mt-1">Please enter a valid email format</p>
+                    )}
+                  </div>
+
+                  {/* Contact Mobile */}
+                  <div>
+                    <label className="text-xs font-bold text-[#021526] block mb-1">
+                      Contact Mobile Number <span className="text-rose-500 font-black">*</span>
+                    </label>
+                    <div className="relative flex items-center">
+                      <input
+                        type="text"
+                        readOnly
+                        tabIndex={-1}
+                        value={venueMobile || mobileNumber ? `+91 ${(venueMobile || mobileNumber).replace(/^\+91\s*/, '')}` : ''}
+                        className="w-full rounded-xl border border-[#CBD5E1] bg-[#F8F9FA] px-3.5 pr-10 py-2.5 text-xs font-mono font-bold tracking-wider text-[#021526] cursor-not-allowed select-none focus:outline-none"
+                      />
+                      <div className="absolute right-3.5 flex items-center text-emerald-600" title="Verified via Login OTP">
+                        <CheckCircle2 className="h-4 w-4" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Google Maps Location Link */}
+                  <div>
+                    <label className="text-xs font-bold text-[#021526] block mb-1">
+                      Google Maps Location Link <span className="text-rose-500 font-black">*</span>
+                    </label>
+                    <input
+                      type="url"
+                      value={venueGoogleMaps}
+                      onChange={(e) => setVenueGoogleMaps(e.target.value.trim())}
+                      placeholder="https://maps.app.goo.gl/..."
+                      className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
+                    />
+                    {venueGoogleMaps.length > 0 && !isValidGoogleMapsUrl(venueGoogleMaps) && (
+                      <p className="text-[10px] text-amber-600 mt-1">Must be a valid Google Maps URL</p>
+                    )}
+                  </div>
+
+                  {/* Full Venue Address */}
+                  <div className="sm:col-span-2">
+                    <label className="text-xs font-bold text-[#021526] block mb-1">
+                      Full Venue Physical Address <span className="text-rose-500 font-black">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={venueAddress}
+                      onChange={(e) => setVenueAddress(e.target.value)}
+                      placeholder="Full physical address of the sports arena"
+                      className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
+                    />
+                  </div>
+
+                  {/* GST Section with Interactive Upload & Strict 15-char Regex */}
+                  <div className="sm:col-span-2 pt-2 border-t border-[#E5E7EB]">
+                    <label className="flex items-center gap-2 cursor-pointer mb-3">
+                      <input
+                        type="checkbox"
+                        checked={hasGst}
+                        onChange={(e) => setHasGst(e.target.checked)}
+                        className="h-4 w-4 rounded text-[#F94001] focus:ring-[#F94001]"
+                      />
+                      <span className="text-xs font-bold text-[#021526]">
+                        This business has a Registered GST Number (Optional)
+                      </span>
+                    </label>
+
+                    {hasGst && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-[#F8F9FA] border border-[#CBD5E1]">
+                        <div>
+                          <label className="text-xs font-bold text-[#021526] block mb-1">
+                            15-Character GSTIN <span className="text-rose-500 font-black">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            maxLength={15}
+                            value={gstNumber}
+                            onChange={(e) => setGstNumber(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 15))}
+                            placeholder="33ABCDE1234F1Z5"
+                            className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs font-mono tracking-wider text-[#021526] focus:border-[#F94001] focus:outline-none"
+                          />
+                          {gstNumber.length > 0 && !isValidGSTIN(gstNumber) && (
+                            <p className="text-[10px] text-amber-600 mt-1">Format: 15 alphanumeric characters (e.g. 33ABCDE1234F1Z5)</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-bold text-[#021526] block mb-1 flex items-center justify-between">
+                            <span>GST Registration Certificate <span className="text-rose-500 font-black">*</span></span>
+                            <span className="text-[10px] font-mono text-[#5F6368] uppercase">PDF/JPG Max 5MB</span>
+                          </label>
+                          <input
+                            type="file"
+                            ref={gstFileInputRef}
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            onChange={(e) =>
+                              handleFileUpload(
+                                e,
+                                'GST_CERTIFICATE',
+                                (id, name, previewUrl) => {
+                                  setGstDocId(id);
+                                  setGstFileName(name);
+                                  if (previewUrl) setGstPreviewUrl(previewUrl);
+                                },
+                                setGstUploading,
+                              )
+                            }
+                            className="hidden"
+                          />
+                          {gstUploading ? (
+                            <div className="flex items-center gap-2 p-2.5 rounded-xl border border-dashed border-[#F94001] bg-[#FFF1EC]/30 text-xs font-bold text-[#F94001]">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <span>Uploading GST certificate...</span>
+                            </div>
+                          ) : gstDocId ? (
+                            <div className="flex items-center justify-between gap-2 p-2 rounded-xl border border-emerald-300 bg-emerald-50/50 shadow-xs">
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <FileText className="h-4 w-4 text-emerald-600 shrink-0" />
+                                <div className="min-w-0 flex-1">
+                                  <p className="font-mono text-xs font-bold text-[#021526] truncate">
+                                    {gstFileName || gstDocId}
+                                  </p>
+                                  <span className="text-[10px] text-emerald-700 font-medium">✓ Uploaded & Verified</span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleOpenDocumentPreview(
+                                      gstPreviewUrl,
+                                      gstFileName,
+                                      gstDocId,
+                                      'GST',
+                                    )
+                                  }
+                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-[#CBD5E1] text-[11px] font-bold text-[#021526] hover:bg-[#F3F4F4] hover:text-[#F94001] transition-colors shadow-xs cursor-pointer"
+                                >
+                                  <Eye className="h-3.5 w-3.5 text-[#5F6368]" />
+                                  <span>View</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setGstDocId('');
+                                    setGstFileName('');
+                                    setGstPreviewUrl(null);
+                                  }}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-rose-200 text-[11px] font-bold text-rose-600 hover:bg-rose-50 hover:border-rose-300 transition-colors shadow-xs"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 text-rose-600" />
+                                  <span>Delete</span>
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between gap-2 p-2 rounded-xl border border-dashed border-[#CBD5E1] bg-white">
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <FileText className="h-4 w-4 text-[#5F6368] shrink-0" />
+                                <span className="font-mono text-[11px] text-[#5F6368] truncate">
+                                  No GST document uploaded
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => gstFileInputRef.current?.click()}
+                                className="px-3 py-1.5 rounded-lg bg-[#F94001] hover:bg-[#D93600] text-white text-[11px] font-bold transition-all shadow-xs shrink-0 flex items-center gap-1"
+                              >
+                                <FileUp className="h-3.5 w-3.5" />
+                                <span>Upload GST</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-4 border-t border-[#E5E7EB]">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(1)}
+                    className="px-4 py-2 rounded-xl border border-[#E5E7EB] text-xs font-bold text-[#5F6368] hover:bg-[#F3F4F4]"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    disabled={
+                      loading ||
+                      !venueName.trim() ||
+                      !isValidEmail(venueEmail) ||
+                      !isValidIndianMobile((venueMobile || mobileNumber || '').replace(/^\+91\s*/, '').trim()) ||
+                      !isValidGoogleMapsUrl(venueGoogleMaps) ||
+                      (hasGst && (!isValidGSTIN(gstNumber) || !gstDocId))
+                    }
+                    onClick={handleSaveBusinessDetails}
+                    className="px-6 py-2.5 rounded-xl bg-[#F94001] hover:bg-[#D93600] text-white text-xs font-bold shadow-md transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+                  >
+                    Save & Continue to Step 3 &rarr;
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ============================================================ */}
+            {/* STEP 3: COURT PHOTOS (DYNAMIC UPLOAD - NO DUMMY DEFAULTS)    */}
+            {/* ============================================================ */}
+            {currentStep === 3 && (
+              <div className="rounded-2xl bg-white p-6 sm:p-8 border border-[#E5E7EB] shadow-xs space-y-6">
+                <div className="border-b border-[#E5E7EB] pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <span className="text-[11px] font-bold font-mono text-[#F94001] uppercase tracking-wider">
+                      Step 3 of 7 &bull; Facility Visual Gallery
+                    </span>
+                    <h2 className="text-xl font-black text-[#021526] font-display mt-1">
+                      Court & Turf Photos (4 to 8 Images) <span className="text-rose-500 font-black">*</span>
+                    </h2>
+                    <p className="text-xs text-[#5F6368] mt-0.5">
+                      Upload photos of turf playing surfaces, floodlights, seating, and parking.
+                    </p>
+                  </div>
+
+                  {courtPhotoList.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-bold ${courtPhotoList.length >= 4
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-amber-100 text-amber-800'
                           }`}
-                        />
-                      </button>
-                      <span className={`text-sm font-bold ${schedule.isOpen ? 'text-[#021526]' : 'text-[#5F6368]'}`}>
-                        {schedule.label}
+                      >
+                        {courtPhotoList.length >= 4
+                          ? `✓ ${courtPhotoList.length} / 8 Photos Uploaded`
+                          : `${courtPhotoList.length} / 4 Min Photos (${4 - courtPhotoList.length} more needed)`}
                       </span>
                     </div>
+                  )}
+                </div>
 
-                    {/* Time Dropdowns or Closed Badge */}
-                    <div className="flex items-center gap-2 flex-1 justify-end">
-                      {schedule.isOpen ? (
-                        <>
-                          <select
-                            value={schedule.openTime}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setDailySchedules((prev) =>
-                                prev.map((item, i) =>
-                                  i === idx ? { ...item, openTime: val } : item,
-                                ),
-                              );
-                            }}
-                            className="rounded-lg border border-[#CBD5E1] bg-white px-2.5 py-1.5 text-xs font-mono font-medium text-[#021526] focus:border-[#F94001] focus:outline-none"
-                          >
-                            {TIME_OPTIONS.map((time) => (
-                              <option key={time} value={time}>
-                                {time}
-                              </option>
-                            ))}
-                          </select>
-                          <span className="text-xs text-[#5F6368] font-bold">&ndash;</span>
-                          <select
-                            value={schedule.closeTime}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setDailySchedules((prev) =>
-                                prev.map((item, i) =>
-                                  i === idx ? { ...item, closeTime: val } : item,
-                                ),
-                              );
-                            }}
-                            className="rounded-lg border border-[#CBD5E1] bg-white px-2.5 py-1.5 text-xs font-mono font-medium text-[#021526] focus:border-[#F94001] focus:outline-none"
-                          >
-                            {TIME_OPTIONS.map((time) => (
-                              <option key={time} value={time}>
-                                {time}
-                              </option>
-                            ))}
-                          </select>
-                        </>
+                {renderStepRejectionAlert(3)}
+
+                <input
+                  type="file"
+                  ref={courtPhotoInputRef}
+                  accept=".jpg,.jpeg,.png"
+                  multiple
+                  onChange={handleCourtPhotosUpload}
+                  className="hidden"
+                />
+
+                {/* EMPTY STATE: WHEN NO PHOTOS HAVE BEEN UPLOADED */}
+                {courtPhotoList.length === 0 ? (
+                  <div
+                    onClick={() => courtPhotoInputRef.current?.click()}
+                    className="rounded-2xl border-2 border-dashed border-[#CBD5E1] hover:border-[#F94001] bg-[#F8F9FA] hover:bg-[#FFF1EC]/20 p-8 sm:p-12 text-center space-y-4 cursor-pointer transition-all shadow-xs"
+                  >
+                    <div className="h-16 w-16 rounded-2xl bg-white border border-[#CBD5E1] flex items-center justify-center mx-auto text-[#F94001] shadow-xs">
+                      {courtPhotoUploading ? (
+                        <Loader2 className="h-8 w-8 animate-spin text-[#F94001]" />
                       ) : (
-                        <span className="px-3 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-500 font-bold text-xs">
-                          Closed
-                        </span>
+                        <Camera className="h-8 w-8 text-[#F94001]" />
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="text-base font-black text-[#021526] font-display">
+                        {courtPhotoUploading ? 'Uploading Photos...' : 'No Facility Photos Uploaded'}
+                      </h3>
+                      <p className="text-xs text-[#5F6368] max-w-md mx-auto">
+                        Please upload a minimum of 4 photos (and up to 8) showing your turf playing surfaces, floodlights, seating, and parking.
+                      </p>
+                    </div>
+                    <div>
+                      <button
+                        type="button"
+                        disabled={courtPhotoUploading}
+                        className="px-5 py-2.5 rounded-xl bg-[#F94001] hover:bg-[#D93600] text-white text-xs font-bold shadow-md transition-all inline-flex items-center gap-2"
+                      >
+                        <Upload className="h-4 w-4" />
+                        <span>{courtPhotoUploading ? 'Uploading...' : 'Select Photos from Device'}</span>
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-[#5F6368]">JPG, PNG &bull; Max 5MB each &bull; Select multiple files at once</p>
+                  </div>
+                ) : (
+                  /* PHOTO GRID: WHEN USER HAS UPLOADED PHOTOS */
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+                      {courtPhotoList.map((item, index) => (
+                        <div
+                          key={item.id || index}
+                          className="rounded-2xl border border-[#CBD5E1] bg-white overflow-hidden text-center relative group hover:border-[#F94001] transition-all shadow-xs flex flex-col justify-between"
+                        >
+                          {/* REAL VIEWABLE PHOTO CONTAINER */}
+                          <div className="relative h-28 sm:h-32 w-full bg-slate-100 overflow-hidden group/img">
+                            {item.previewUrl ? (
+                              <img
+                                src={item.previewUrl}
+                                alt={item.name || `Photo ${index + 1}`}
+                                className="h-full w-full object-cover group-hover/img:scale-105 transition-transform duration-300 cursor-pointer"
+                                onClick={() =>
+                                  setPreviewModalImage({
+                                    url: item.previewUrl!,
+                                    title: item.name || `Court Photo #${index + 1}`,
+                                  })
+                                }
+                              />
+                            ) : (
+                              <div className="h-full w-full bg-slate-100 flex flex-col items-center justify-center text-slate-500">
+                                <Camera className="h-7 w-7 text-slate-400 mb-1" />
+                                <span className="text-[10px] font-mono font-bold text-slate-600">Photo #{index + 1}</span>
+                              </div>
+                            )}
+                            <div className="absolute top-2 left-2 bg-black/70 backdrop-blur-xs text-white text-[10px] font-mono font-bold px-2 py-0.5 rounded-md shadow-xs">
+                              Photo #{index + 1}
+                            </div>
+                          </div>
+
+                          {/* PHOTO METADATA & ACTIONS */}
+                          <div className="p-3 bg-white space-y-1.5 border-t border-slate-100">
+                            <span
+                              className="text-xs font-semibold text-[#021526] block truncate text-left"
+                              title={item.name || item.id}
+                            >
+                              {item.name || item.id}
+                            </span>
+
+                            <div className="flex items-center justify-between pt-1">
+                              <span className="text-[9px] font-mono text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">
+                                ✓ Ready
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setCourtPhotoList((prev) => prev.filter((_, i) => i !== index))
+                                }
+                                className="text-rose-600 hover:text-rose-800 text-xs font-bold inline-flex items-center gap-1 hover:underline"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                <span>Remove</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+
+                      {courtPhotoList.length < 8 && (
+                        <button
+                          type="button"
+                          disabled={courtPhotoUploading}
+                          onClick={() => courtPhotoInputRef.current?.click()}
+                          className="h-full min-h-[110px] rounded-xl border-2 border-dashed border-[#CBD5E1] hover:border-[#F94001] bg-white flex flex-col items-center justify-center text-xs font-bold text-[#5F6368] hover:text-[#F94001] transition-all p-3 shadow-xs hover:bg-[#FFF1EC]/30"
+                        >
+                          {courtPhotoUploading ? (
+                            <Loader2 className="h-5 w-5 mb-1 animate-spin text-[#F94001]" />
+                          ) : (
+                            <Plus className="h-5 w-5 mb-1 text-[#F94001]" />
+                          )}
+                          <span>{courtPhotoUploading ? 'Uploading...' : 'Add More Photos'}</span>
+                          <span className="text-[10px] font-normal text-[#5F6368] mt-0.5">JPG, PNG (Max 5MB)</span>
+                        </button>
                       )}
                     </div>
                   </div>
-                ))}
-              </div>
+                )}
 
-              {/* Right: Live Google Business Hours Preview (Matching Reference Image) */}
-              <div className="lg:col-span-5 space-y-3">
-                <div className="p-5 rounded-2xl bg-[#021526] text-white border border-white/10 shadow-lg space-y-4">
-                  <div className="flex items-center gap-2 border-b border-white/10 pb-3">
-                    <CalendarDays className="h-4 w-4 text-[#F94001]" />
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
-                      Weekly Schedule Display
+                <div className="flex items-center justify-between pt-4 border-t border-[#E5E7EB]">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(2)}
+                    className="px-4 py-2 rounded-xl border border-[#E5E7EB] text-xs font-bold text-[#5F6368] hover:bg-[#F3F4F4]"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    disabled={loading || courtPhotoList.length < 4}
+                    onClick={handleSaveCourtPhotos}
+                    className="px-6 py-2.5 rounded-xl bg-[#F94001] hover:bg-[#D93600] text-white text-xs font-bold shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {courtPhotoList.length < 4
+                      ? `Upload ${4 - courtPhotoList.length} More Photo(s) to Continue`
+                      : 'Save & Continue to Step 4 \u2192'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ============================================================ */}
+            {/* STEP 4: OPERATING HOURS (DAY-WISE SCHEDULE MATCHING SPEC)    */}
+            {/* ============================================================ */}
+            {currentStep === 4 && (
+              <div className="rounded-2xl bg-white p-6 sm:p-8 border border-[#E5E7EB] shadow-xs space-y-6">
+                <div className="border-b border-[#E5E7EB] pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <span className="text-[11px] font-bold font-mono text-[#F94001] uppercase tracking-wider">
+                      Step 4 of 7 &bull; Schedule & Availability
                     </span>
+                    <h2 className="text-xl font-black text-[#021526] font-display mt-1">
+                      Operating Days & Timings <span className="text-rose-500 font-black">*</span>
+                    </h2>
+                    <p className="text-xs text-[#5F6368] mt-0.5">
+                      Set daily operating hours or mark non-operational days as Closed.
+                    </p>
                   </div>
 
-                  {/* Clean Typography Table Matching Reference */}
-                  <div className="space-y-2.5 text-sm font-sans">
-                    {dailySchedules.map((item) => (
+                  {/* Quick Actions */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleCopyMondayHoursToAll}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#CBD5E1] bg-[#F8F9FA] hover:bg-[#FFF1EC] text-xs font-bold text-[#021526] hover:text-[#F94001] transition-all shadow-xs"
+                      title="Copy Monday operating hours to all open days"
+                    >
+                      <Copy className="h-3.5 w-3.5 text-[#F94001]" />
+                      <span>Copy Mon to All</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleOpenAllDays}
+                      className="px-2.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold hover:bg-emerald-100 transition-colors"
+                    >
+                      Open All Days
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleWeekdaysOnly}
+                      className="px-2.5 py-1.5 rounded-lg bg-[#F3F4F4] border border-[#E5E7EB] text-[#5F6368] text-xs font-bold hover:bg-[#E5E7EB] transition-colors"
+                    >
+                      Weekdays Only
+                    </button>
+                  </div>
+                </div>
+
+                {renderStepRejectionAlert(4)}
+
+                {/* Split Schedule Editor & Live Visual Table */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                  {/* Left: Interactive Day-by-Day Controls */}
+                  <div className="lg:col-span-7 space-y-2.5">
+                    {dailySchedules.map((schedule, idx) => (
                       <div
-                        key={item.day}
-                        className="flex items-center justify-between py-0.5 text-xs font-medium"
+                        key={schedule.day}
+                        className={`p-3.5 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${schedule.isOpen
+                            ? 'bg-white border-[#CBD5E1] shadow-xs'
+                            : 'bg-[#F8F9FA] border-[#E5E7EB] opacity-75'
+                          }`}
                       >
-                        <span className="font-bold text-white w-24">
-                          {item.label}
-                        </span>
-                        {item.isOpen ? (
-                          <span className="font-mono text-slate-200">
-                            {item.openTime.toLowerCase().replace(' ', '')}&ndash;{item.closeTime.toLowerCase().replace(' ', '')}
+                        {/* Day Name & Toggle */}
+                        <div className="flex items-center gap-3 w-32 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setDailySchedules((prev) =>
+                                prev.map((item, i) =>
+                                  i === idx ? { ...item, isOpen: !item.isOpen } : item,
+                                ),
+                              )
+                            }
+                            className={`h-6 w-11 rounded-full p-0.5 transition-colors shrink-0 flex items-center ${schedule.isOpen ? 'bg-[#F94001]' : 'bg-[#CBD5E1]'
+                              }`}
+                          >
+                            <div
+                              className={`h-5 w-5 rounded-full bg-white shadow-xs transform transition-transform ${schedule.isOpen ? 'translate-x-5' : 'translate-x-0'
+                                }`}
+                            />
+                          </button>
+                          <span className={`text-sm font-bold ${schedule.isOpen ? 'text-[#021526]' : 'text-[#5F6368]'}`}>
+                            {schedule.label}
                           </span>
-                        ) : (
-                          <span className="text-slate-400 font-semibold">
-                            Closed
-                          </span>
-                        )}
+                        </div>
+
+                        {/* Time Dropdowns or Closed Badge */}
+                        <div className="flex items-center gap-2 flex-1 justify-end">
+                          {schedule.isOpen ? (
+                            <>
+                              <select
+                                value={schedule.openTime}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setDailySchedules((prev) =>
+                                    prev.map((item, i) =>
+                                      i === idx ? { ...item, openTime: val } : item,
+                                    ),
+                                  );
+                                }}
+                                className="rounded-lg border border-[#CBD5E1] bg-white px-2.5 py-1.5 text-xs font-mono font-medium text-[#021526] focus:border-[#F94001] focus:outline-none"
+                              >
+                                {TIME_OPTIONS.map((time) => (
+                                  <option key={time} value={time}>
+                                    {time}
+                                  </option>
+                                ))}
+                              </select>
+                              <span className="text-xs text-[#5F6368] font-bold">&ndash;</span>
+                              <select
+                                value={schedule.closeTime}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setDailySchedules((prev) =>
+                                    prev.map((item, i) =>
+                                      i === idx ? { ...item, closeTime: val } : item,
+                                    ),
+                                  );
+                                }}
+                                className="rounded-lg border border-[#CBD5E1] bg-white px-2.5 py-1.5 text-xs font-mono font-medium text-[#021526] focus:border-[#F94001] focus:outline-none"
+                              >
+                                {TIME_OPTIONS.map((time) => (
+                                  <option key={time} value={time}>
+                                    {time}
+                                  </option>
+                                ))}
+                              </select>
+                            </>
+                          ) : (
+                            <span className="px-3 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-500 font-bold text-xs">
+                              Closed
+                            </span>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
 
-                  <div className="pt-3 border-t border-white/10 text-[11px] text-slate-400">
-                    <span>
-                      {dailySchedules.filter((d) => d.isOpen).length} Active Operational Days Configured
+                  {/* Right: Live Google Business Hours Preview (Matching Reference Image) */}
+                  <div className="lg:col-span-5 space-y-3">
+                    <div className="p-5 rounded-2xl bg-[#021526] text-white border border-white/10 shadow-lg space-y-4">
+                      <div className="flex items-center gap-2 border-b border-white/10 pb-3">
+                        <CalendarDays className="h-4 w-4 text-[#F94001]" />
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                          Weekly Schedule Display
+                        </span>
+                      </div>
+
+                      {/* Clean Typography Table Matching Reference */}
+                      <div className="space-y-2.5 text-sm font-sans">
+                        {dailySchedules.map((item) => (
+                          <div
+                            key={item.day}
+                            className="flex items-center justify-between py-0.5 text-xs font-medium"
+                          >
+                            <span className="font-bold text-white w-24">
+                              {item.label}
+                            </span>
+                            {item.isOpen ? (
+                              <span className="font-mono text-slate-200">
+                                {item.openTime.toLowerCase().replace(' ', '')}&ndash;{item.closeTime.toLowerCase().replace(' ', '')}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 font-semibold">
+                                Closed
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="pt-3 border-t border-white/10 text-[11px] text-slate-400">
+                        <span>
+                          {dailySchedules.filter((d) => d.isOpen).length} Active Operational Days Configured
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-4 border-t border-[#E5E7EB]">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(3)}
+                    className="px-4 py-2 rounded-xl border border-[#E5E7EB] text-xs font-bold text-[#5F6368] hover:bg-[#F3F4F4]"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    disabled={loading || dailySchedules.filter((d) => d.isOpen).length === 0}
+                    onClick={handleSaveOperatingHours}
+                    className="px-6 py-2.5 rounded-xl bg-[#F94001] hover:bg-[#D93600] text-white text-xs font-bold shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
+                  >
+                    Save & Continue to Step 5 &rarr;
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ============================================================ */}
+            {/* STEP 5: SPORTS & COURTS CONFIGURATION                        */}
+            {/* ============================================================ */}
+            {/* ============================================================ */}
+            {/* STEP 5: SPORTS & COURTS CONFIGURATION (PART 6 SPEC)          */}
+            {/* ============================================================ */}
+            {currentStep === 5 && (
+              <div className="rounded-2xl bg-white p-6 sm:p-8 border border-[#E5E7EB] shadow-xs space-y-6">
+                <div className="border-b border-[#E5E7EB] pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <span className="text-[11px] font-bold font-mono text-[#F94001] uppercase tracking-wider">
+                      Step 5 of 7 &bull; Inventory &amp; Pricing Configuration
+                    </span>
+                    <h2 className="text-xl font-black text-[#021526] font-display mt-1">
+                      Sports &amp; Court Details
+                    </h2>
+                    <p className="text-xs text-[#5F6368] mt-0.5">
+                      Configure sports supported, physical court inventory, and standard vs peak/weekend pricing.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs font-mono font-bold text-[#021526]">
+                      {Array.from(new Set(courts.flatMap((c) => c.sports))).filter(Boolean).length} Sport(s) &bull; {courts.length} Court(s)
                     </span>
                   </div>
                 </div>
-              </div>
-            </div>
 
-            <div className="flex items-center justify-between pt-4 border-t border-[#E5E7EB]">
-              <button
-                type="button"
-                onClick={() => setCurrentStep(3)}
-                className="px-4 py-2 rounded-xl border border-[#E5E7EB] text-xs font-bold text-[#5F6368] hover:bg-[#F3F4F4]"
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                disabled={loading || dailySchedules.filter((d) => d.isOpen).length === 0}
-                onClick={handleSaveOperatingHours}
-                className="px-6 py-2.5 rounded-xl bg-[#F94001] hover:bg-[#D93600] text-white text-xs font-bold shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
-              >
-                Save & Continue to Step 5 &rarr;
-              </button>
-            </div>
-          </div>
-        )}
+                {renderStepRejectionAlert(5)}
 
-        {/* ============================================================ */}
-        {/* STEP 5: SPORTS & COURTS CONFIGURATION                        */}
-        {/* ============================================================ */}
-        {/* ============================================================ */}
-        {/* STEP 5: SPORTS & COURTS CONFIGURATION (PART 6 SPEC)          */}
-        {/* ============================================================ */}
-        {currentStep === 5 && (
-          <div className="rounded-2xl bg-white p-6 sm:p-8 border border-[#E5E7EB] shadow-xs space-y-6">
-            <div className="border-b border-[#E5E7EB] pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <span className="text-[11px] font-bold font-mono text-[#F94001] uppercase tracking-wider">
-                  Step 5 of 7 &bull; Inventory &amp; Pricing Configuration
-                </span>
-                <h2 className="text-xl font-black text-[#021526] font-display mt-1">
-                  Sports &amp; Court Details
-                </h2>
-                <p className="text-xs text-[#5F6368] mt-0.5">
-                  Configure sports supported, physical court inventory, and standard vs peak/weekend pricing.
-                </p>
-              </div>
+                {/* Court Configuration List */}
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-bold text-[#021526] font-display">
+                        Physical Court Inventory ({courts.length})
+                      </h3>
+                      <p className="text-[11px] text-[#5F6368]">
+                        Save each court's details first. You can edit any court or add more courts once saved.
+                      </p>
+                    </div>
+                  </div>
 
-              <div className="flex items-center gap-2">
-                <span className="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs font-mono font-bold text-[#021526]">
-                  {Array.from(new Set(courts.flatMap((c) => c.sports))).filter(Boolean).length} Sport(s) &bull; {courts.length} Court(s)
-                </span>
-              </div>
-            </div>
+                  {courts.map((court, index) => {
+                    const isEditing = editingCourtIndex === index;
 
-            {renderStepRejectionAlert(5)}
-
-            {/* Court Configuration List */}
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-bold text-[#021526] font-display">
-                    Physical Court Inventory ({courts.length})
-                  </h3>
-                  <p className="text-[11px] text-[#5F6368]">
-                    Save each court's details first. You can edit any court or add more courts once saved.
-                  </p>
-                </div>
-              </div>
-
-              {courts.map((court, index) => {
-                const isEditing = editingCourtIndex === index;
-
-                // =========================================================================
-                // 1. SAVED / COLLAPSED VIEW (SHOWS SUMMARY WITH EDIT BUTTON)
-                // =========================================================================
-                if (!isEditing) {
-                  return (
-                    <div
-                      key={index}
-                      className="rounded-2xl border-2 border-emerald-300 bg-white p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-emerald-400 transition-all"
-                    >
-                      <div className="space-y-2 min-w-0 flex-1">
-                        <div className="flex items-center gap-2.5 flex-wrap">
-                          <div className="h-7 w-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs font-mono">
-                            {index + 1}
-                          </div>
-                          <div>
-                            <span className="text-sm font-bold text-[#021526] uppercase tracking-wide mr-2">
-                              {court.court_name}
-                            </span>
-                            <span className="text-xs text-[#5F6368]">
-                              &bull; {court.display_name}
-                            </span>
-                          </div>
-                          <span className="text-[10px] font-mono text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-bold">
-                            ✓ Saved &amp; Configured
-                          </span>
-                          {court.use_one_physical_court_for_two_sports && (
-                            <span className="text-[10px] font-mono text-indigo-800 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full font-bold">
-                              2-in-1 Dual Sport
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Sports & Pricing Summary Pills */}
-                        <div className="flex items-center gap-2 flex-wrap text-xs pt-1">
-                          <div className="flex items-center gap-1">
-                            {court.sports.map((sp) => (
-                              <span
-                                key={sp}
-                                className="px-2 py-0.5 rounded-md bg-[#021526] text-white text-[10px] font-bold"
-                              >
-                                {sp}
+                    // =========================================================================
+                    // 1. SAVED / COLLAPSED VIEW (SHOWS SUMMARY WITH EDIT BUTTON)
+                    // =========================================================================
+                    if (!isEditing) {
+                      return (
+                        <div
+                          key={index}
+                          className="rounded-2xl border-2 border-emerald-300 bg-white p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-emerald-400 transition-all"
+                        >
+                          <div className="space-y-2 min-w-0 flex-1">
+                            <div className="flex items-center gap-2.5 flex-wrap">
+                              <div className="h-7 w-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs font-mono">
+                                {index + 1}
+                              </div>
+                              <div>
+                                <span className="text-sm font-bold text-[#021526] uppercase tracking-wide mr-2">
+                                  {court.court_name}
+                                </span>
+                                <span className="text-xs text-[#5F6368]">
+                                  &bull; {court.display_name}
+                                </span>
+                              </div>
+                              <span className="text-[10px] font-mono text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-bold">
+                                ✓ Saved &amp; Configured
                               </span>
-                            ))}
-                          </div>
-                          <span className="text-slate-300">|</span>
-                          <span className="text-[11px] font-medium text-[#021526]">
-                            <strong>₹{court.regular_price}</strong>/hr Regular
-                          </span>
-                          <span className="text-slate-300">&bull;</span>
-                          <span className="text-[11px] font-medium text-amber-700">
-                            <strong>₹{court.peak_hour_price}</strong>/hr Peak
-                          </span>
-                          <span className="text-slate-300">&bull;</span>
-                          <span className="text-[11px] font-medium text-emerald-700">
-                            <strong>₹{court.advance_booking_price}</strong> Deposit
-                          </span>
-                        </div>
-                      </div>
+                              {court.use_one_physical_court_for_two_sports && (
+                                <span className="text-[10px] font-mono text-indigo-800 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full font-bold">
+                                  2-in-1 Dual Sport
+                                </span>
+                              )}
+                            </div>
 
-                      {/* Actions: EDIT & DELETE */}
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => setEditingCourtIndex(index)}
-                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-[#CBD5E1] bg-[#F8F9FA] hover:bg-[#FFF1EC] hover:border-[#F94001] text-xs font-bold text-[#021526] hover:text-[#F94001] transition-all shadow-xs cursor-pointer active:scale-95"
-                          title="Edit Court Configuration"
-                        >
-                          <Edit3 className="h-3.5 w-3.5" />
-                          <span>Edit</span>
-                        </button>
-
-                        {courts.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setCourts((prev) => prev.filter((_, i) => i !== index));
-                              if (editingCourtIndex === index) {
-                                setEditingCourtIndex(null);
-                              } else if (editingCourtIndex !== null && editingCourtIndex > index) {
-                                setEditingCourtIndex(editingCourtIndex - 1);
-                              }
-                            }}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold transition-all shadow-xs cursor-pointer"
-                            title="Delete Court"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            <span>Delete</span>
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                }
-
-                // =========================================================================
-                // 2. EDITING / ENTRY FORM CARD
-                // =========================================================================
-                return (
-                  <div
-                    key={index}
-                    className="rounded-2xl border-2 border-[#F94001] bg-[#F8F9FA] p-5 sm:p-6 space-y-5 shadow-sm transition-all"
-                  >
-                    {/* Court Card Header */}
-                    <div className="flex items-center justify-between border-b border-[#CBD5E1] pb-3">
-                      <div className="flex items-center gap-2.5">
-                        <div className="h-7 w-7 rounded-lg bg-[#F94001] text-white flex items-center justify-center font-bold text-xs font-mono">
-                          {index + 1}
-                        </div>
-                        <div>
-                          <span className="text-xs font-bold text-[#021526] uppercase tracking-wide">
-                            {court.court_name || `Court #${index + 1}`} (Editing)
-                          </span>
-                          <span className="text-[10px] text-[#5F6368] block">
-                            {court.display_name || 'Enter court sport, names and pricing details'}
-                          </span>
-                        </div>
-                      </div>
-
-                      {courts.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCourts((prev) => prev.filter((_, i) => i !== index));
-                            setEditingCourtIndex(null);
-                          }}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 text-[11px] font-bold transition-all shadow-xs cursor-pointer"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          <span>Delete Court</span>
-                        </button>
-                      )}
-                    </div>
-
-                    {/* 1. FIRST: Sport Selection for this Court */}
-                    {index === 0 ? (
-                      /* Court #1 (Initial Court): Standard Single Sport */
-                      <div className="rounded-xl border border-[#CBD5E1] bg-white p-4 space-y-2.5">
-                        <label className="text-xs font-bold text-[#021526] block">
-                          Select Sport for this Court <span className="text-rose-500 font-black">*</span>
-                        </label>
-                        <div className="flex flex-wrap gap-2">
-                          {AVAILABLE_SPORTS.map((sport) => {
-                            const isSelected = court.sports.includes(sport);
-                            return (
-                              <button
-                                key={sport}
-                                type="button"
-                                onClick={() => {
-                                  setCourts((prev) =>
-                                    prev.map((item, i) =>
-                                      i === index ? { ...item, sports: [sport] } : item,
-                                    ),
-                                  );
-                                }}
-                                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                                  isSelected
-                                    ? 'bg-[#F94001] text-white shadow-xs'
-                                    : 'bg-slate-50 text-[#5F6368] border border-[#CBD5E1] hover:border-slate-400'
-                                }`}
-                              >
-                                {isSelected && <Check className="h-3.5 w-3.5" />}
-                                <span>{sport}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ) : (
-                      /* Added Courts (index > 0): Mandatory "Using One Physical Court for Two Sports?" Question */
-                      <div className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-4 space-y-4">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                          <div>
-                            <span className="text-xs font-bold text-[#021526] flex items-center gap-1.5">
-                              <Trophy className="h-4 w-4 text-indigo-600" />
-                              <span>Using One Physical Court for Two Sports?</span>
-                              <span className="text-rose-500 font-black">*</span>
-                            </span>
-                            <p className="text-[11px] text-[#5F6368] mt-0.5">
-                              Does this added court share the same physical turf/ground with one of the courts configured above?
-                            </p>
+                            {/* Sports & Pricing Summary Pills */}
+                            <div className="flex items-center gap-2 flex-wrap text-xs pt-1">
+                              <div className="flex items-center gap-1">
+                                {court.sports.map((sp) => (
+                                  <span
+                                    key={sp}
+                                    className="px-2 py-0.5 rounded-md bg-[#021526] text-white text-[10px] font-bold"
+                                  >
+                                    {sp}
+                                  </span>
+                                ))}
+                              </div>
+                              <span className="text-slate-300">|</span>
+                              <span className="text-[11px] font-medium text-[#021526]">
+                                <strong>₹{court.regular_price}</strong>/hr Regular
+                              </span>
+                              <span className="text-slate-300">&bull;</span>
+                              <span className="text-[11px] font-medium text-amber-700">
+                                <strong>₹{court.peak_hour_price}</strong>/hr Peak
+                              </span>
+                              <span className="text-slate-300">&bull;</span>
+                              <span className="text-[11px] font-medium text-emerald-700">
+                                <strong>₹{court.advance_booking_price}</strong> Deposit
+                              </span>
+                            </div>
                           </div>
 
+                          {/* Actions: EDIT & DELETE */}
                           <div className="flex items-center gap-2 shrink-0">
                             <button
                               type="button"
-                              onClick={() => {
-                                setCourts((prev) =>
-                                  prev.map((item, i) =>
-                                    i === index
-                                      ? {
-                                          ...item,
-                                          use_one_physical_court_for_two_sports: false,
-                                          sports: [item.sports[0] || 'FOOTBALL'],
-                                        }
-                                      : item,
-                                  ),
-                                );
-                              }}
-                              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                                !court.use_one_physical_court_for_two_sports
-                                  ? 'bg-[#021526] text-white shadow-xs'
-                                  : 'bg-white border border-[#CBD5E1] text-[#5F6368] hover:bg-slate-100'
-                              }`}
+                              onClick={() => setEditingCourtIndex(index)}
+                              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-[#CBD5E1] bg-[#F8F9FA] hover:bg-[#FFF1EC] hover:border-[#F94001] text-xs font-bold text-[#021526] hover:text-[#F94001] transition-all shadow-xs cursor-pointer active:scale-95"
+                              title="Edit Court Configuration"
                             >
-                              No (1 Sport)
+                              <Edit3 className="h-3.5 w-3.5" />
+                              <span>Edit</span>
                             </button>
+
+                            {courts.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCourts((prev) => prev.filter((_, i) => i !== index));
+                                  if (editingCourtIndex === index) {
+                                    setEditingCourtIndex(null);
+                                  } else if (editingCourtIndex !== null && editingCourtIndex > index) {
+                                    setEditingCourtIndex(editingCourtIndex - 1);
+                                  }
+                                }}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold transition-all shadow-xs cursor-pointer"
+                                title="Delete Court"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                <span>Delete</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // =========================================================================
+                    // 2. EDITING / ENTRY FORM CARD
+                    // =========================================================================
+                    return (
+                      <div
+                        key={index}
+                        className="rounded-2xl border-2 border-[#F94001] bg-[#F8F9FA] p-5 sm:p-6 space-y-5 shadow-sm transition-all"
+                      >
+                        {/* Court Card Header */}
+                        <div className="flex items-center justify-between border-b border-[#CBD5E1] pb-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="h-7 w-7 rounded-lg bg-[#F94001] text-white flex items-center justify-center font-bold text-xs font-mono">
+                              {index + 1}
+                            </div>
+                            <div>
+                              <span className="text-xs font-bold text-[#021526] uppercase tracking-wide">
+                                {court.court_name || `Court #${index + 1}`} (Editing)
+                              </span>
+                              <span className="text-[10px] text-[#5F6368] block">
+                                {court.display_name || 'Enter court sport, names and pricing details'}
+                              </span>
+                            </div>
+                          </div>
+
+                          {courts.length > 1 && (
                             <button
                               type="button"
                               onClick={() => {
-                                setCourts((prev) =>
-                                  prev.map((item, i) => {
-                                    if (i !== index) return item;
-                                    const parentIndex = (item as { shared_with_court_index?: number }).shared_with_court_index ?? 0;
-                                    const parentCourt = prev[parentIndex] || prev[0];
-                                    const parentSport = parentCourt?.sports[0] || 'FOOTBALL';
-                                    const secondarySport =
-                                      item.sports.find((s) => s !== parentSport) ||
-                                      AVAILABLE_SPORTS.find((s) => s !== parentSport) ||
-                                      'CRICKET';
-                                    return {
-                                      ...item,
-                                      use_one_physical_court_for_two_sports: true,
-                                      shared_with_court_index: parentIndex,
-                                      sports: [parentSport, secondarySport],
-                                    };
-                                  }),
-                                );
+                                setCourts((prev) => prev.filter((_, i) => i !== index));
+                                setEditingCourtIndex(null);
                               }}
-                              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                                court.use_one_physical_court_for_two_sports
-                                  ? 'bg-indigo-600 text-white shadow-xs'
-                                  : 'bg-white border border-[#CBD5E1] text-[#5F6368] hover:bg-slate-100'
-                              }`}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 text-[11px] font-bold transition-all shadow-xs cursor-pointer"
                             >
-                              Yes (2 Sports)
+                              <Trash2 className="h-3.5 w-3.5" />
+                              <span>Delete Court</span>
                             </button>
-                          </div>
+                          )}
                         </div>
 
-                        {/* CASE 1: NO (1 SPORT) - SELECT ANY SINGLE SPORT */}
-                        {!court.use_one_physical_court_for_two_sports ? (
-                          <div className="pt-3 border-t border-indigo-100 space-y-2">
-                            <label className="text-[11px] font-bold text-[#021526] block">
-                              Select Sport for this Separate Court: <span className="text-rose-500 font-black">*</span>
+                        {/* 1. FIRST: Sport Selection for this Court */}
+                        {index === 0 ? (
+                          /* Court #1 (Initial Court): Standard Single Sport */
+                          <div className="rounded-xl border border-[#CBD5E1] bg-white p-4 space-y-2.5">
+                            <label className="text-xs font-bold text-[#021526] block">
+                              Select Sport for this Court <span className="text-rose-500 font-black">*</span>
                             </label>
                             <div className="flex flex-wrap gap-2">
                               {AVAILABLE_SPORTS.map((sport) => {
@@ -2618,11 +2504,10 @@ export default function PartnerOnboardingWizard() {
                                         ),
                                       );
                                     }}
-                                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                                      isSelected
+                                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${isSelected
                                         ? 'bg-[#F94001] text-white shadow-xs'
-                                        : 'bg-white text-[#5F6368] border border-[#CBD5E1] hover:border-slate-400'
-                                    }`}
+                                        : 'bg-slate-50 text-[#5F6368] border border-[#CBD5E1] hover:border-slate-400'
+                                      }`}
                                   >
                                     {isSelected && <Check className="h-3.5 w-3.5" />}
                                     <span>{sport}</span>
@@ -2632,1399 +2517,1494 @@ export default function PartnerOnboardingWizard() {
                             </div>
                           </div>
                         ) : (
-                          /* CASE 2: YES (2 SPORTS) - SELECT WHICH UPPER COURT TO SHARE GROUND WITH */
-                          <div className="pt-3 border-t border-indigo-100 space-y-3.5">
-                            {/* Step A: Select Upper Court Display Card */}
-                            <div>
-                              <label className="text-[11px] font-bold text-[#021526] block mb-2">
-                                1. Select Which Physical Court Above Shares This Ground: <span className="text-rose-500 font-black">*</span>
-                              </label>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                                {courts.slice(0, index).map((upperCourt, uIndex) => {
-                                  const parentIndex = (court as { shared_with_court_index?: number }).shared_with_court_index ?? 0;
-                                  const isSelectedParent = parentIndex === uIndex;
-                                  const upperSport = upperCourt.sports[0] || 'FOOTBALL';
+                          /* Added Courts (index > 0): Mandatory "Using One Physical Court for Two Sports?" Question */
+                          <div className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-4 space-y-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                              <div>
+                                <span className="text-xs font-bold text-[#021526] flex items-center gap-1.5">
+                                  <Trophy className="h-4 w-4 text-indigo-600" />
+                                  <span>Using One Physical Court for Two Sports?</span>
+                                  <span className="text-rose-500 font-black">*</span>
+                                </span>
+                                <p className="text-[11px] text-[#5F6368] mt-0.5">
+                                  Does this added court share the same physical turf/ground with one of the courts configured above?
+                                </p>
+                              </div>
 
-                                  return (
-                                    <button
-                                      key={`upper-card-${uIndex}`}
-                                      type="button"
-                                      onClick={() => {
-                                        setCourts((prev) =>
-                                          prev.map((item, i) => {
-                                            if (i !== index) return item;
-                                            const currentSecondary =
-                                              item.sports.find((s) => s !== upperSport) ||
-                                              AVAILABLE_SPORTS.find((s) => s !== upperSport) ||
-                                              'CRICKET';
-                                            return {
-                                              ...item,
-                                              shared_with_court_index: uIndex,
-                                              sports: [upperSport, currentSecondary],
-                                            };
-                                          }),
-                                        );
-                                      }}
-                                      className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between gap-2.5 ${
-                                        isSelectedParent
-                                          ? 'border-indigo-600 bg-white shadow-sm ring-2 ring-indigo-500/20'
-                                          : 'border-[#CBD5E1] bg-white/80 hover:border-indigo-300 hover:bg-white'
-                                      }`}
-                                    >
-                                      <div className="flex items-center justify-between gap-2">
-                                        <div className="flex items-center gap-2">
-                                          <div
-                                            className={`h-6 w-6 rounded-md flex items-center justify-center font-bold text-[11px] font-mono ${
-                                              isSelectedParent
-                                                ? 'bg-indigo-600 text-white'
-                                                : 'bg-slate-200 text-slate-700'
-                                            }`}
-                                          >
-                                            {uIndex + 1}
-                                          </div>
-                                          <span className="text-xs font-bold text-[#021526] uppercase">
-                                            {upperCourt.court_name || `Court #${uIndex + 1}`}
-                                          </span>
-                                        </div>
-                                        {isSelectedParent ? (
-                                          <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded">
-                                            ✓ Selected
-                                          </span>
-                                        ) : (
-                                          <span className="text-[10px] text-slate-400 font-medium">
-                                            Click to select
-                                          </span>
-                                        )}
-                                      </div>
-
-                                      <div className="flex items-center justify-between text-[11px] text-[#5F6368] pt-1 border-t border-slate-100">
-                                        <span className="truncate max-w-[140px]">
-                                          {upperCourt.display_name}
-                                        </span>
-                                        <span className="px-2 py-0.5 rounded bg-[#021526] text-white text-[10px] font-bold shrink-0">
-                                          {upperSport}
-                                        </span>
-                                      </div>
-                                    </button>
-                                  );
-                                })}
+                              <div className="flex items-center gap-2 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setCourts((prev) =>
+                                      prev.map((item, i) =>
+                                        i === index
+                                          ? {
+                                            ...item,
+                                            use_one_physical_court_for_two_sports: false,
+                                            sports: [item.sports[0] || 'FOOTBALL'],
+                                          }
+                                          : item,
+                                      ),
+                                    );
+                                  }}
+                                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${!court.use_one_physical_court_for_two_sports
+                                      ? 'bg-[#021526] text-white shadow-xs'
+                                      : 'bg-white border border-[#CBD5E1] text-[#5F6368] hover:bg-slate-100'
+                                    }`}
+                                >
+                                  No (1 Sport)
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setCourts((prev) =>
+                                      prev.map((item, i) => {
+                                        if (i !== index) return item;
+                                        const parentIndex = (item as { shared_with_court_index?: number }).shared_with_court_index ?? 0;
+                                        const parentCourt = prev[parentIndex] || prev[0];
+                                        const parentSport = parentCourt?.sports[0] || 'FOOTBALL';
+                                        const secondarySport =
+                                          item.sports.find((s) => s !== parentSport) ||
+                                          AVAILABLE_SPORTS.find((s) => s !== parentSport) ||
+                                          'CRICKET';
+                                        return {
+                                          ...item,
+                                          use_one_physical_court_for_two_sports: true,
+                                          shared_with_court_index: parentIndex,
+                                          sports: [parentSport, secondarySport],
+                                        };
+                                      }),
+                                    );
+                                  }}
+                                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${court.use_one_physical_court_for_two_sports
+                                      ? 'bg-indigo-600 text-white shadow-xs'
+                                      : 'bg-white border border-[#CBD5E1] text-[#5F6368] hover:bg-slate-100'
+                                    }`}
+                                >
+                                  Yes (2 Sports)
+                                </button>
                               </div>
                             </div>
 
-                            {/* Step B: Select Companion 2nd Sport */}
-                            {(() => {
-                              const parentIndex = (court as { shared_with_court_index?: number }).shared_with_court_index ?? 0;
-                              const parentCourt = courts[parentIndex] || courts[0];
-                              const parentSport = parentCourt?.sports[0] || 'FOOTBALL';
-                              const current2ndSport = court.sports.find((s) => s !== parentSport) || court.sports[1] || 'CRICKET';
-
-                              return (
-                                <div className="space-y-2 pt-2 border-t border-indigo-100">
-                                  <label className="text-[11px] font-bold text-[#021526] block">
-                                    2. Select 2nd Sport for this Court (Sharing with {parentCourt?.court_name} - {parentSport}): <span className="text-rose-500 font-black">*</span>
+                            {/* CASE 1: NO (1 SPORT) - SELECT ANY SINGLE SPORT */}
+                            {!court.use_one_physical_court_for_two_sports ? (
+                              <div className="pt-3 border-t border-indigo-100 space-y-2">
+                                <label className="text-[11px] font-bold text-[#021526] block">
+                                  Select Sport for this Separate Court: <span className="text-rose-500 font-black">*</span>
+                                </label>
+                                <div className="flex flex-wrap gap-2">
+                                  {AVAILABLE_SPORTS.map((sport) => {
+                                    const isSelected = court.sports.includes(sport);
+                                    return (
+                                      <button
+                                        key={sport}
+                                        type="button"
+                                        onClick={() => {
+                                          setCourts((prev) =>
+                                            prev.map((item, i) =>
+                                              i === index ? { ...item, sports: [sport] } : item,
+                                            ),
+                                          );
+                                        }}
+                                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${isSelected
+                                            ? 'bg-[#F94001] text-white shadow-xs'
+                                            : 'bg-white text-[#5F6368] border border-[#CBD5E1] hover:border-slate-400'
+                                          }`}
+                                      >
+                                        {isSelected && <Check className="h-3.5 w-3.5" />}
+                                        <span>{sport}</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ) : (
+                              /* CASE 2: YES (2 SPORTS) - SELECT WHICH UPPER COURT TO SHARE GROUND WITH */
+                              <div className="pt-3 border-t border-indigo-100 space-y-3.5">
+                                {/* Step A: Select Upper Court Display Card */}
+                                <div>
+                                  <label className="text-[11px] font-bold text-[#021526] block mb-2">
+                                    1. Select Which Physical Court Above Shares This Ground: <span className="text-rose-500 font-black">*</span>
                                   </label>
-                                  <div className="flex flex-wrap gap-2">
-                                    {AVAILABLE_SPORTS.filter((s) => s !== parentSport).map((sport) => {
-                                      const isSelected = current2ndSport === sport;
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                                    {courts.slice(0, index).map((upperCourt, uIndex) => {
+                                      const parentIndex = (court as { shared_with_court_index?: number }).shared_with_court_index ?? 0;
+                                      const isSelectedParent = parentIndex === uIndex;
+                                      const upperSport = upperCourt.sports[0] || 'FOOTBALL';
+
                                       return (
                                         <button
-                                          key={sport}
+                                          key={`upper-card-${uIndex}`}
                                           type="button"
                                           onClick={() => {
                                             setCourts((prev) =>
-                                              prev.map((item, i) =>
-                                                i === index
-                                                  ? {
-                                                      ...item,
-                                                      sports: [parentSport, sport],
-                                                    }
-                                                  : item,
-                                              ),
+                                              prev.map((item, i) => {
+                                                if (i !== index) return item;
+                                                const currentSecondary =
+                                                  item.sports.find((s) => s !== upperSport) ||
+                                                  AVAILABLE_SPORTS.find((s) => s !== upperSport) ||
+                                                  'CRICKET';
+                                                return {
+                                                  ...item,
+                                                  shared_with_court_index: uIndex,
+                                                  sports: [upperSport, currentSecondary],
+                                                };
+                                              }),
                                             );
                                           }}
-                                          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                                            isSelected
-                                              ? 'bg-indigo-600 text-white shadow-xs'
-                                              : 'bg-white text-[#5F6368] border border-[#CBD5E1] hover:border-slate-400'
-                                          }`}
+                                          className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between gap-2.5 ${isSelectedParent
+                                              ? 'border-indigo-600 bg-white shadow-sm ring-2 ring-indigo-500/20'
+                                              : 'border-[#CBD5E1] bg-white/80 hover:border-indigo-300 hover:bg-white'
+                                            }`}
                                         >
-                                          {isSelected && <Check className="h-3.5 w-3.5" />}
-                                          <span>{sport}</span>
+                                          <div className="flex items-center justify-between gap-2">
+                                            <div className="flex items-center gap-2">
+                                              <div
+                                                className={`h-6 w-6 rounded-md flex items-center justify-center font-bold text-[11px] font-mono ${isSelectedParent
+                                                    ? 'bg-indigo-600 text-white'
+                                                    : 'bg-slate-200 text-slate-700'
+                                                  }`}
+                                              >
+                                                {uIndex + 1}
+                                              </div>
+                                              <span className="text-xs font-bold text-[#021526] uppercase">
+                                                {upperCourt.court_name || `Court #${uIndex + 1}`}
+                                              </span>
+                                            </div>
+                                            {isSelectedParent ? (
+                                              <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded">
+                                                ✓ Selected
+                                              </span>
+                                            ) : (
+                                              <span className="text-[10px] text-slate-400 font-medium">
+                                                Click to select
+                                              </span>
+                                            )}
+                                          </div>
+
+                                          <div className="flex items-center justify-between text-[11px] text-[#5F6368] pt-1 border-t border-slate-100">
+                                            <span className="truncate max-w-[140px]">
+                                              {upperCourt.display_name}
+                                            </span>
+                                            <span className="px-2 py-0.5 rounded bg-[#021526] text-white text-[10px] font-bold shrink-0">
+                                              {upperSport}
+                                            </span>
+                                          </div>
                                         </button>
                                       );
                                     })}
                                   </div>
-
-                                  {/* Resource Protection Rule Box */}
-                                  <div className="mt-3 p-3 rounded-xl bg-indigo-100/80 border border-indigo-200 text-[11px] text-indigo-950 font-medium leading-relaxed flex items-center gap-2.5">
-                                    <Trophy className="h-4 w-4 text-indigo-600 shrink-0" />
-                                    <span>
-                                      <strong>Resource Protection Rule:</strong> This court shares physical space with <strong>{parentCourt?.court_name || 'Selected Court'}</strong>. When <strong>{parentSport}</strong> is booked on that court, this court (<strong>{current2ndSport}</strong>) will automatically be blocked during that time slot to prevent double-booking.
-                                    </span>
-                                  </div>
                                 </div>
-                              );
-                            })()}
+
+                                {/* Step B: Select Companion 2nd Sport */}
+                                {(() => {
+                                  const parentIndex = (court as { shared_with_court_index?: number }).shared_with_court_index ?? 0;
+                                  const parentCourt = courts[parentIndex] || courts[0];
+                                  const parentSport = parentCourt?.sports[0] || 'FOOTBALL';
+                                  const current2ndSport = court.sports.find((s) => s !== parentSport) || court.sports[1] || 'CRICKET';
+
+                                  return (
+                                    <div className="space-y-2 pt-2 border-t border-indigo-100">
+                                      <label className="text-[11px] font-bold text-[#021526] block">
+                                        2. Select 2nd Sport for this Court (Sharing with {parentCourt?.court_name} - {parentSport}): <span className="text-rose-500 font-black">*</span>
+                                      </label>
+                                      <div className="flex flex-wrap gap-2">
+                                        {AVAILABLE_SPORTS.filter((s) => s !== parentSport).map((sport) => {
+                                          const isSelected = current2ndSport === sport;
+                                          return (
+                                            <button
+                                              key={sport}
+                                              type="button"
+                                              onClick={() => {
+                                                setCourts((prev) =>
+                                                  prev.map((item, i) =>
+                                                    i === index
+                                                      ? {
+                                                        ...item,
+                                                        sports: [parentSport, sport],
+                                                      }
+                                                      : item,
+                                                  ),
+                                                );
+                                              }}
+                                              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${isSelected
+                                                  ? 'bg-indigo-600 text-white shadow-xs'
+                                                  : 'bg-white text-[#5F6368] border border-[#CBD5E1] hover:border-slate-400'
+                                                }`}
+                                            >
+                                              {isSelected && <Check className="h-3.5 w-3.5" />}
+                                              <span>{sport}</span>
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+
+                                      {/* Resource Protection Rule Box */}
+                                      <div className="mt-3 p-3 rounded-xl bg-indigo-100/80 border border-indigo-200 text-[11px] text-indigo-950 font-medium leading-relaxed flex items-center gap-2.5">
+                                        <Trophy className="h-4 w-4 text-indigo-600 shrink-0" />
+                                        <span>
+                                          <strong>Resource Protection Rule:</strong> This court shares physical space with <strong>{parentCourt?.court_name || 'Selected Court'}</strong>. When <strong>{parentSport}</strong> is booked on that court, this court (<strong>{current2ndSport}</strong>) will automatically be blocked during that time slot to prevent double-booking.
+                                        </span>
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            )}
                           </div>
                         )}
-                      </div>
-                    )}
 
-                    {/* 2. SECOND: Court Identifier Name & Customer Display Name */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-xs font-bold text-[#021526] block mb-1">
-                          Court Identifier Name <span className="text-rose-500 font-black">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={court.court_name}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setCourts((prev) =>
-                              prev.map((item, i) =>
-                                i === index ? { ...item, court_name: val } : item,
-                              ),
-                            );
-                          }}
-                          placeholder="e.g. Turf 1"
-                          className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
-                        />
-                      </div>
+                        {/* 2. SECOND: Court Identifier Name & Customer Display Name */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-xs font-bold text-[#021526] block mb-1">
+                              Court Identifier Name <span className="text-rose-500 font-black">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={court.court_name}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setCourts((prev) =>
+                                  prev.map((item, i) =>
+                                    i === index ? { ...item, court_name: val } : item,
+                                  ),
+                                );
+                              }}
+                              placeholder="e.g. Turf 1"
+                              className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
+                            />
+                          </div>
 
-                      <div>
-                        <label className="text-xs font-bold text-[#021526] block mb-1">
-                          Customer Display Name <span className="text-rose-500 font-black">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={court.display_name}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setCourts((prev) =>
-                              prev.map((item, i) =>
-                                i === index ? { ...item, display_name: val } : item,
-                              ),
-                            );
-                          }}
-                          placeholder="e.g. Premium 7v7 Football Turf"
-                          className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
-                        />
-                      </div>
-                    </div>
+                          <div>
+                            <label className="text-xs font-bold text-[#021526] block mb-1">
+                              Customer Display Name <span className="text-rose-500 font-black">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={court.display_name}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setCourts((prev) =>
+                                  prev.map((item, i) =>
+                                    i === index ? { ...item, display_name: val } : item,
+                                  ),
+                                );
+                              }}
+                              placeholder="e.g. Premium 7v7 Football Turf"
+                              className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
+                            />
+                          </div>
+                        </div>
 
-                    {/* Pricing Matrix & Time Parameters */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                      {/* Minimum Booking Duration */}
-                      <div>
-                        <label className="text-xs font-bold text-[#021526] block mb-1">
-                          Minimum Booking Duration <span className="text-rose-500 font-black">*</span>
-                        </label>
-                        <select
-                          value={court.minimum_booking_time_minutes}
-                          onChange={(e) => {
-                            const val = Number(e.target.value);
-                            setCourts((prev) =>
-                              prev.map((item, i) =>
-                                i === index ? { ...item, minimum_booking_time_minutes: val } : item,
-                              ),
-                            );
-                          }}
-                          className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
-                        >
-                          <option value={30}>30 Minutes</option>
-                          <option value={60}>60 Minutes (1 Hour)</option>
-                          <option value={90}>90 Minutes (1.5 Hours)</option>
-                          <option value={120}>120 Minutes (2 Hours)</option>
-                        </select>
-                      </div>
+                        {/* Pricing Matrix & Time Parameters */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                          {/* Minimum Booking Duration */}
+                          <div>
+                            <label className="text-xs font-bold text-[#021526] block mb-1">
+                              Minimum Booking Duration <span className="text-rose-500 font-black">*</span>
+                            </label>
+                            <select
+                              value={court.minimum_booking_time_minutes}
+                              onChange={(e) => {
+                                const val = Number(e.target.value);
+                                setCourts((prev) =>
+                                  prev.map((item, i) =>
+                                    i === index ? { ...item, minimum_booking_time_minutes: val } : item,
+                                  ),
+                                );
+                              }}
+                              className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
+                            >
+                              <option value={30}>30 Minutes</option>
+                              <option value={60}>60 Minutes (1 Hour)</option>
+                              <option value={90}>90 Minutes (1.5 Hours)</option>
+                              <option value={120}>120 Minutes (2 Hours)</option>
+                            </select>
+                          </div>
 
-                      {/* Regular Price */}
-                      <div>
-                        <label className="text-xs font-bold text-[#021526] block mb-1">
-                          Regular Price (₹/Hour) <span className="text-rose-500 font-black">*</span>
-                        </label>
-                        <input
-                          type="number"
-                          min={1}
-                          value={court.regular_price || ''}
-                          onChange={(e) => {
-                            const val = Number(e.target.value);
-                            setCourts((prev) =>
-                              prev.map((item, i) =>
-                                i === index ? { ...item, regular_price: val } : item,
-                              ),
-                            );
-                          }}
-                          placeholder="e.g. 1200"
-                          className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
-                        />
-                      </div>
+                          {/* Regular Price */}
+                          <div>
+                            <label className="text-xs font-bold text-[#021526] block mb-1">
+                              Regular Price (₹/Hour) <span className="text-rose-500 font-black">*</span>
+                            </label>
+                            <input
+                              type="number"
+                              min={1}
+                              value={court.regular_price || ''}
+                              onChange={(e) => {
+                                const val = Number(e.target.value);
+                                setCourts((prev) =>
+                                  prev.map((item, i) =>
+                                    i === index ? { ...item, regular_price: val } : item,
+                                  ),
+                                );
+                              }}
+                              placeholder="e.g. 1200"
+                              className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
+                            />
+                          </div>
 
-                      {/* Peak Hour Price */}
-                      <div>
-                        <label className="text-xs font-bold text-[#021526] block mb-1">
-                          Peak Hour Price (₹/Hour) <span className="text-rose-500 font-black">*</span>
-                        </label>
-                        <input
-                          type="number"
-                          min={1}
-                          value={court.peak_hour_price || ''}
-                          onChange={(e) => {
-                            const val = Number(e.target.value);
-                            setCourts((prev) =>
-                              prev.map((item, i) =>
-                                i === index ? { ...item, peak_hour_price: val } : item,
-                              ),
-                            );
-                          }}
-                          placeholder="e.g. 1600"
-                          className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
-                        />
-                      </div>
+                          {/* Peak Hour Price */}
+                          <div>
+                            <label className="text-xs font-bold text-[#021526] block mb-1">
+                              Peak Hour Price (₹/Hour) <span className="text-rose-500 font-black">*</span>
+                            </label>
+                            <input
+                              type="number"
+                              min={1}
+                              value={court.peak_hour_price || ''}
+                              onChange={(e) => {
+                                const val = Number(e.target.value);
+                                setCourts((prev) =>
+                                  prev.map((item, i) =>
+                                    i === index ? { ...item, peak_hour_price: val } : item,
+                                  ),
+                                );
+                              }}
+                              placeholder="e.g. 1600"
+                              className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
+                            />
+                          </div>
 
-                      {/* Weekend Price */}
-                      <div>
-                        <label className="text-xs font-bold text-[#021526] block mb-1">
-                          Weekend Price (₹/Hour) <span className="text-rose-500 font-black">*</span>
-                        </label>
-                        <input
-                          type="number"
-                          min={1}
-                          value={court.weekend_price || ''}
-                          onChange={(e) => {
-                            const val = Number(e.target.value);
-                            setCourts((prev) =>
-                              prev.map((item, i) =>
-                                i === index ? { ...item, weekend_price: val } : item,
-                              ),
-                            );
-                          }}
-                          placeholder="e.g. 1500"
-                          className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
-                        />
-                      </div>
-                    </div>
+                          {/* Weekend Price */}
+                          <div>
+                            <label className="text-xs font-bold text-[#021526] block mb-1">
+                              Weekend Price (₹/Hour) <span className="text-rose-500 font-black">*</span>
+                            </label>
+                            <input
+                              type="number"
+                              min={1}
+                              value={court.weekend_price || ''}
+                              onChange={(e) => {
+                                const val = Number(e.target.value);
+                                setCourts((prev) =>
+                                  prev.map((item, i) =>
+                                    i === index ? { ...item, weekend_price: val } : item,
+                                  ),
+                                );
+                              }}
+                              placeholder="e.g. 1500"
+                              className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
+                            />
+                          </div>
+                        </div>
 
-                    {/* Advance Booking Deposit & Peak Hours Window */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {/* Advance Booking Deposit */}
-                      <div>
-                        <label className="text-xs font-bold text-[#021526] block mb-1">
-                          Advance Booking Deposit (₹) <span className="text-rose-500 font-black">*</span>
-                        </label>
-                        <input
-                          type="number"
-                          min={0}
-                          value={court.advance_booking_price || ''}
-                          onChange={(e) => {
-                            const val = Number(e.target.value);
-                            setCourts((prev) =>
-                              prev.map((item, i) =>
-                                i === index ? { ...item, advance_booking_price: val } : item,
-                              ),
-                            );
-                          }}
-                          placeholder="e.g. 500"
-                          className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
-                        />
-                      </div>
+                        {/* Advance Booking Deposit & Peak Hours Window */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {/* Advance Booking Deposit */}
+                          <div>
+                            <label className="text-xs font-bold text-[#021526] block mb-1">
+                              Advance Booking Deposit (₹) <span className="text-rose-500 font-black">*</span>
+                            </label>
+                            <input
+                              type="number"
+                              min={0}
+                              value={court.advance_booking_price || ''}
+                              onChange={(e) => {
+                                const val = Number(e.target.value);
+                                setCourts((prev) =>
+                                  prev.map((item, i) =>
+                                    i === index ? { ...item, advance_booking_price: val } : item,
+                                  ),
+                                );
+                              }}
+                              placeholder="e.g. 500"
+                              className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
+                            />
+                          </div>
 
-                      {/* Peak Hours Time Window */}
-                      <div>
-                        <label className="text-xs font-bold text-[#021526] block mb-1 flex items-center justify-between">
-                          <span>Peak Hours Time Window <span className="text-rose-500 font-black">*</span></span>
-                          <span className="text-[10px] font-mono text-[#5F6368] uppercase">Start &amp; End</span>
-                        </label>
-                        <div className="flex items-center gap-2">
-                          <select
-                            value={court.peak_hours[0]?.start_time || '06:00 PM'}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setCourts((prev) =>
-                                prev.map((item, i) =>
-                                  i === index
-                                    ? {
-                                        ...item,
-                                        peak_hours: [
-                                          {
-                                            start_time: val,
-                                            end_time: item.peak_hours[0]?.end_time || '10:00 PM',
-                                          },
-                                        ],
-                                      }
-                                    : item,
-                                ),
+                          {/* Peak Hours Time Window */}
+                          <div>
+                            <label className="text-xs font-bold text-[#021526] block mb-1 flex items-center justify-between">
+                              <span>Peak Hours Time Window <span className="text-rose-500 font-black">*</span></span>
+                              <span className="text-[10px] font-mono text-[#5F6368] uppercase">Start &amp; End</span>
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <select
+                                value={court.peak_hours[0]?.start_time || '06:00 PM'}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setCourts((prev) =>
+                                    prev.map((item, i) =>
+                                      i === index
+                                        ? {
+                                          ...item,
+                                          peak_hours: [
+                                            {
+                                              start_time: val,
+                                              end_time: item.peak_hours[0]?.end_time || '10:00 PM',
+                                            },
+                                          ],
+                                        }
+                                        : item,
+                                    ),
+                                  );
+                                }}
+                                className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3 py-2 text-xs font-mono text-[#021526] focus:border-[#F94001] focus:outline-none"
+                              >
+                                {TIME_OPTIONS.map((t) => (
+                                  <option key={`start-${t}`} value={t}>{t}</option>
+                                ))}
+                              </select>
+                              <span className="text-xs text-[#5F6368] font-bold">to</span>
+                              <select
+                                value={court.peak_hours[0]?.end_time || '10:00 PM'}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setCourts((prev) =>
+                                    prev.map((item, i) =>
+                                      i === index
+                                        ? {
+                                          ...item,
+                                          peak_hours: [
+                                            {
+                                              start_time: item.peak_hours[0]?.start_time || '06:00 PM',
+                                              end_time: val,
+                                            },
+                                          ],
+                                        }
+                                        : item,
+                                    ),
+                                  );
+                                }}
+                                className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3 py-2 text-xs font-mono text-[#021526] focus:border-[#F94001] focus:outline-none"
+                              >
+                                {TIME_OPTIONS.map((t) => (
+                                  <option key={`end-${t}`} value={t}>{t}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Peak Days Multi-Select */}
+                        <div>
+                          <label className="text-xs font-bold text-[#021526] block mb-1.5 flex items-center justify-between">
+                            <span>Peak Pricing Days <span className="text-rose-500 font-black">*</span></span>
+                            <span className="text-[10px] font-mono text-[#5F6368] uppercase">Select Peak Days</span>
+                          </label>
+                          <div className="flex flex-wrap gap-1.5">
+                            {DAYS_ORDER.map(({ day, label }) => {
+                              const isPeak = (court.peak_days || []).includes(day);
+                              return (
+                                <button
+                                  key={day}
+                                  type="button"
+                                  onClick={() => {
+                                    setCourts((prev) =>
+                                      prev.map((item, i) => {
+                                        if (i !== index) return item;
+                                        const currentDays = item.peak_days || [];
+                                        const updated = isPeak
+                                          ? currentDays.filter((d) => d !== day)
+                                          : [...currentDays, day];
+                                        return { ...item, peak_days: updated };
+                                      }),
+                                    );
+                                  }}
+                                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${isPeak
+                                      ? 'bg-amber-600 text-white shadow-xs'
+                                      : 'bg-white border border-[#CBD5E1] text-[#5F6368] hover:border-slate-400'
+                                    }`}
+                                >
+                                  {label}
+                                </button>
                               );
-                            }}
-                            className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3 py-2 text-xs font-mono text-[#021526] focus:border-[#F94001] focus:outline-none"
-                          >
-                            {TIME_OPTIONS.map((t) => (
-                              <option key={`start-${t}`} value={t}>{t}</option>
-                            ))}
-                          </select>
-                          <span className="text-xs text-[#5F6368] font-bold">to</span>
-                          <select
-                            value={court.peak_hours[0]?.end_time || '10:00 PM'}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setCourts((prev) =>
-                                prev.map((item, i) =>
-                                  i === index
-                                    ? {
-                                        ...item,
-                                        peak_hours: [
-                                          {
-                                            start_time: item.peak_hours[0]?.start_time || '06:00 PM',
-                                            end_time: val,
-                                          },
-                                        ],
-                                      }
-                                    : item,
-                                ),
+                            })}
+                          </div>
+                        </div>
+
+                        {/* ========================================================================= */}
+                        {/* FREE CANCELLATION WINDOW & REFUND PAYOUT PERCENTAGE (FORM BASE STYLED)     */}
+                        {/* ========================================================================= */}
+                        {/* Free Cancellation Window */}
+                        <div>
+                          <label className="text-xs font-bold text-[#021526] block mb-1 flex items-center justify-between">
+                            <span className="flex items-center gap-1.5">
+                              <Clock className="h-3.5 w-3.5 text-[#F94001]" />
+                              <span>Free Cancellation Window <span className="text-rose-500 font-black">*</span></span>
+                            </span>
+                            <span className="text-[10px] font-mono text-[#5F6368] uppercase">Notice Buffer Before Kickoff</span>
+                          </label>
+                          <p className="text-[11px] text-[#5F6368] mb-2">Minimum notice required for full or partial refund</p>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            {[2, 4, 12, 24].map((hours) => {
+                              const currentVal = court.cancellation_window_hours ?? cancellationWindowHours;
+                              const isSelected = currentVal === hours;
+                              return (
+                                <button
+                                  key={hours}
+                                  type="button"
+                                  onClick={() => {
+                                    setCancellationWindowHours(hours);
+                                    setCourts((prev) =>
+                                      prev.map((item, i) =>
+                                        i === index ? { ...item, cancellation_window_hours: hours } : item,
+                                      ),
+                                    );
+                                  }}
+                                  className={`py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer text-center ${isSelected
+                                      ? 'bg-[#021526] text-white shadow-xs'
+                                      : 'bg-white border border-[#CBD5E1] text-[#5F6368] hover:border-slate-400'
+                                    }`}
+                                >
+                                  {hours} Hours
+                                </button>
                               );
-                            }}
-                            className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3 py-2 text-xs font-mono text-[#021526] focus:border-[#F94001] focus:outline-none"
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Refund Payout Percentage */}
+                        <div>
+                          <label className="text-xs font-bold text-[#021526] block mb-1 flex items-center justify-between">
+                            <span className="flex items-center gap-1.5">
+                              <Percent className="h-3.5 w-3.5 text-emerald-600" />
+                              <span>Refund Payout Percentage <span className="text-rose-500 font-black">*</span></span>
+                            </span>
+                            <span className="text-[10px] font-mono text-[#5F6368] uppercase">Eligible Refund Value</span>
+                          </label>
+                          <p className="text-[11px] text-[#5F6368] mb-2">Amount returned to customer source account</p>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            {[50, 75, 90, 100].map((pct) => {
+                              const currentVal = court.refund_percentage ?? refundPercentage;
+                              const isSelected = currentVal === pct;
+                              return (
+                                <button
+                                  key={pct}
+                                  type="button"
+                                  onClick={() => {
+                                    setRefundPercentage(pct);
+                                    setCourts((prev) =>
+                                      prev.map((item, i) =>
+                                        i === index ? { ...item, refund_percentage: pct } : item,
+                                      ),
+                                    );
+                                  }}
+                                  className={`py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer text-center ${isSelected
+                                      ? 'bg-emerald-600 text-white shadow-xs'
+                                      : 'bg-white border border-[#CBD5E1] text-[#5F6368] hover:border-slate-400'
+                                    }`}
+                                >
+                                  {pct}%
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Customer Cancellation Rule summary banner */}
+                        <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200 text-xs text-emerald-900">
+                          <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
+                          <span className="text-[11px]">
+                            <strong className="font-bold text-emerald-950">Customer Cancellation Rule:</strong> Free cancellation permitted up to{' '}
+                            <strong>{court.cancellation_window_hours ?? cancellationWindowHours} Hours</strong> before kickoff with{' '}
+                            <strong>{court.refund_percentage ?? refundPercentage}%</strong> refund.
+                          </span>
+                        </div>
+
+                        {/* Save Single Court Button */}
+                        <div className="flex items-center justify-between pt-4 border-t border-[#CBD5E1]">
+                          {courts.length > 1 ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCourts((prev) => prev.filter((_, i) => i !== index));
+                                setEditingCourtIndex(null);
+                              }}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold transition-all shadow-xs cursor-pointer"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                              <span>Delete Court</span>
+                            </button>
+                          ) : (
+                            <div />
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => handleSaveSingleCourt(index)}
+                            className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#021526] hover:bg-[#1a2d42] text-white text-xs font-bold shadow-md transition-all cursor-pointer active:scale-95"
                           >
-                            {TIME_OPTIONS.map((t) => (
-                              <option key={`end-${t}`} value={t}>{t}</option>
-                            ))}
-                          </select>
+                            <Check className="h-4 w-4 text-emerald-400" />
+                            <span>Save Court #{index + 1}</span>
+                          </button>
                         </div>
                       </div>
-                    </div>
+                    );
+                  })}
 
-                    {/* Peak Days Multi-Select */}
-                    <div>
-                      <label className="text-xs font-bold text-[#021526] block mb-1.5 flex items-center justify-between">
-                        <span>Peak Pricing Days <span className="text-rose-500 font-black">*</span></span>
-                        <span className="text-[10px] font-mono text-[#5F6368] uppercase">Select Peak Days</span>
-                      </label>
-                      <div className="flex flex-wrap gap-1.5">
-                        {DAYS_ORDER.map(({ day, label }) => {
-                          const isPeak = (court.peak_days || []).includes(day);
-                          return (
-                            <button
-                              key={day}
-                              type="button"
-                              onClick={() => {
-                                setCourts((prev) =>
-                                  prev.map((item, i) => {
-                                    if (i !== index) return item;
-                                    const currentDays = item.peak_days || [];
-                                    const updated = isPeak
-                                      ? currentDays.filter((d) => d !== day)
-                                      : [...currentDays, day];
-                                    return { ...item, peak_days: updated };
-                                  }),
-                                );
-                              }}
-                              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                                isPeak
-                                  ? 'bg-amber-600 text-white shadow-xs'
-                                  : 'bg-white border border-[#CBD5E1] text-[#5F6368] hover:border-slate-400'
-                              }`}
-                            >
-                              {label}
-                            </button>
-                          );
-                        })}
+                  {/* Add Another Court Button (Bottom Helper) */}
+                  {editingCourtIndex === null && (
+                    <div className="pt-2 text-center">
+                      <button
+                        type="button"
+                        onClick={handleAddNewCourt}
+                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border-2 border-dashed border-[#CBD5E1] hover:border-[#F94001] bg-white hover:bg-[#FFF1EC]/30 text-xs font-bold text-[#021526] hover:text-[#F94001] transition-all cursor-pointer shadow-xs"
+                      >
+                        <Plus className="h-4 w-4 text-[#F94001]" />
+                        <span> Add Another Physical Court</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Bottom Actions */}
+                <div className="flex items-center justify-between pt-4 border-t border-[#E5E7EB]">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(4)}
+                    className="px-4 py-2 rounded-xl border border-[#E5E7EB] text-xs font-bold text-[#5F6368] hover:bg-[#F3F4F4] cursor-pointer"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    disabled={loading || courts.length === 0 || selectedSports.length === 0}
+                    onClick={handleSaveCourts}
+                    className="px-6 py-2.5 rounded-xl bg-[#F94001] hover:bg-[#D93600] text-white text-xs font-bold shadow-md transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+                  >
+                    Save &amp; Continue to Step 6 &rarr;
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ============================================================ */}
+            {/* STEP 6: BANK ACCOUNT (PROFESSIONAL & CLEAN) */}
+            {/* ============================================================ */}
+            {currentStep === 6 && (
+              <div className="rounded-2xl bg-white p-6 sm:p-8 border border-[#E5E7EB] shadow-xs space-y-6">
+                <div className="border-b border-[#E5E7EB] pb-4">
+                  <span className="text-[11px] font-bold font-mono text-[#F94001] uppercase tracking-wider">
+                    Step 6 of 7 &bull; Financial Settlements
+                  </span>
+                  <h2 className="text-xl font-black text-[#021526] font-display mt-1">
+                    Bank account
+                  </h2>
+                  <p className="text-xs text-[#5F6368] mt-0.5">
+                    Official bank account for automated slot booking settlements and payouts.
+                  </p>
+                </div>
+
+                {renderStepRejectionAlert(6)}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Account Holder Name: Strictly Alphabets */}
+                  <div>
+                    <label className="text-xs font-bold text-[#021526] block mb-1">
+                      Account Holder Name <span className="text-rose-500 font-black">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={accountHolderName}
+                      onChange={(e) => setAccountHolderName(e.target.value.replace(/[^a-zA-Z\s.]/g, ''))}
+                      placeholder="e.g. Sky Sports Private Limited"
+                      className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
+                    />
+                    {accountHolderName.length > 0 && !isValidName(accountHolderName) && (
+                      <p className="text-[10px] text-amber-600 mt-1">Letters and spaces only (min 3 characters)</p>
+                    )}
+                  </div>
+
+                  {/* Bank Name: Strictly Alphabets */}
+                  <div>
+                    <label className="text-xs font-bold text-[#021526] block mb-1">
+                      Bank Name <span className="text-rose-500 font-black">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={bankName}
+                      onChange={(e) => setBankName(e.target.value.replace(/[^a-zA-Z\s.&]/g, ''))}
+                      placeholder="e.g. HDFC Bank"
+                      className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Account Number: Strictly Digits (9-18) with Password Masking & Clean Centered Eye Toggle INSIDE */}
+                  <div>
+                    <label className="text-xs font-bold text-[#021526] block mb-1">
+                      Account Number <span className="text-rose-500 font-black">*</span>
+                    </label>
+                    <div className="flex items-center rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 transition-colors focus-within:border-[#F94001]">
+                      <input
+                        type={showAccountNumber ? 'text' : 'password'}
+                        maxLength={18}
+                        value={accountNumber}
+                        onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, '').slice(0, 18))}
+                        placeholder="Enter bank account number"
+                        className="w-full bg-transparent text-xs font-mono text-[#021526] focus:outline-none border-0 p-0"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowAccountNumber(!showAccountNumber)}
+                        className="text-slate-400 hover:text-[#021526] p-0.5 ml-2 shrink-0 cursor-pointer focus:outline-none transition-colors"
+                        tabIndex={-1}
+                        title={showAccountNumber ? 'Hide Account Number' : 'Show Account Number'}
+                      >
+                        {showAccountNumber ? <EyeOff className="h-4 w-4 shrink-0" /> : <Eye className="h-4 w-4 shrink-0" />}
+                      </button>
+                    </div>
+                    {accountNumber.length > 0 && !isValidAccountNumber(accountNumber) && (
+                      <p className="text-[10px] text-amber-600 mt-1">Must be 9 to 18 numeric digits</p>
+                    )}
+                  </div>
+
+                  {/* Confirm Account Number: Strictly Digits (9-18) with Password Masking & Clean Centered Eye Toggle INSIDE */}
+                  <div>
+                    <label className="text-xs font-bold text-[#021526] block mb-1">
+                      Confirm Account Number <span className="text-rose-500 font-black">*</span>
+                    </label>
+                    <div className="flex items-center rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 transition-colors focus-within:border-[#F94001]">
+                      <input
+                        type={showConfirmAccountNumber ? 'text' : 'password'}
+                        maxLength={18}
+                        value={confirmAccountNumber}
+                        onChange={(e) => setConfirmAccountNumber(e.target.value.replace(/\D/g, '').slice(0, 18))}
+                        placeholder="Re-enter bank account number"
+                        className="w-full bg-transparent text-xs font-mono text-[#021526] focus:outline-none border-0 p-0"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmAccountNumber(!showConfirmAccountNumber)}
+                        className="text-slate-400 hover:text-[#021526] p-0.5 ml-2 shrink-0 cursor-pointer focus:outline-none transition-colors"
+                        tabIndex={-1}
+                        title={showConfirmAccountNumber ? 'Hide Account Number' : 'Show Account Number'}
+                      >
+                        {showConfirmAccountNumber ? <EyeOff className="h-4 w-4 shrink-0" /> : <Eye className="h-4 w-4 shrink-0" />}
+                      </button>
+                    </div>
+                    {confirmAccountNumber.length > 0 && (
+                      confirmAccountNumber === accountNumber ? (
+                        <p className="text-[10px] text-emerald-600 font-mono mt-1 font-semibold">Account numbers match</p>
+                      ) : (
+                        <p className="text-[10px] text-rose-600 font-mono mt-1">Account numbers do not match</p>
+                      )
+                    )}
+                  </div>
+
+                  {/* IFSC Code: Strictly 11 Alphanumeric */}
+                  <div>
+                    <label className="text-xs font-bold text-[#021526] block mb-1">
+                      IFSC Code <span className="text-rose-500 font-black">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={11}
+                      value={ifscCode}
+                      onChange={(e) => setIfscCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 11))}
+                      placeholder="HDFC0001234"
+                      className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs font-mono text-[#021526] focus:border-[#F94001] focus:outline-none"
+                    />
+                    {ifscCode.length > 0 && !isValidIFSC(ifscCode) && (
+                      <p className="text-[10px] text-amber-600 mt-1">Format: 4 letters + 0 + 6 alphanumeric (e.g. HDFC0001234)</p>
+                    )}
+                  </div>
+
+                  {/* Account Type */}
+                  <div>
+                    <label className="text-xs font-bold text-[#021526] block mb-1">
+                      Account Type <span className="text-rose-500 font-black">*</span>
+                    </label>
+                    <select
+                      value={accountType}
+                      onChange={(e) => setAccountType(e.target.value)}
+                      className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
+                    >
+                      <option value="CURRENT">Current Account</option>
+                      <option value="SAVINGS">Savings Account</option>
+                    </select>
+                  </div>
+
+                  {/* Branch Name */}
+                  <div>
+                    <label className="text-xs font-bold text-[#021526] block mb-1">
+                      Branch Name <span className="text-rose-500 font-black">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={branchName}
+                      onChange={(e) => setBranchName(e.target.value)}
+                      placeholder="e.g. Peelamedu Branch"
+                      className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Bank Proof Upload Card: Mandatory */}
+                  <div>
+                    <label className="text-xs font-bold text-[#021526] block mb-1 flex items-center justify-between">
+                      <span>Cancelled Cheque / Passbook <span className="text-rose-500 font-black">*</span></span>
+                      <span className="text-[10px] font-mono text-[#5F6368] uppercase">PDF/JPG Max 5MB</span>
+                    </label>
+                    <input
+                      type="file"
+                      ref={bankProofInputRef}
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) =>
+                        handleFileUpload(
+                          e,
+                          'BANK_PROOF',
+                          (id, name, previewUrl) => {
+                            setBranchProofDocId(id);
+                            setBranchProofFileName(name);
+                            if (previewUrl) setBranchProofPreviewUrl(previewUrl);
+                          },
+                          setBranchProofUploading,
+                        )
+                      }
+                      className="hidden"
+                    />
+
+                    {branchProofUploading ? (
+                      <div className="flex items-center gap-2 p-2.5 rounded-xl border border-dashed border-[#F94001] bg-[#FFF1EC]/30 text-xs font-bold text-[#F94001]">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Uploading bank proof...</span>
                       </div>
-                    </div>
+                    ) : branchProofDocId ? (
+                      <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-emerald-300 bg-emerald-50/50 shadow-xs">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <FileText className="h-4 w-4 text-emerald-600 shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="font-mono text-xs font-bold text-[#021526] truncate">
+                              {branchProofFileName || branchProofDocId}
+                            </p>
+                            <span className="text-[10px] text-emerald-700 font-medium">✓ Uploaded & Verified</span>
+                          </div>
+                        </div>
 
-                    {/* ========================================================================= */}
-                    {/* FREE CANCELLATION WINDOW & REFUND PAYOUT PERCENTAGE (FORM BASE STYLED)     */}
-                    {/* ========================================================================= */}
-                    {/* Free Cancellation Window */}
-                    <div>
-                      <label className="text-xs font-bold text-[#021526] block mb-1 flex items-center justify-between">
-                        <span className="flex items-center gap-1.5">
-                          <Clock className="h-3.5 w-3.5 text-[#F94001]" />
-                          <span>Free Cancellation Window <span className="text-rose-500 font-black">*</span></span>
-                        </span>
-                        <span className="text-[10px] font-mono text-[#5F6368] uppercase">Notice Buffer Before Kickoff</span>
-                      </label>
-                      <p className="text-[11px] text-[#5F6368] mb-2">Minimum notice required for full or partial refund</p>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        {[2, 4, 12, 24].map((hours) => {
-                          const currentVal = court.cancellation_window_hours ?? cancellationWindowHours;
-                          const isSelected = currentVal === hours;
-                          return (
-                            <button
-                              key={hours}
-                              type="button"
-                              onClick={() => {
-                                setCancellationWindowHours(hours);
-                                setCourts((prev) =>
-                                  prev.map((item, i) =>
-                                    i === index ? { ...item, cancellation_window_hours: hours } : item,
-                                  ),
-                                );
-                              }}
-                              className={`py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer text-center ${
-                                isSelected
-                                  ? 'bg-[#021526] text-white shadow-xs'
-                                  : 'bg-white border border-[#CBD5E1] text-[#5F6368] hover:border-slate-400'
-                              }`}
-                            >
-                              {hours} Hours
-                            </button>
-                          );
-                        })}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {/* VIEW BUTTON */}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleOpenDocumentPreview(
+                                branchProofPreviewUrl,
+                                branchProofFileName,
+                                branchProofDocId,
+                                'BANK',
+                              )
+                            }
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-[#CBD5E1] text-[11px] font-bold text-[#021526] hover:bg-[#F3F4F4] hover:text-[#F94001] transition-colors shadow-xs cursor-pointer"
+                            title="View Bank Proof Document"
+                          >
+                            <Eye className="h-3.5 w-3.5 text-[#5F6368]" />
+                            <span>View</span>
+                          </button>
+
+                          {/* DELETE BUTTON */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setBranchProofDocId('');
+                              setBranchProofFileName('');
+                              setBranchProofPreviewUrl(null);
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-rose-200 text-[11px] font-bold text-rose-600 hover:bg-rose-50 hover:border-rose-300 transition-colors shadow-xs"
+                            title="Delete Bank Proof Document"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-rose-600" />
+                            <span>Delete</span>
+                          </button>
+                        </div>
                       </div>
-                    </div>
-
-                    {/* Refund Payout Percentage */}
-                    <div>
-                      <label className="text-xs font-bold text-[#021526] block mb-1 flex items-center justify-between">
-                        <span className="flex items-center gap-1.5">
-                          <Percent className="h-3.5 w-3.5 text-emerald-600" />
-                          <span>Refund Payout Percentage <span className="text-rose-500 font-black">*</span></span>
-                        </span>
-                        <span className="text-[10px] font-mono text-[#5F6368] uppercase">Eligible Refund Value</span>
-                      </label>
-                      <p className="text-[11px] text-[#5F6368] mb-2">Amount returned to customer source account</p>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        {[50, 75, 90, 100].map((pct) => {
-                          const currentVal = court.refund_percentage ?? refundPercentage;
-                          const isSelected = currentVal === pct;
-                          return (
-                            <button
-                              key={pct}
-                              type="button"
-                              onClick={() => {
-                                setRefundPercentage(pct);
-                                setCourts((prev) =>
-                                  prev.map((item, i) =>
-                                    i === index ? { ...item, refund_percentage: pct } : item,
-                                  ),
-                                );
-                              }}
-                              className={`py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer text-center ${
-                                isSelected
-                                  ? 'bg-emerald-600 text-white shadow-xs'
-                                  : 'bg-white border border-[#CBD5E1] text-[#5F6368] hover:border-slate-400'
-                              }`}
-                            >
-                              {pct}%
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Customer Cancellation Rule summary banner */}
-                    <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200 text-xs text-emerald-900">
-                      <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
-                      <span className="text-[11px]">
-                        <strong className="font-bold text-emerald-950">Customer Cancellation Rule:</strong> Free cancellation permitted up to{' '}
-                        <strong>{court.cancellation_window_hours ?? cancellationWindowHours} Hours</strong> before kickoff with{' '}
-                        <strong>{court.refund_percentage ?? refundPercentage}%</strong> refund.
-                      </span>
-                    </div>
-
-                    {/* Save Single Court Button */}
-                    <div className="flex items-center justify-between pt-4 border-t border-[#CBD5E1]">
-                      {courts.length > 1 ? (
+                    ) : (
+                      <div className="flex items-center justify-between gap-2 p-2 rounded-xl border border-dashed border-[#CBD5E1] bg-[#F8F9FA]">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <FileText className="h-4 w-4 text-[#5F6368] shrink-0" />
+                          <span className="font-mono text-[11px] text-[#5F6368] truncate">
+                            No bank proof uploaded
+                          </span>
+                        </div>
                         <button
                           type="button"
-                          onClick={() => {
-                            setCourts((prev) => prev.filter((_, i) => i !== index));
-                            setEditingCourtIndex(null);
-                          }}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold transition-all shadow-xs cursor-pointer"
+                          onClick={() => bankProofInputRef.current?.click()}
+                          className="px-3 py-1.5 rounded-lg bg-[#F94001] hover:bg-[#D93600] text-white text-[11px] font-bold transition-all shadow-xs shrink-0"
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          <span>Delete Court</span>
+                          Upload File
                         </button>
-                      ) : (
-                        <div />
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() => handleSaveSingleCourt(index)}
-                        className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#021526] hover:bg-[#1a2d42] text-white text-xs font-bold shadow-md transition-all cursor-pointer active:scale-95"
-                      >
-                        <Check className="h-4 w-4 text-emerald-400" />
-                        <span>Save Court #{index + 1}</span>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {/* Add Another Court Button (Bottom Helper) */}
-              {editingCourtIndex === null && (
-                <div className="pt-2 text-center">
-                  <button
-                    type="button"
-                    onClick={handleAddNewCourt}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border-2 border-dashed border-[#CBD5E1] hover:border-[#F94001] bg-white hover:bg-[#FFF1EC]/30 text-xs font-bold text-[#021526] hover:text-[#F94001] transition-all cursor-pointer shadow-xs"
-                  >
-                    <Plus className="h-4 w-4 text-[#F94001]" />
-                    <span>+ Add Another Physical Court</span>
-                  </button>
-                </div>
-              )}
-            </div>
-            
-            {/* Bottom Actions */}
-            <div className="flex items-center justify-between pt-4 border-t border-[#E5E7EB]">
-              <button
-                type="button"
-                onClick={() => setCurrentStep(4)}
-                className="px-4 py-2 rounded-xl border border-[#E5E7EB] text-xs font-bold text-[#5F6368] hover:bg-[#F3F4F4] cursor-pointer"
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                disabled={loading || courts.length === 0 || selectedSports.length === 0}
-                onClick={handleSaveCourts}
-                className="px-6 py-2.5 rounded-xl bg-[#F94001] hover:bg-[#D93600] text-white text-xs font-bold shadow-md transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
-              >
-                Save &amp; Continue to Step 6 &rarr;
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ============================================================ */}
-        {/* STEP 6: BANK ACCOUNT (PROFESSIONAL & CLEAN) */}
-        {/* ============================================================ */}
-        {currentStep === 6 && (
-          <div className="rounded-2xl bg-white p-6 sm:p-8 border border-[#E5E7EB] shadow-xs space-y-6">
-            <div className="border-b border-[#E5E7EB] pb-4">
-              <span className="text-[11px] font-bold font-mono text-[#F94001] uppercase tracking-wider">
-                Step 6 of 7 &bull; Financial Settlements
-              </span>
-              <h2 className="text-xl font-black text-[#021526] font-display mt-1">
-                Bank account
-              </h2>
-              <p className="text-xs text-[#5F6368] mt-0.5">
-                Official bank account for automated slot booking settlements and payouts.
-              </p>
-            </div>
-
-            {renderStepRejectionAlert(6)}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Account Holder Name: Strictly Alphabets */}
-              <div>
-                <label className="text-xs font-bold text-[#021526] block mb-1">
-                  Account Holder Name <span className="text-rose-500 font-black">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={accountHolderName}
-                  onChange={(e) => setAccountHolderName(e.target.value.replace(/[^a-zA-Z\s.]/g, ''))}
-                  placeholder="e.g. Sky Sports Private Limited"
-                  className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
-                />
-                {accountHolderName.length > 0 && !isValidName(accountHolderName) && (
-                  <p className="text-[10px] text-amber-600 mt-1">Letters and spaces only (min 3 characters)</p>
-                )}
-              </div>
-
-              {/* Bank Name: Strictly Alphabets */}
-              <div>
-                <label className="text-xs font-bold text-[#021526] block mb-1">
-                  Bank Name <span className="text-rose-500 font-black">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={bankName}
-                  onChange={(e) => setBankName(e.target.value.replace(/[^a-zA-Z\s.&]/g, ''))}
-                  placeholder="e.g. HDFC Bank"
-                  className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
-                />
-              </div>
-
-              {/* Account Number: Strictly Digits (9-18) with Password Masking & Clean Centered Eye Toggle INSIDE */}
-              <div>
-                <label className="text-xs font-bold text-[#021526] block mb-1">
-                  Account Number <span className="text-rose-500 font-black">*</span>
-                </label>
-                <div className="flex items-center rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 transition-colors focus-within:border-[#F94001]">
-                  <input
-                    type={showAccountNumber ? 'text' : 'password'}
-                    maxLength={18}
-                    value={accountNumber}
-                    onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, '').slice(0, 18))}
-                    placeholder="Enter bank account number"
-                    className="w-full bg-transparent text-xs font-mono text-[#021526] focus:outline-none border-0 p-0"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowAccountNumber(!showAccountNumber)}
-                    className="text-slate-400 hover:text-[#021526] p-0.5 ml-2 shrink-0 cursor-pointer focus:outline-none transition-colors"
-                    tabIndex={-1}
-                    title={showAccountNumber ? 'Hide Account Number' : 'Show Account Number'}
-                  >
-                    {showAccountNumber ? <EyeOff className="h-4 w-4 shrink-0" /> : <Eye className="h-4 w-4 shrink-0" />}
-                  </button>
-                </div>
-                {accountNumber.length > 0 && !isValidAccountNumber(accountNumber) && (
-                  <p className="text-[10px] text-amber-600 mt-1">Must be 9 to 18 numeric digits</p>
-                )}
-              </div>
-
-              {/* Confirm Account Number: Strictly Digits (9-18) with Password Masking & Clean Centered Eye Toggle INSIDE */}
-              <div>
-                <label className="text-xs font-bold text-[#021526] block mb-1">
-                  Confirm Account Number <span className="text-rose-500 font-black">*</span>
-                </label>
-                <div className="flex items-center rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 transition-colors focus-within:border-[#F94001]">
-                  <input
-                    type={showConfirmAccountNumber ? 'text' : 'password'}
-                    maxLength={18}
-                    value={confirmAccountNumber}
-                    onChange={(e) => setConfirmAccountNumber(e.target.value.replace(/\D/g, '').slice(0, 18))}
-                    placeholder="Re-enter bank account number"
-                    className="w-full bg-transparent text-xs font-mono text-[#021526] focus:outline-none border-0 p-0"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmAccountNumber(!showConfirmAccountNumber)}
-                    className="text-slate-400 hover:text-[#021526] p-0.5 ml-2 shrink-0 cursor-pointer focus:outline-none transition-colors"
-                    tabIndex={-1}
-                    title={showConfirmAccountNumber ? 'Hide Account Number' : 'Show Account Number'}
-                  >
-                    {showConfirmAccountNumber ? <EyeOff className="h-4 w-4 shrink-0" /> : <Eye className="h-4 w-4 shrink-0" />}
-                  </button>
-                </div>
-                {confirmAccountNumber.length > 0 && (
-                  confirmAccountNumber === accountNumber ? (
-                    <p className="text-[10px] text-emerald-600 font-mono mt-1 font-semibold">Account numbers match</p>
-                  ) : (
-                    <p className="text-[10px] text-rose-600 font-mono mt-1">Account numbers do not match</p>
-                  )
-                )}
-              </div>
-
-              {/* IFSC Code: Strictly 11 Alphanumeric */}
-              <div>
-                <label className="text-xs font-bold text-[#021526] block mb-1">
-                  IFSC Code <span className="text-rose-500 font-black">*</span>
-                </label>
-                <input
-                  type="text"
-                  maxLength={11}
-                  value={ifscCode}
-                  onChange={(e) => setIfscCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 11))}
-                  placeholder="HDFC0001234"
-                  className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs font-mono text-[#021526] focus:border-[#F94001] focus:outline-none"
-                />
-                {ifscCode.length > 0 && !isValidIFSC(ifscCode) && (
-                  <p className="text-[10px] text-amber-600 mt-1">Format: 4 letters + 0 + 6 alphanumeric (e.g. HDFC0001234)</p>
-                )}
-              </div>
-
-              {/* Account Type */}
-              <div>
-                <label className="text-xs font-bold text-[#021526] block mb-1">
-                  Account Type <span className="text-rose-500 font-black">*</span>
-                </label>
-                <select
-                  value={accountType}
-                  onChange={(e) => setAccountType(e.target.value)}
-                  className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
-                >
-                  <option value="CURRENT">Current Account</option>
-                  <option value="SAVINGS">Savings Account</option>
-                </select>
-              </div>
-
-              {/* Branch Name */}
-              <div>
-                <label className="text-xs font-bold text-[#021526] block mb-1">
-                  Branch Name <span className="text-rose-500 font-black">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={branchName}
-                  onChange={(e) => setBranchName(e.target.value)}
-                  placeholder="e.g. Peelamedu Branch"
-                  className="w-full rounded-xl border border-[#CBD5E1] bg-white px-3.5 py-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
-                />
-              </div>
-
-              {/* Bank Proof Upload Card: Mandatory */}
-              <div>
-                <label className="text-xs font-bold text-[#021526] block mb-1 flex items-center justify-between">
-                  <span>Cancelled Cheque / Passbook <span className="text-rose-500 font-black">*</span></span>
-                  <span className="text-[10px] font-mono text-[#5F6368] uppercase">PDF/JPG Max 5MB</span>
-                </label>
-                <input
-                  type="file"
-                  ref={bankProofInputRef}
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  onChange={(e) =>
-                    handleFileUpload(
-                      e,
-                      'BANK_PROOF',
-                      (id, name, previewUrl) => {
-                        setBranchProofDocId(id);
-                        setBranchProofFileName(name);
-                        if (previewUrl) setBranchProofPreviewUrl(previewUrl);
-                      },
-                      setBranchProofUploading,
-                    )
-                  }
-                  className="hidden"
-                />
-                
-                {branchProofUploading ? (
-                  <div className="flex items-center gap-2 p-2.5 rounded-xl border border-dashed border-[#F94001] bg-[#FFF1EC]/30 text-xs font-bold text-[#F94001]">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Uploading bank proof...</span>
-                  </div>
-                ) : branchProofDocId ? (
-                  <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-emerald-300 bg-emerald-50/50 shadow-xs">
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <FileText className="h-4 w-4 text-emerald-600 shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <p className="font-mono text-xs font-bold text-[#021526] truncate">
-                          {branchProofFileName || branchProofDocId}
-                        </p>
-                        <span className="text-[10px] text-emerald-700 font-medium">✓ Uploaded & Verified</span>
                       </div>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {/* VIEW BUTTON */}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleOpenDocumentPreview(
-                            branchProofPreviewUrl,
-                            branchProofFileName,
-                            branchProofDocId,
-                            'BANK',
-                          )
-                        }
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-[#CBD5E1] text-[11px] font-bold text-[#021526] hover:bg-[#F3F4F4] hover:text-[#F94001] transition-colors shadow-xs cursor-pointer"
-                        title="View Bank Proof Document"
-                      >
-                        <Eye className="h-3.5 w-3.5 text-[#5F6368]" />
-                        <span>View</span>
-                      </button>
-
-                      {/* DELETE BUTTON */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setBranchProofDocId('');
-                          setBranchProofFileName('');
-                          setBranchProofPreviewUrl(null);
-                        }}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-rose-200 text-[11px] font-bold text-rose-600 hover:bg-rose-50 hover:border-rose-300 transition-colors shadow-xs"
-                        title="Delete Bank Proof Document"
-                      >
-                        <Trash2 className="h-3.5 w-3.5 text-rose-600" />
-                        <span>Delete</span>
-                      </button>
-                    </div>
+                    )}
                   </div>
-                ) : (
-                  <div className="flex items-center justify-between gap-2 p-2 rounded-xl border border-dashed border-[#CBD5E1] bg-[#F8F9FA]">
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <FileText className="h-4 w-4 text-[#5F6368] shrink-0" />
-                      <span className="font-mono text-[11px] text-[#5F6368] truncate">
-                        No bank proof uploaded
+                </div>
+
+                <div className="flex items-center justify-between pt-4 border-t border-[#E5E7EB]">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(5)}
+                    className="px-4 py-2 rounded-xl border border-[#E5E7EB] text-xs font-bold text-[#5F6368] hover:bg-[#F3F4F4]"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    disabled={
+                      loading ||
+                      !isValidName(accountHolderName) ||
+                      !bankName.trim() ||
+                      !isValidAccountNumber(accountNumber) ||
+                      accountNumber !== confirmAccountNumber ||
+                      !isValidIFSC(ifscCode) ||
+                      !branchProofDocId
+                    }
+                    onClick={handleSaveBankDetails}
+                    className="px-6 py-2.5 rounded-xl bg-[#F94001] hover:bg-[#D93600] text-white text-xs font-bold shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
+                  >
+                    Save & Continue to Step 7 &rarr;
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ============================================================ */}
+            {/* STEP 7: REVIEW, SUBMIT & STATUS (FULL 7 STEPS BREAKDOWN)   */}
+            {/* ============================================================ */}
+            {currentStep === 7 && (
+              <div className="rounded-2xl bg-white p-6 sm:p-8 border border-[#E5E7EB] shadow-xs space-y-6">
+                <div className="border-b border-[#E5E7EB] pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <span className="text-[11px] font-bold font-mono text-[#F94001] uppercase tracking-wider">
+                      Step 7 of 7 &bull; Final Submission & Review
+                    </span>
+                    <h2 className="text-xl font-black text-[#021526] font-display mt-1">
+                      Review & Confirm Partnership Application
+                    </h2>
+                    <p className="text-xs text-[#5F6368] mt-0.5">
+                      Please review the complete operational, facility, and banking dossier before final submission to Super Admin.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold font-mono">
+                      ✓ All Steps Ready
+                    </span>
+                  </div>
+                </div>
+
+                {applicationStatus === 'PENDING_REVIEW' && (
+                  <div className="p-6 rounded-2xl bg-amber-50 border border-amber-200 text-center space-y-3">
+                    <div className="h-12 w-12 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center mx-auto">
+                      <Clock className="h-6 w-6 animate-pulse" />
+                    </div>
+                    <h3 className="text-base font-bold text-amber-900 font-display">
+                      Application Under Review ({applicationId})
+                    </h3>
+                    <p className="text-xs text-amber-800 max-w-md mx-auto">
+                      Your application has been submitted and is currently being
+                      evaluated by the Super Admin team. You will receive an automated
+                      email notification once reviewed.
+                    </p>
+                    <div className="pt-2">
+                      <span className="text-[11px] font-bold text-amber-900 bg-amber-200/70 px-3 py-1 rounded-full">
+                        Status: PENDING_REVIEW
                       </span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => bankProofInputRef.current?.click()}
-                      className="px-3 py-1.5 rounded-lg bg-[#F94001] hover:bg-[#D93600] text-white text-[11px] font-bold transition-all shadow-xs shrink-0"
-                    >
-                      Upload File
-                    </button>
                   </div>
                 )}
-              </div>
-            </div>
 
-            <div className="flex items-center justify-between pt-4 border-t border-[#E5E7EB]">
-              <button
-                type="button"
-                onClick={() => setCurrentStep(5)}
-                className="px-4 py-2 rounded-xl border border-[#E5E7EB] text-xs font-bold text-[#5F6368] hover:bg-[#F3F4F4]"
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                disabled={
-                  loading ||
-                  !isValidName(accountHolderName) ||
-                  !bankName.trim() ||
-                  !isValidAccountNumber(accountNumber) ||
-                  accountNumber !== confirmAccountNumber ||
-                  !isValidIFSC(ifscCode) ||
-                  !branchProofDocId
-                }
-                onClick={handleSaveBankDetails}
-                className="px-6 py-2.5 rounded-xl bg-[#F94001] hover:bg-[#D93600] text-white text-xs font-bold shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
-              >
-                Save & Continue to Step 7 &rarr;
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ============================================================ */}
-        {/* STEP 7: REVIEW, SUBMIT & STATUS (FULL 7 STEPS BREAKDOWN)   */}
-        {/* ============================================================ */}
-        {currentStep === 7 && (
-          <div className="rounded-2xl bg-white p-6 sm:p-8 border border-[#E5E7EB] shadow-xs space-y-6">
-            <div className="border-b border-[#E5E7EB] pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <span className="text-[11px] font-bold font-mono text-[#F94001] uppercase tracking-wider">
-                  Step 7 of 7 &bull; Final Submission & Review
-                </span>
-                <h2 className="text-xl font-black text-[#021526] font-display mt-1">
-                  Review & Confirm Partnership Application
-                </h2>
-                <p className="text-xs text-[#5F6368] mt-0.5">
-                  Please review the complete operational, facility, and banking dossier before final submission to Super Admin.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold font-mono">
-                  ✓ All Steps Ready
-                </span>
-              </div>
-            </div>
-
-            {applicationStatus === 'PENDING_REVIEW' && (
-              <div className="p-6 rounded-2xl bg-amber-50 border border-amber-200 text-center space-y-3">
-                <div className="h-12 w-12 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center mx-auto">
-                  <Clock className="h-6 w-6 animate-pulse" />
-                </div>
-                <h3 className="text-base font-bold text-amber-900 font-display">
-                  Application Under Review ({applicationId})
-                </h3>
-                <p className="text-xs text-amber-800 max-w-md mx-auto">
-                  Your application has been submitted and is currently being
-                  evaluated by the Super Admin team. You will receive an automated
-                  email notification once reviewed.
-                </p>
-                <div className="pt-2">
-                  <span className="text-[11px] font-bold text-amber-900 bg-amber-200/70 px-3 py-1 rounded-full">
-                    Status: PENDING_REVIEW
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {applicationStatus === 'APPROVED' && (
-              <div className="p-6 rounded-2xl bg-emerald-50 border border-emerald-200 text-center space-y-3">
-                <div className="h-12 w-12 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center mx-auto">
-                  <CheckCircle2 className="h-6 w-6" />
-                </div>
-                <h3 className="text-base font-bold text-emerald-900 font-display">
-                  Congratulations! Application Approved
-                </h3>
-                <p className="text-xs text-emerald-800 max-w-md mx-auto">
-                  Your sports arena has been verified and activated on the
-                  iBookSports booking network.
-                </p>
-                {appAccessLink && (
-                  <a
-                    href={appAccessLink}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition-all"
-                  >
-                    <span>Access Partner Dashboard</span>
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
+                {applicationStatus === 'APPROVED' && (
+                  <div className="p-6 rounded-2xl bg-emerald-50 border border-emerald-200 text-center space-y-3">
+                    <div className="h-12 w-12 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center mx-auto">
+                      <CheckCircle2 className="h-6 w-6" />
+                    </div>
+                    <h3 className="text-base font-bold text-emerald-900 font-display">
+                      Congratulations! Application Approved
+                    </h3>
+                    <p className="text-xs text-emerald-800 max-w-md mx-auto">
+                      Your sports arena has been verified and activated on the
+                      iBookSports booking network.
+                    </p>
+                    {appAccessLink && (
+                      <a
+                        href={appAccessLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition-all"
+                      >
+                        <span>Access Partner Dashboard</span>
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    )}
+                  </div>
                 )}
-              </div>
-            )}
 
-            {applicationStatus !== 'PENDING_REVIEW' &&
-              applicationStatus !== 'APPROVED' && (
-                <div className="space-y-6">
-                  {renderStepRejectionAlert(7)}
+                {applicationStatus !== 'PENDING_REVIEW' &&
+                  applicationStatus !== 'APPROVED' && (
+                    <div className="space-y-6">
+                      {renderStepRejectionAlert(7)}
 
-                  {/* 1. Step 1 Review: Partner & Contact Details */}
-                  <div className="rounded-xl border border-[#CBD5E1] bg-[#F8F9FA] p-4 sm:p-5 space-y-3">
-                    <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-2.5">
-                      <div className="flex items-center gap-2">
-                        <div className="h-7 w-7 rounded-lg bg-[#021526] text-white flex items-center justify-center text-xs font-bold font-mono">
-                          1
-                        </div>
-                        <div>
-                          <h3 className="text-xs font-bold text-[#021526] uppercase tracking-wide">
-                            Partner & Signatory Details
-                          </h3>
-                          <span className="text-[10px] text-[#5F6368]">Authorized Primary Contact</span>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setCurrentStep(1)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-[#CBD5E1] text-[11px] font-bold text-[#021526] hover:bg-[#FFF1EC] hover:text-[#F94001] transition-colors shadow-xs"
-                      >
-                        <Edit3 className="h-3 w-3" /> Edit Step 1
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
-                      <div>
-                        <span className="text-[10px] font-mono text-[#5F6368] uppercase block">Legal Name</span>
-                        <p className="font-bold text-[#021526] mt-0.5">{partnerName || '—'}</p>
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-mono text-[#5F6368] uppercase block">Mobile Number</span>
-                        <p className="font-mono font-bold text-[#021526] mt-0.5 flex items-center gap-1.5">
-                          <span>+91 {mobileNumber || '—'}</span>
-                          <span className="px-1.5 py-0.2 rounded text-[9px] bg-emerald-100 text-emerald-800 font-bold">VERIFIED</span>
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-mono text-[#5F6368] uppercase block">Email Address</span>
-                        <p className="font-mono font-medium text-[#021526] mt-0.5">{partnerEmail || '—'}</p>
-                      </div>
-                      <div className="sm:col-span-2">
-                        <span className="text-[10px] font-mono text-[#5F6368] uppercase block">Residential Address</span>
-                        <p className="text-[#021526] mt-0.5">
-                          {partnerAddress ? `${partnerAddress}, ${partnerDistrict}, ${partnerState} - ${partnerPincode}` : '—'}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-mono text-[#5F6368] uppercase block">Verification Documents</span>
-                        <div className="mt-1 space-y-1 text-[11px]">
-                          <p className="flex items-center gap-1 text-emerald-700 font-medium">
-                            <Check className="h-3 w-3 text-emerald-600" />
-                            <span className="truncate">Aadhaar: {aadhaarFileName || (aadhaarDocId ? 'Uploaded' : 'Pending')}</span>
-                          </p>
-                          <p className="flex items-center gap-1 text-emerald-700 font-medium">
-                            <Check className="h-3 w-3 text-emerald-600" />
-                            <span className="truncate">Photo: {profilePhotoFileName || (profilePhotoDocId ? 'Uploaded' : 'Pending')}</span>
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 2. Step 2 Review: Sports Venue & GST Registration */}
-                  <div className="rounded-xl border border-[#CBD5E1] bg-[#F8F9FA] p-4 sm:p-5 space-y-3">
-                    <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-2.5">
-                      <div className="flex items-center gap-2">
-                        <div className="h-7 w-7 rounded-lg bg-[#021526] text-white flex items-center justify-center text-xs font-bold font-mono">
-                          2
-                        </div>
-                        <div>
-                          <h3 className="text-xs font-bold text-[#021526] uppercase tracking-wide">
-                            Venue & GST Information
-                          </h3>
-                          <span className="text-[10px] text-[#5F6368]">Physical Arena Location & Tax Compliance</span>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setCurrentStep(2)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-[#CBD5E1] text-[11px] font-bold text-[#021526] hover:bg-[#FFF1EC] hover:text-[#F94001] transition-colors shadow-xs"
-                      >
-                        <Edit3 className="h-3 w-3" /> Edit Step 2
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
-                      <div>
-                        <span className="text-[10px] font-mono text-[#5F6368] uppercase block">Venue / Arena Name</span>
-                        <p className="font-bold text-[#021526] text-sm mt-0.5">{venueName || '—'}</p>
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-mono text-[#5F6368] uppercase block">Venue Contact Phone</span>
-                        <p className="font-mono font-medium text-[#021526] mt-0.5">+91 {venueMobile || mobileNumber || '—'}</p>
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-mono text-[#5F6368] uppercase block">GST Registration</span>
-                        <p className="font-medium text-[#021526] mt-0.5">
-                          {hasGst ? (
-                            <span className="text-emerald-700 font-bold">Registered ({gstNumber})</span>
-                          ) : (
-                            <span className="text-slate-600">Not Registered / Exempt</span>
-                          )}
-                        </p>
-                      </div>
-                      <div className="sm:col-span-2">
-                        <span className="text-[10px] font-mono text-[#5F6368] uppercase block">Venue Physical Address</span>
-                        <p className="text-[#021526] mt-0.5">
-                          {venueAddress || '—'}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-mono text-[#5F6368] uppercase block">Map Link & GST Certificate</span>
-                        <div className="mt-1 space-y-1 text-[11px]">
-                          {venueGoogleMaps ? (
-                            <a
-                              href={venueGoogleMaps}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-1 text-[#F94001] hover:underline font-medium"
-                            >
-                              <ExternalLink className="h-3 w-3" /> View on Google Maps
-                            </a>
-                          ) : (
-                            <p className="text-slate-500">No Maps link provided</p>
-                          )}
-                          {hasGst && (
-                            <p className="flex items-center gap-1 text-emerald-700 font-medium">
-                              <Check className="h-3 w-3 text-emerald-600" />
-                              <span className="truncate">GST Doc: {gstFileName || 'Uploaded'}</span>
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 3. Step 3 Review: Facility Court Photos */}
-                  <div className="rounded-xl border border-[#CBD5E1] bg-[#F8F9FA] p-4 sm:p-5 space-y-3">
-                    <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-2.5">
-                      <div className="flex items-center gap-2">
-                        <div className="h-7 w-7 rounded-lg bg-[#021526] text-white flex items-center justify-center text-xs font-bold font-mono">
-                          3
-                        </div>
-                        <div>
-                          <h3 className="text-xs font-bold text-[#021526] uppercase tracking-wide">
-                            Facility & Court Photos
-                          </h3>
-                          <span className="text-[10px] text-[#5F6368]">{courtPhotoList.length} Photos Uploaded</span>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setCurrentStep(3)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-[#CBD5E1] text-[11px] font-bold text-[#021526] hover:bg-[#FFF1EC] hover:text-[#F94001] transition-colors shadow-xs"
-                      >
-                        <Edit3 className="h-3 w-3" /> Edit Step 3
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {courtPhotoList.map((photo, idx) => (
-                        <div
-                          key={photo.id || idx}
-                          className="rounded-xl border border-[#E5E7EB] bg-white overflow-hidden text-center shadow-xs flex flex-col justify-between"
-                        >
-                          <div className="relative h-20 w-full bg-slate-100 overflow-hidden">
-                            {photo.previewUrl ? (
-                              <img
-                                src={photo.previewUrl}
-                                alt={photo.name}
-                                className="h-full w-full object-cover cursor-pointer hover:scale-105 transition-transform duration-200"
-                                onClick={() =>
-                                  setPreviewModalImage({
-                                    url: photo.previewUrl!,
-                                    title: photo.name,
-                                  })
-                                }
-                              />
-                            ) : (
-                              <div className="h-full w-full bg-slate-100 flex flex-col items-center justify-center text-slate-500">
-                                <Camera className="h-5 w-5 text-slate-400 mb-0.5" />
-                                <span className="text-[9px] font-mono font-bold text-slate-600">PHOTO #{idx + 1}</span>
-                              </div>
-                            )}
-                          </div>
-                          <div className="p-2 space-y-0.5">
-                            <p className="text-[10px] font-bold text-[#021526] truncate" title={photo.name}>
-                              {photo.name}
-                            </p>
-                            <p className="text-[9px] font-mono text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded inline-block font-semibold">
-                              ✓ Uploaded
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* 4. Step 4 Review: Operating Days & Schedule */}
-                  <div className="rounded-xl border border-[#CBD5E1] bg-[#F8F9FA] p-4 sm:p-5 space-y-3">
-                    <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-2.5">
-                      <div className="flex items-center gap-2">
-                        <div className="h-7 w-7 rounded-lg bg-[#021526] text-white flex items-center justify-center text-xs font-bold font-mono">
-                          4
-                        </div>
-                        <div>
-                          <h3 className="text-xs font-bold text-[#021526] uppercase tracking-wide">
-                            Weekly Operating Schedule
-                          </h3>
-                          <span className="text-[10px] text-[#5F6368]">
-                            {dailySchedules.filter((d) => d.isOpen).length} Active Operating Days per Week
-                          </span>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setCurrentStep(4)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-[#CBD5E1] text-[11px] font-bold text-[#021526] hover:bg-[#FFF1EC] hover:text-[#F94001] transition-colors shadow-xs"
-                      >
-                        <Edit3 className="h-3 w-3" /> Edit Step 4
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
-                      {DAYS_ORDER.map(({ day, label }) => {
-                        const sched = dailySchedules.find((s) => s.day === day) || {
-                          isOpen: true,
-                          openTime: '06:00 AM',
-                          closeTime: '10:00 PM',
-                        };
-                        return (
-                          <div
-                            key={day}
-                            className={`p-2.5 rounded-xl border text-center transition-all ${
-                              sched.isOpen ? 'border-[#CBD5E1] bg-white' : 'border-slate-200 bg-slate-100/60 opacity-60'
-                            }`}
-                          >
-                            <span className="text-[11px] font-bold text-[#021526] block font-display">{label}</span>
-                            {sched.isOpen ? (
-                              <div className="mt-1">
-                                <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded block">
-                                  {sched.openTime}
-                                </span>
-                                <span className="text-[9px] text-[#5F6368] block my-0.5">to</span>
-                                <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded block">
-                                  {sched.closeTime}
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-[10px] font-mono font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded block mt-2">
-                                Closed
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* 5. Step 5 Review: Sports & Court Pricing Matrix */}
-                  <div className="rounded-xl border border-[#CBD5E1] bg-[#F8F9FA] p-4 sm:p-5 space-y-3">
-                    <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-2.5">
-                      <div className="flex items-center gap-2">
-                        <div className="h-7 w-7 rounded-lg bg-[#021526] text-white flex items-center justify-center text-xs font-bold font-mono">
-                          5
-                        </div>
-                        <div>
-                          <h3 className="text-xs font-bold text-[#021526] uppercase tracking-wide">
-                            Sports & Playable Courts Pricing Matrix
-                          </h3>
-                          <span className="text-[10px] text-[#5F6368]">
-                            {selectedSports.join(', ')} &bull; {courts.length} Playable Court(s)
-                          </span>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setCurrentStep(5)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-[#CBD5E1] text-[11px] font-bold text-[#021526] hover:bg-[#FFF1EC] hover:text-[#F94001] transition-colors shadow-xs"
-                      >
-                        <Edit3 className="h-3 w-3" /> Edit Step 5
-                      </button>
-                    </div>
-
-                    {/* COURTS CARDS IN REVIEW */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                      {courts.map((court, idx) => (
-                        <div
-                          key={idx}
-                          className="rounded-xl border border-[#CBD5E1] bg-white p-4 space-y-3 shadow-2xs"
-                        >
-                          <div className="flex items-start justify-between gap-2 border-b border-[#E5E7EB] pb-2.5">
-                            <div className="flex items-center gap-2">
-                              <span className="h-6 w-6 rounded-lg bg-[#021526] text-white flex items-center justify-center font-mono text-[11px] font-bold shrink-0">
-                                #{idx + 1}
-                              </span>
-                              <div>
-                                <h4 className="font-bold text-xs text-[#021526]">
-                                  {court.court_name}
-                                </h4>
-                                <p className="text-[10px] text-[#5F6368]">
-                                  {court.display_name || 'Standard'}
-                                </p>
-                              </div>
+                      {/* 1. Step 1 Review: Partner & Contact Details */}
+                      <div className="rounded-xl border border-[#CBD5E1] bg-[#F8F9FA] p-4 sm:p-5 space-y-3">
+                        <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-2.5">
+                          <div className="flex items-center gap-2">
+                            <div className="h-7 w-7 rounded-lg bg-[#021526] text-white flex items-center justify-center text-xs font-bold font-mono">
+                              1
                             </div>
+                            <div>
+                              <h3 className="text-xs font-bold text-[#021526] uppercase tracking-wide">
+                                Partner & Signatory Details
+                              </h3>
+                              <span className="text-[10px] text-[#5F6368]">Authorized Primary Contact</span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setCurrentStep(1)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-[#CBD5E1] text-[11px] font-bold text-[#021526] hover:bg-[#FFF1EC] hover:text-[#F94001] transition-colors shadow-xs"
+                          >
+                            <Edit3 className="h-3 w-3" /> Edit Step 1
+                          </button>
+                        </div>
 
-                            <div className="flex flex-wrap gap-1">
-                              {court.sports?.map((sp) => (
-                                <span
-                                  key={sp}
-                                  className="px-2 py-0.5 rounded bg-slate-100 text-[#021526] font-bold text-[9px] border border-slate-200"
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+                          <div>
+                            <span className="text-[10px] font-mono text-[#5F6368] uppercase block">Legal Name</span>
+                            <p className="font-bold text-[#021526] mt-0.5">{partnerName || '—'}</p>
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-mono text-[#5F6368] uppercase block">Mobile Number</span>
+                            <p className="font-mono font-bold text-[#021526] mt-0.5 flex items-center gap-1.5">
+                              <span>+91 {mobileNumber || '—'}</span>
+                              <span className="px-1.5 py-0.2 rounded text-[9px] bg-emerald-100 text-emerald-800 font-bold">VERIFIED</span>
+                            </p>
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-mono text-[#5F6368] uppercase block">Email Address</span>
+                            <p className="font-mono font-medium text-[#021526] mt-0.5">{partnerEmail || '—'}</p>
+                          </div>
+                          <div className="sm:col-span-2">
+                            <span className="text-[10px] font-mono text-[#5F6368] uppercase block">Residential Address</span>
+                            <p className="text-[#021526] mt-0.5">
+                              {partnerAddress ? `${partnerAddress}, ${partnerDistrict}, ${partnerState} - ${partnerPincode}` : '—'}
+                            </p>
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-mono text-[#5F6368] uppercase block">Verification Documents</span>
+                            <div className="mt-1 space-y-1 text-[11px]">
+                              <p className="flex items-center gap-1 text-emerald-700 font-medium">
+                                <Check className="h-3 w-3 text-emerald-600" />
+                                <span className="truncate">Aadhaar: {aadhaarFileName || (aadhaarDocId ? 'Uploaded' : 'Pending')}</span>
+                              </p>
+                              <p className="flex items-center gap-1 text-emerald-700 font-medium">
+                                <Check className="h-3 w-3 text-emerald-600" />
+                                <span className="truncate">Photo: {profilePhotoFileName || (profilePhotoDocId ? 'Uploaded' : 'Pending')}</span>
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 2. Step 2 Review: Sports Venue & GST Registration */}
+                      <div className="rounded-xl border border-[#CBD5E1] bg-[#F8F9FA] p-4 sm:p-5 space-y-3">
+                        <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-2.5">
+                          <div className="flex items-center gap-2">
+                            <div className="h-7 w-7 rounded-lg bg-[#021526] text-white flex items-center justify-center text-xs font-bold font-mono">
+                              2
+                            </div>
+                            <div>
+                              <h3 className="text-xs font-bold text-[#021526] uppercase tracking-wide">
+                                Venue & GST Information
+                              </h3>
+                              <span className="text-[10px] text-[#5F6368]">Physical Arena Location & Tax Compliance</span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setCurrentStep(2)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-[#CBD5E1] text-[11px] font-bold text-[#021526] hover:bg-[#FFF1EC] hover:text-[#F94001] transition-colors shadow-xs"
+                          >
+                            <Edit3 className="h-3 w-3" /> Edit Step 2
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+                          <div>
+                            <span className="text-[10px] font-mono text-[#5F6368] uppercase block">Venue / Arena Name</span>
+                            <p className="font-bold text-[#021526] text-sm mt-0.5">{venueName || '—'}</p>
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-mono text-[#5F6368] uppercase block">Venue Contact Phone</span>
+                            <p className="font-mono font-medium text-[#021526] mt-0.5">+91 {venueMobile || mobileNumber || '—'}</p>
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-mono text-[#5F6368] uppercase block">GST Registration</span>
+                            <p className="font-medium text-[#021526] mt-0.5">
+                              {hasGst ? (
+                                <span className="text-emerald-700 font-bold">Registered ({gstNumber})</span>
+                              ) : (
+                                <span className="text-slate-600">Not Registered / Exempt</span>
+                              )}
+                            </p>
+                          </div>
+                          <div className="sm:col-span-2">
+                            <span className="text-[10px] font-mono text-[#5F6368] uppercase block">Venue Physical Address</span>
+                            <p className="text-[#021526] mt-0.5">
+                              {venueAddress || '—'}
+                            </p>
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-mono text-[#5F6368] uppercase block">Map Link & GST Certificate</span>
+                            <div className="mt-1 space-y-1 text-[11px]">
+                              {venueGoogleMaps ? (
+                                <a
+                                  href={venueGoogleMaps}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1 text-[#F94001] hover:underline font-medium"
                                 >
-                                  {sp}
-                                </span>
-                              ))}
-                              {court.use_one_physical_court_for_two_sports && (
-                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 block">
-                                  ⚡ Dual-Sport
-                                </span>
+                                  <ExternalLink className="h-3 w-3" /> View on Google Maps
+                                </a>
+                              ) : (
+                                <p className="text-slate-500">No Maps link provided</p>
+                              )}
+                              {hasGst && (
+                                <p className="flex items-center gap-1 text-emerald-700 font-medium">
+                                  <Check className="h-3 w-3 text-emerald-600" />
+                                  <span className="truncate">GST Doc: {gstFileName || 'Uploaded'}</span>
+                                </p>
                               )}
                             </div>
                           </div>
+                        </div>
+                      </div>
 
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
-                            <div className="p-2 rounded-lg bg-[#F8F9FA] border border-[#E5E7EB]">
-                              <span className="text-[9px] uppercase text-slate-400 block">Regular</span>
-                              <span className="font-mono font-bold text-xs text-[#021526]">₹{court.regular_price}</span>
+                      {/* 3. Step 3 Review: Facility Court Photos */}
+                      <div className="rounded-xl border border-[#CBD5E1] bg-[#F8F9FA] p-4 sm:p-5 space-y-3">
+                        <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-2.5">
+                          <div className="flex items-center gap-2">
+                            <div className="h-7 w-7 rounded-lg bg-[#021526] text-white flex items-center justify-center text-xs font-bold font-mono">
+                              3
                             </div>
-                            <div className="p-2 rounded-lg bg-amber-50/50 border border-amber-200">
-                              <span className="text-[9px] uppercase text-amber-700 block font-semibold">Peak</span>
-                              <span className="font-mono font-bold text-xs text-amber-900">₹{court.peak_hour_price || court.regular_price}</span>
-                            </div>
-                            <div className="p-2 rounded-lg bg-purple-50/50 border border-purple-200">
-                              <span className="text-[9px] uppercase text-purple-700 block font-semibold">Weekend</span>
-                              <span className="font-mono font-bold text-xs text-purple-900">₹{court.weekend_price || court.regular_price}</span>
-                            </div>
-                            <div className="p-2 rounded-lg bg-emerald-50/50 border border-emerald-200">
-                              <span className="text-[9px] uppercase text-emerald-700 block font-semibold">Deposit</span>
-                              <span className="font-mono font-bold text-xs text-emerald-900">₹{court.advance_booking_price || 0}</span>
+                            <div>
+                              <h3 className="text-xs font-bold text-[#021526] uppercase tracking-wide">
+                                Facility & Court Photos
+                              </h3>
+                              <span className="text-[10px] text-[#5F6368]">{courtPhotoList.length} Photos Uploaded</span>
                             </div>
                           </div>
+                          <button
+                            type="button"
+                            onClick={() => setCurrentStep(3)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-[#CBD5E1] text-[11px] font-bold text-[#021526] hover:bg-[#FFF1EC] hover:text-[#F94001] transition-colors shadow-xs"
+                          >
+                            <Edit3 className="h-3 w-3" /> Edit Step 3
+                          </button>
+                        </div>
 
-                          <div className="pt-2 border-t border-[#E5E7EB] flex items-center justify-between text-[10px] text-[#5F6368]">
-                            <span>Min Duration: <strong className="text-[#021526]">{court.minimum_booking_time_minutes || 60}m</strong></span>
-                            <span>Peak Days: <strong className="text-[#021526]">{court.peak_days?.join(', ') || 'Sat, Sun'}</strong></span>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                          {courtPhotoList.map((photo, idx) => (
+                            <div
+                              key={photo.id || idx}
+                              className="rounded-xl border border-[#E5E7EB] bg-white overflow-hidden text-center shadow-xs flex flex-col justify-between"
+                            >
+                              <div className="relative h-20 w-full bg-slate-100 overflow-hidden">
+                                {photo.previewUrl ? (
+                                  <img
+                                    src={photo.previewUrl}
+                                    alt={photo.name}
+                                    className="h-full w-full object-cover cursor-pointer hover:scale-105 transition-transform duration-200"
+                                    onClick={() =>
+                                      setPreviewModalImage({
+                                        url: photo.previewUrl!,
+                                        title: photo.name,
+                                      })
+                                    }
+                                  />
+                                ) : (
+                                  <div className="h-full w-full bg-slate-100 flex flex-col items-center justify-center text-slate-500">
+                                    <Camera className="h-5 w-5 text-slate-400 mb-0.5" />
+                                    <span className="text-[9px] font-mono font-bold text-slate-600">PHOTO #{idx + 1}</span>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="p-2 space-y-0.5">
+                                <p className="text-[10px] font-bold text-[#021526] truncate" title={photo.name}>
+                                  {photo.name}
+                                </p>
+                                <p className="text-[9px] font-mono text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded inline-block font-semibold">
+                                  ✓ Uploaded
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 4. Step 4 Review: Operating Days & Schedule */}
+                      <div className="rounded-xl border border-[#CBD5E1] bg-[#F8F9FA] p-4 sm:p-5 space-y-3">
+                        <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-2.5">
+                          <div className="flex items-center gap-2">
+                            <div className="h-7 w-7 rounded-lg bg-[#021526] text-white flex items-center justify-center text-xs font-bold font-mono">
+                              4
+                            </div>
+                            <div>
+                              <h3 className="text-xs font-bold text-[#021526] uppercase tracking-wide">
+                                Weekly Operating Schedule
+                              </h3>
+                              <span className="text-[10px] text-[#5F6368]">
+                                {dailySchedules.filter((d) => d.isOpen).length} Active Operating Days per Week
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setCurrentStep(4)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-[#CBD5E1] text-[11px] font-bold text-[#021526] hover:bg-[#FFF1EC] hover:text-[#F94001] transition-colors shadow-xs"
+                          >
+                            <Edit3 className="h-3 w-3" /> Edit Step 4
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+                          {DAYS_ORDER.map(({ day, label }) => {
+                            const sched = dailySchedules.find((s) => s.day === day) || {
+                              isOpen: true,
+                              openTime: '06:00 AM',
+                              closeTime: '10:00 PM',
+                            };
+                            return (
+                              <div
+                                key={day}
+                                className={`p-2.5 rounded-xl border text-center transition-all ${sched.isOpen ? 'border-[#CBD5E1] bg-white' : 'border-slate-200 bg-slate-100/60 opacity-60'
+                                  }`}
+                              >
+                                <span className="text-[11px] font-bold text-[#021526] block font-display">{label}</span>
+                                {sched.isOpen ? (
+                                  <div className="mt-1">
+                                    <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded block">
+                                      {sched.openTime}
+                                    </span>
+                                    <span className="text-[9px] text-[#5F6368] block my-0.5">to</span>
+                                    <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded block">
+                                      {sched.closeTime}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className="text-[10px] font-mono font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded block mt-2">
+                                    Closed
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* 5. Step 5 Review: Sports & Court Pricing Matrix */}
+                      <div className="rounded-xl border border-[#CBD5E1] bg-[#F8F9FA] p-4 sm:p-5 space-y-3">
+                        <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-2.5">
+                          <div className="flex items-center gap-2">
+                            <div className="h-7 w-7 rounded-lg bg-[#021526] text-white flex items-center justify-center text-xs font-bold font-mono">
+                              5
+                            </div>
+                            <div>
+                              <h3 className="text-xs font-bold text-[#021526] uppercase tracking-wide">
+                                Sports & Playable Courts Pricing Matrix
+                              </h3>
+                              <span className="text-[10px] text-[#5F6368]">
+                                {selectedSports.join(', ')} &bull; {courts.length} Playable Court(s)
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setCurrentStep(5)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-[#CBD5E1] text-[11px] font-bold text-[#021526] hover:bg-[#FFF1EC] hover:text-[#F94001] transition-colors shadow-xs"
+                          >
+                            <Edit3 className="h-3 w-3" /> Edit Step 5
+                          </button>
+                        </div>
+
+                        {/* COURTS CARDS IN REVIEW */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                          {courts.map((court, idx) => (
+                            <div
+                              key={idx}
+                              className="rounded-xl border border-[#CBD5E1] bg-white p-4 space-y-3 shadow-2xs"
+                            >
+                              <div className="flex items-start justify-between gap-2 border-b border-[#E5E7EB] pb-2.5">
+                                <div className="flex items-center gap-2">
+                                  <span className="h-6 w-6 rounded-lg bg-[#021526] text-white flex items-center justify-center font-mono text-[11px] font-bold shrink-0">
+                                    #{idx + 1}
+                                  </span>
+                                  <div>
+                                    <h4 className="font-bold text-xs text-[#021526]">
+                                      {court.court_name}
+                                    </h4>
+                                    <p className="text-[10px] text-[#5F6368]">
+                                      {court.display_name || 'Standard'}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="flex flex-wrap gap-1">
+                                  {court.sports?.map((sp) => (
+                                    <span
+                                      key={sp}
+                                      className="px-2 py-0.5 rounded bg-slate-100 text-[#021526] font-bold text-[9px] border border-slate-200"
+                                    >
+                                      {sp}
+                                    </span>
+                                  ))}
+                                  {court.use_one_physical_court_for_two_sports && (
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 block">
+                                      ⚡ Dual-Sport
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+                                <div className="p-2 rounded-lg bg-[#F8F9FA] border border-[#E5E7EB]">
+                                  <span className="text-[9px] uppercase text-slate-400 block">Regular</span>
+                                  <span className="font-mono font-bold text-xs text-[#021526]">₹{court.regular_price}</span>
+                                </div>
+                                <div className="p-2 rounded-lg bg-amber-50/50 border border-amber-200">
+                                  <span className="text-[9px] uppercase text-amber-700 block font-semibold">Peak</span>
+                                  <span className="font-mono font-bold text-xs text-amber-900">₹{court.peak_hour_price || court.regular_price}</span>
+                                </div>
+                                <div className="p-2 rounded-lg bg-purple-50/50 border border-purple-200">
+                                  <span className="text-[9px] uppercase text-purple-700 block font-semibold">Weekend</span>
+                                  <span className="font-mono font-bold text-xs text-purple-900">₹{court.weekend_price || court.regular_price}</span>
+                                </div>
+                                <div className="p-2 rounded-lg bg-emerald-50/50 border border-emerald-200">
+                                  <span className="text-[9px] uppercase text-emerald-700 block font-semibold">Deposit</span>
+                                  <span className="font-mono font-bold text-xs text-emerald-900">₹{court.advance_booking_price || 0}</span>
+                                </div>
+                              </div>
+
+                              <div className="pt-2 border-t border-[#E5E7EB] flex items-center justify-between text-[10px] text-[#5F6368]">
+                                <span>Min Duration: <strong className="text-[#021526]">{court.minimum_booking_time_minutes || 60}m</strong></span>
+                                <span>Peak Days: <strong className="text-[#021526]">{court.peak_days?.join(', ') || 'Sat, Sun'}</strong></span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Cancellation & Refund Rule in Review */}
+                        <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-white border border-[#CBD5E1] text-xs text-[#021526] shadow-2xs">
+                          <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
+                          <span className="text-[11px]">
+                            <strong className="font-bold text-[#021526]">Customer Cancellation Rule:</strong> Free cancellation permitted up to{' '}
+                            <strong>{cancellationWindowHours} Hours</strong> before kickoff with{' '}
+                            <strong>{refundPercentage}%</strong> refund.
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* 6. Step 6 Review: Bank Account */}
+                      <div className="rounded-xl border border-[#CBD5E1] bg-[#F8F9FA] p-4 sm:p-5 space-y-3">
+                        <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-2.5">
+                          <div className="flex items-center gap-2">
+                            <div className="h-7 w-7 rounded-lg bg-[#021526] text-white flex items-center justify-center text-xs font-bold font-mono">
+                              6
+                            </div>
+                            <div>
+                              <h3 className="text-xs font-bold text-[#021526] uppercase tracking-wide">
+                                Bank Account
+                              </h3>
+                              <span className="text-[10px] text-[#5F6368]">Official Payout Details</span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setCurrentStep(6)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-[#CBD5E1] text-[11px] font-bold text-[#021526] hover:bg-[#FFF1EC] hover:text-[#F94001] transition-colors shadow-xs"
+                          >
+                            <Edit3 className="h-3 w-3" /> Edit Step 6
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+                          <div>
+                            <span className="text-[10px] font-mono text-[#5F6368] uppercase block">Account Holder Name</span>
+                            <p className="font-bold text-[#021526] mt-0.5">{accountHolderName || '—'}</p>
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-mono text-[#5F6368] uppercase block">Bank Name & Branch</span>
+                            <p className="font-bold text-[#021526] mt-0.5">{bankName || '—'} {branchName ? `(${branchName})` : ''}</p>
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-mono text-[#5F6368] uppercase block">Account Type</span>
+                            <p className="font-medium text-[#021526] mt-0.5">{accountType === 'CURRENT' ? 'Current Account' : 'Savings Account'}</p>
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-mono text-[#5F6368] uppercase block">Account Number</span>
+                            <p className="font-mono font-bold text-[#021526] mt-0.5">
+                              •••• •••• •••• {accountNumber.slice(-4) || '••••'}
+                            </p>
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-mono text-[#5F6368] uppercase block">IFSC Code</span>
+                            <p className="font-mono font-bold text-[#021526] mt-0.5">{ifscCode || '—'}</p>
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-mono text-[#5F6368] uppercase block">Bank Proof Verification</span>
+                            <p className="flex items-center gap-1 text-emerald-700 font-medium mt-1 text-[11px]">
+                              <Check className="h-3 w-3 text-emerald-600" />
+                              <span className="truncate">{branchProofFileName || (branchProofDocId ? 'Bank Proof Uploaded' : 'Uploaded')}</span>
+                            </p>
                           </div>
                         </div>
-                      ))}
-                    </div>
+                      </div>
 
-                    {/* Cancellation & Refund Rule in Review */}
-                    <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-white border border-[#CBD5E1] text-xs text-[#021526] shadow-2xs">
-                      <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
-                      <span className="text-[11px]">
-                        <strong className="font-bold text-[#021526]">Customer Cancellation Rule:</strong> Free cancellation permitted up to{' '}
-                        <strong>{cancellationWindowHours} Hours</strong> before kickoff with{' '}
-                        <strong>{refundPercentage}%</strong> refund.
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* 6. Step 6 Review: Bank Account */}
-                  <div className="rounded-xl border border-[#CBD5E1] bg-[#F8F9FA] p-4 sm:p-5 space-y-3">
-                    <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-2.5">
-                      <div className="flex items-center gap-2">
-                        <div className="h-7 w-7 rounded-lg bg-[#021526] text-white flex items-center justify-center text-xs font-bold font-mono">
-                          6
-                        </div>
-                        <div>
-                          <h3 className="text-xs font-bold text-[#021526] uppercase tracking-wide">
-                            Bank Account
+                      {/* 7. Step 7 Review: Legal Declaration & Final Submission */}
+                      <div className="p-5 rounded-2xl border-2 border-[#F94001]/20 bg-[#FFF1EC]/30 space-y-4">
+                        <div className="flex items-center gap-2">
+                          <ShieldCheck className="h-5 w-5 text-[#F94001]" />
+                          <h3 className="text-sm font-bold text-[#021526] font-display">
+                            Partner Entity Legal Declaration
                           </h3>
-                          <span className="text-[10px] text-[#5F6368]">Official Payout Details</span>
                         </div>
+
+                        <label className="flex items-start gap-3 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={declarationAccepted}
+                            onChange={(e) => setDeclarationAccepted(e.target.checked)}
+                            className="mt-1 h-4 w-4 rounded text-[#F94001] focus:ring-[#F94001]"
+                          />
+                          <span className="text-xs text-[#021526] leading-relaxed">
+                            I hereby declare that all submitted personal identification, sports venue physical parameters, court pricing matrices, bank settlement credentials, and GST registration details across all 7 steps are true, authentic, accurate, and belong to the authorized signatory of the partner entity. I agree to the <span className="text-[#F94001] font-bold underline">iBookSports Partner Agreement & SLA Guidelines</span>. <span className="text-rose-500 font-black">*</span>
+                          </span>
+                        </label>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setCurrentStep(6)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-[#CBD5E1] text-[11px] font-bold text-[#021526] hover:bg-[#FFF1EC] hover:text-[#F94001] transition-colors shadow-xs"
-                      >
-                        <Edit3 className="h-3 w-3" /> Edit Step 6
-                      </button>
+
+                      {/* Final Action Buttons */}
+                      <div className="flex items-center justify-between pt-4 border-t border-[#E5E7EB]">
+                        <button
+                          type="button"
+                          onClick={() => setCurrentStep(6)}
+                          className="px-5 py-2.5 rounded-xl border border-[#E5E7EB] text-xs font-bold text-[#5F6368] hover:bg-[#F3F4F4] transition-colors"
+                        >
+                          &larr; Back to Step 6
+                        </button>
+                        <button
+                          type="button"
+                          disabled={loading || !declarationAccepted}
+                          onClick={handleSubmitApplication}
+                          className="px-8 py-3 rounded-xl bg-[#F94001] hover:bg-[#D93600] text-white text-xs font-black shadow-lg shadow-[#F94001]/20 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer uppercase tracking-wider"
+                        >
+                          {loading ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <span>Submitting Application...</span>
+                            </>
+                          ) : (
+                            <>
+                              <FileCheck className="h-4 w-4" />
+                              <span>Submit Application for Review &rarr;</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
-                      <div>
-                        <span className="text-[10px] font-mono text-[#5F6368] uppercase block">Account Holder Name</span>
-                        <p className="font-bold text-[#021526] mt-0.5">{accountHolderName || '—'}</p>
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-mono text-[#5F6368] uppercase block">Bank Name & Branch</span>
-                        <p className="font-bold text-[#021526] mt-0.5">{bankName || '—'} {branchName ? `(${branchName})` : ''}</p>
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-mono text-[#5F6368] uppercase block">Account Type</span>
-                        <p className="font-medium text-[#021526] mt-0.5">{accountType === 'CURRENT' ? 'Current Account' : 'Savings Account'}</p>
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-mono text-[#5F6368] uppercase block">Account Number</span>
-                        <p className="font-mono font-bold text-[#021526] mt-0.5">
-                          •••• •••• •••• {accountNumber.slice(-4) || '••••'}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-mono text-[#5F6368] uppercase block">IFSC Code</span>
-                        <p className="font-mono font-bold text-[#021526] mt-0.5">{ifscCode || '—'}</p>
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-mono text-[#5F6368] uppercase block">Bank Proof Verification</span>
-                        <p className="flex items-center gap-1 text-emerald-700 font-medium mt-1 text-[11px]">
-                          <Check className="h-3 w-3 text-emerald-600" />
-                          <span className="truncate">{branchProofFileName || (branchProofDocId ? 'Bank Proof Uploaded' : 'Uploaded')}</span>
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 7. Step 7 Review: Legal Declaration & Final Submission */}
-                  <div className="p-5 rounded-2xl border-2 border-[#F94001]/20 bg-[#FFF1EC]/30 space-y-4">
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck className="h-5 w-5 text-[#F94001]" />
-                      <h3 className="text-sm font-bold text-[#021526] font-display">
-                        Partner Entity Legal Declaration
-                      </h3>
-                    </div>
-
-                    <label className="flex items-start gap-3 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={declarationAccepted}
-                        onChange={(e) => setDeclarationAccepted(e.target.checked)}
-                        className="mt-1 h-4 w-4 rounded text-[#F94001] focus:ring-[#F94001]"
-                      />
-                      <span className="text-xs text-[#021526] leading-relaxed">
-                        I hereby declare that all submitted personal identification, sports venue physical parameters, court pricing matrices, bank settlement credentials, and GST registration details across all 7 steps are true, authentic, accurate, and belong to the authorized signatory of the partner entity. I agree to the <span className="text-[#F94001] font-bold underline">iBookSports Partner Agreement & SLA Guidelines</span>. <span className="text-rose-500 font-black">*</span>
-                      </span>
-                    </label>
-                  </div>
-
-                  {/* Final Action Buttons */}
-                  <div className="flex items-center justify-between pt-4 border-t border-[#E5E7EB]">
-                    <button
-                      type="button"
-                      onClick={() => setCurrentStep(6)}
-                      className="px-5 py-2.5 rounded-xl border border-[#E5E7EB] text-xs font-bold text-[#5F6368] hover:bg-[#F3F4F4] transition-colors"
-                    >
-                      &larr; Back to Step 6
-                    </button>
-                    <button
-                      type="button"
-                      disabled={loading || !declarationAccepted}
-                      onClick={handleSubmitApplication}
-                      className="px-8 py-3 rounded-xl bg-[#F94001] hover:bg-[#D93600] text-white text-xs font-black shadow-lg shadow-[#F94001]/20 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer uppercase tracking-wider"
-                    >
-                      {loading ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          <span>Submitting Application...</span>
-                        </>
-                      ) : (
-                        <>
-                          <FileCheck className="h-4 w-4" />
-                          <span>Submit Application for Review &rarr;</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              )}
-          </div>
-        )}
-      </main>
-    </div>
-  </div>
+                  )}
+              </div>
+            )}
+          </main>
+        </div>
+      </div>
 
       {/* ============================================================ */}
       {/* FLOATING BOTTOM-RIGHT TOAST NOTIFICATION POPUPS               */}

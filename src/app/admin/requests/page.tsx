@@ -374,14 +374,10 @@ export default function PartnerRequestsPage() {
     setIsSubmittingApproval(true);
     setApproveError(null);
     try {
-      try {
-        await adminApi.updateRequestStatus(approvingRequest.request_id, {
-          request_status: 'APPROVED',
-          approval_access_link: customOnboardingLink.trim() || undefined,
-        });
-      } catch (err) {
-        console.warn('API update failed or skipped in preview', err);
-      }
+      await adminApi.updateRequestStatus(approvingRequest.request_id, {
+        request_status: 'APPROVED',
+        approval_access_link: customOnboardingLink.trim() || undefined,
+      });
 
       // Persist in localStorage under ibooksports_partner_requests
       if (typeof window !== 'undefined') {

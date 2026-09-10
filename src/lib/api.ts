@@ -515,6 +515,32 @@ export const adminApi = {
     return response.data;
   },
 
+  createCourtRequest: async (payload: {
+    court_name: string;
+    display_name?: string;
+    sports: string[];
+    price_per_hour: number;
+    min_booking_duration?: string;
+    peak_hours_start?: string;
+    peak_hours_end?: string;
+    peak_hours_price?: number;
+    peak_days?: string[];
+    weekend_price?: number;
+    type?: 'Outdoor' | 'Indoor' | 'Covered';
+    same_physical_sports?: boolean;
+    parent_court_name?: string;
+    cancellation_window_hours?: number;
+    refund_percentage?: number;
+    venue_name: string;
+    venue_city?: string;
+    vendor_mobile: string;
+    vendor_name?: string;
+    notes?: string;
+  }) => {
+    const response = await apiClient.post<CourtRequestItem>('/court-requests', payload);
+    return response.data;
+  },
+
   reviewCourtRequest: async (
     id: string,
     payload: { status: 'APPROVED' | 'REJECTED'; rejection_reason?: string; reviewer_name?: string },

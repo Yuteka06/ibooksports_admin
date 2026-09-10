@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Headphones,
   Search,
@@ -70,6 +70,27 @@ export default function SupportHelpdeskPage() {
     description: string;
   } | null>(null);
 
+  // Live Backend Sync
+  const fetchLiveTickets = async () => {
+    try {
+      const res = await fetch('http://localhost:4000/api/v1/support');
+      if (res.ok) {
+        const liveData = await res.json();
+        if (Array.isArray(liveData) && liveData.length > 0) {
+          setTickets(liveData);
+        }
+      }
+    } catch (e) {
+      // Fallback to local state
+    }
+  };
+
+  useEffect(() => {
+    fetchLiveTickets();
+    const interval = setInterval(fetchLiveTickets, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
   // KPI Statistics
   const totalCount = tickets.length;
   const openCount = tickets.filter((t) => t.status === 'OPEN').length;
@@ -106,7 +127,7 @@ export default function SupportHelpdeskPage() {
   };
 
   // Action: Move to IN_PROGRESS
-  const handleMoveToInProgress = (ticketId: string) => {
+  const handleMoveToInProgress = async (ticketId: string) => {
     setTickets((prev) =>
       prev.map((t) => (t.id === ticketId ? { ...t, status: 'IN_PROGRESS' } : t))
     );
@@ -114,6 +135,14 @@ export default function SupportHelpdeskPage() {
     if (selectedTicket && selectedTicket.id === ticketId) {
       setSelectedTicket({ ...selectedTicket, status: 'IN_PROGRESS' });
     }
+
+    try {
+      await fetch(`http://localhost:4000/api/v1/support/${ticketId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'IN_PROGRESS' }),
+      });
+    } catch (e) {}
 
     const t = tickets.find((item) => item.id === ticketId);
     setToastMessage({
@@ -125,7 +154,7 @@ export default function SupportHelpdeskPage() {
   };
 
   // Action: Submit Resolution Directly in Slide-out Drawer (No popup modal!)
-  const handleConfirmResolutionInDrawer = () => {
+  const handleConfirmResolutionInDrawer = async () => {
     if (!selectedTicket) return;
     if (!resolutionNotes.trim()) {
       setResolveError('Resolution notes are mandatory before marking this ticket as resolved.');
@@ -151,6 +180,18 @@ export default function SupportHelpdeskPage() {
     setSelectedTicket(updatedTicket);
     setIsEditingResolution(false);
 
+    try {
+      await fetch(`http://localhost:4000/api/v1/support/${selectedTicket.id}/resolve`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resolution_notes: resolutionNotes.trim(),
+          resolved_by: 'Super Admin',
+          notify_requester: notifyRequester,
+        }),
+      });
+    } catch (e) {}
+
     setToastMessage({
       type: 'success',
       title: 'Ticket Resolved Successfully',
@@ -162,7 +203,7 @@ export default function SupportHelpdeskPage() {
   };
 
   // Action: Reopen Ticket
-  const handleReopenTicket = (ticketId: string) => {
+  const handleReopenTicket = async (ticketId: string) => {
     setTickets((prev) =>
       prev.map((t) => (t.id === ticketId ? { ...t, status: 'OPEN' } : t))
     );
@@ -170,6 +211,14 @@ export default function SupportHelpdeskPage() {
     if (selectedTicket && selectedTicket.id === ticketId) {
       setSelectedTicket({ ...selectedTicket, status: 'OPEN' });
     }
+
+    try {
+      await fetch(`http://localhost:4000/api/v1/support/${ticketId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'OPEN' }),
+      });
+    } catch (e) {}
 
     setToastMessage({
       type: 'info',
@@ -179,10 +228,8 @@ export default function SupportHelpdeskPage() {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-
-
   // Action: Raise New Inbound Ticket
-  const handleCreateNewTicket = (e: React.FormEvent) => {
+  const handleCreateNewTicket = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTicketPersonName.trim()) {
       setRaiseError('Please specify the contact person name.');
@@ -234,6 +281,30 @@ export default function SupportHelpdeskPage() {
     setTickets([newTicket, ...tickets]);
     setIsRaiseModalOpen(false);
     setRaiseError(null);
+
+    // Call Backend Endpoint
+    try {
+      const res = await fetch('http://localhost:4000/api/v1/support', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          venue_id: matchedVenue?.id || 'ven_1001',
+          venue_name: matchedVenue?.venue_name || 'Sky Sports Arena',
+          person_name: newTicketPersonName.trim(),
+          contact_number: newTicketContact.trim(),
+          category: newTicketCategory,
+          priority: newTicketPriority,
+          subject: newTicketSubject.trim(),
+          description: newTicketDescription.trim(),
+          booking_id: newTicketBookingId.trim() || undefined,
+          attachment_name: newTicketAttachmentName.trim() || undefined,
+        }),
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setTickets((prev) => [created, ...prev.filter((t) => t.id !== newTicket.id)]);
+      }
+    } catch (e) {}
 
     // Reset Form
     setNewTicketPersonName('');

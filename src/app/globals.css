@@ -60,3 +60,26 @@ h1, h2, h3, h4, h5, h6, .font-display {
   width: 0px !important;
   height: 0px !important;
 }
+
+/* Global Selection & Accent Colors */
+::selection {
+  background-color: #FF6B2C !important;
+  color: #ffffff !important;
+}
+
+::-moz-selection {
+  background-color: #FF6B2C !important;
+  color: #ffffff !important;
+}
+
+input, select, textarea, button {
+  accent-color: #FF6B2C;
+}
+
+select option:checked,
+select option:hover,
+select option:focus {
+  background-color: #FF6B2C !important;
+  color: #ffffff !important;
+}
+
