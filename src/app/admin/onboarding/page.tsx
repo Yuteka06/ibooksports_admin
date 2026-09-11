@@ -1538,19 +1538,14 @@ export default function PartnerOnboardingAdminTrackerPage() {
                               </div>
 
                               <div className="flex flex-wrap items-center gap-1.5">
-                                {ct.sports?.map((s) => (
+                                {ct.sports?.slice(0, 1).map((s) => (
                                   <span
                                     key={s}
-                                    className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#F8F9FA] border border-[#E5E7EB] text-[#021526]"
+                                    className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-[#021526] text-white"
                                   >
                                     {s}
                                   </span>
                                 ))}
-                                {ct.use_one_physical_court_for_two_sports && (
-                                  <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded">
-                                    Dual Shared
-                                  </span>
-                                )}
                               </div>
                             </div>
 

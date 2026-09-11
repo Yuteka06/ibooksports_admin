@@ -828,11 +828,7 @@ export default function PartnerOnboardingWizard() {
     const c = courts[index];
     if (!c) return;
     if (!c.sports || c.sports.length === 0) {
-      setErrorMessage(`Please select at least one sport for Court #${index + 1}.`);
-      return;
-    }
-    if (c.use_one_physical_court_for_two_sports && c.sports.length < 2) {
-      setErrorMessage(`Please select exactly 2 sports for dual-sport Court #${index + 1}.`);
+      setErrorMessage(`Please select one sport for Court #${index + 1}.`);
       return;
     }
     if (!c.court_name.trim()) {
@@ -863,12 +859,14 @@ export default function PartnerOnboardingWizard() {
       handleSaveSingleCourt(editingCourtIndex);
     }
 
-    const upperSports = courts[0]?.sports || ['FOOTBALL'];
+    const previousSport = courts[courts.length - 1]?.sports?.[0] || 'FOOTBALL';
+    // Offer next available sport if possible, or fall back to previous sport
+    const nextSport = AVAILABLE_SPORTS.find((s) => !courts.some((ct) => ct.sports?.[0] === s)) || previousSport;
     const nextNumber = courts.length + 1;
     const newCourt = {
       court_name: `Turf ${nextNumber}`,
       display_name: `Premium Court ${nextNumber}`,
-      sports: upperSports,
+      sports: [nextSport],
       minimum_booking_time_minutes: 60,
       regular_price: 1000,
       peak_days: ['SATURDAY', 'SUNDAY'],
@@ -877,7 +875,7 @@ export default function PartnerOnboardingWizard() {
       weekend_price: 1400,
       advance_booking_price: 500,
       use_one_physical_court_for_two_sports: false,
-      is_same_sport_as_above: true,
+      is_same_sport_as_above: false,
       cancellation_window_hours: cancellationWindowHours,
       refund_percentage: refundPercentage,
     };
@@ -933,7 +931,7 @@ export default function PartnerOnboardingWizard() {
       const payloadCourts = courts.map((c) => ({
         court_name: c.court_name,
         display_name: c.display_name,
-        sports: c.sports,
+        sports: [c.sports?.[0] || 'FOOTBALL'],
         minimum_booking_time_minutes: Number(c.minimum_booking_time_minutes) || 60,
         regular_price: Number(c.regular_price) || 0,
         peak_days: c.peak_days || ['SATURDAY', 'SUNDAY'],
@@ -941,9 +939,8 @@ export default function PartnerOnboardingWizard() {
         peak_hour_price: Number(c.peak_hour_price) || 0,
         weekend_price: Number(c.weekend_price) || 0,
         advance_booking_price: Number(c.advance_booking_price) || 0,
-        use_one_physical_court_for_two_sports: Boolean(c.use_one_physical_court_for_two_sports),
-        is_same_sport_as_above: Boolean(c.is_same_sport_as_above),
-        ...(c.shared_with_court_index !== undefined ? { shared_with_court_index: Number(c.shared_with_court_index) } : {}),
+        use_one_physical_court_for_two_sports: false,
+        is_same_sport_as_above: false,
         cancellation_window_hours: c.cancellation_window_hours || cancellationWindowHours,
         refund_percentage: c.refund_percentage || refundPercentage,
       }));
@@ -2375,11 +2372,6 @@ export default function PartnerOnboardingWizard() {
                               <span className="text-[10px] font-mono text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-bold">
                                 ✓ Saved &amp; Configured
                               </span>
-                              {court.use_one_physical_court_for_two_sports && (
-                                <span className="text-[10px] font-mono text-indigo-800 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full font-bold">
-                                  2-in-1 Dual Sport
-                                </span>
-                              )}
                             </div>
 
                             {/* Sports & Pricing Summary Pills */}
@@ -2483,276 +2475,50 @@ export default function PartnerOnboardingWizard() {
                           )}
                         </div>
 
-                        {/* 1. FIRST: Sport Selection for this Court */}
-                        {index === 0 ? (
-                          /* Court #1 (Initial Court): Standard Single Sport */
-                          <div className="rounded-xl border border-[#CBD5E1] bg-white p-4 space-y-2.5">
+                        {/* 1. FIRST: Sport Selection for this Court (1 Court = 1 Sport) */}
+                        <div className="rounded-xl border border-[#CBD5E1] bg-white p-4 space-y-2.5">
+                          <div className="flex items-center justify-between">
                             <label className="text-xs font-bold text-[#021526] block">
                               Select Sport for this Court <span className="text-rose-500 font-black">*</span>
                             </label>
-                            <div className="flex flex-wrap gap-2">
-                              {AVAILABLE_SPORTS.map((sport) => {
-                                const isSelected = court.sports.includes(sport);
-                                return (
-                                  <button
-                                    key={sport}
-                                    type="button"
-                                    onClick={() => {
-                                      setCourts((prev) =>
-                                        prev.map((item, i) =>
-                                          i === index ? { ...item, sports: [sport] } : item,
-                                        ),
-                                      );
-                                    }}
-                                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${isSelected
-                                        ? 'bg-[#F94001] text-white shadow-xs'
-                                        : 'bg-slate-50 text-[#5F6368] border border-[#CBD5E1] hover:border-slate-400'
-                                      }`}
-                                  >
-                                    {isSelected && <Check className="h-3.5 w-3.5" />}
-                                    <span>{sport}</span>
-                                  </button>
-                                );
-                              })}
-                            </div>
+                            <span className="text-[11px] font-medium text-[#5F6368]">
+                              1 Court = 1 Sport
+                            </span>
                           </div>
-                        ) : (
-                          /* Added Courts (index > 0): Mandatory "Using One Physical Court for Two Sports?" Question */
-                          <div className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-4 space-y-4">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                              <div>
-                                <span className="text-xs font-bold text-[#021526] flex items-center gap-1.5">
-                                  <Trophy className="h-4 w-4 text-indigo-600" />
-                                  <span>Using One Physical Court for Two Sports?</span>
-                                  <span className="text-rose-500 font-black">*</span>
-                                </span>
-                                <p className="text-[11px] text-[#5F6368] mt-0.5">
-                                  Does this added court share the same physical turf/ground with one of the courts configured above?
-                                </p>
-                              </div>
-
-                              <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex flex-wrap gap-2">
+                            {AVAILABLE_SPORTS.map((sport) => {
+                              const isSelected = court.sports && court.sports.length > 0 && court.sports[0] === sport;
+                              return (
                                 <button
+                                  key={sport}
                                   type="button"
                                   onClick={() => {
                                     setCourts((prev) =>
                                       prev.map((item, i) =>
                                         i === index
                                           ? {
-                                            ...item,
-                                            use_one_physical_court_for_two_sports: false,
-                                            sports: [item.sports[0] || 'FOOTBALL'],
-                                          }
+                                              ...item,
+                                              sports: [sport],
+                                              use_one_physical_court_for_two_sports: false,
+                                              is_same_sport_as_above: false,
+                                            }
                                           : item,
                                       ),
                                     );
                                   }}
-                                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${!court.use_one_physical_court_for_two_sports
-                                      ? 'bg-[#021526] text-white shadow-xs'
-                                      : 'bg-white border border-[#CBD5E1] text-[#5F6368] hover:bg-slate-100'
-                                    }`}
+                                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                                    isSelected
+                                      ? 'bg-[#F94001] text-white shadow-xs'
+                                      : 'bg-slate-50 text-[#5F6368] border border-[#CBD5E1] hover:border-slate-400'
+                                  }`}
                                 >
-                                  No (1 Sport)
+                                  {isSelected && <Check className="h-3.5 w-3.5" />}
+                                  <span>{sport}</span>
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setCourts((prev) =>
-                                      prev.map((item, i) => {
-                                        if (i !== index) return item;
-                                        const parentIndex = (item as { shared_with_court_index?: number }).shared_with_court_index ?? 0;
-                                        const parentCourt = prev[parentIndex] || prev[0];
-                                        const parentSport = parentCourt?.sports[0] || 'FOOTBALL';
-                                        const secondarySport =
-                                          item.sports.find((s) => s !== parentSport) ||
-                                          AVAILABLE_SPORTS.find((s) => s !== parentSport) ||
-                                          'CRICKET';
-                                        return {
-                                          ...item,
-                                          use_one_physical_court_for_two_sports: true,
-                                          shared_with_court_index: parentIndex,
-                                          sports: [parentSport, secondarySport],
-                                        };
-                                      }),
-                                    );
-                                  }}
-                                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${court.use_one_physical_court_for_two_sports
-                                      ? 'bg-indigo-600 text-white shadow-xs'
-                                      : 'bg-white border border-[#CBD5E1] text-[#5F6368] hover:bg-slate-100'
-                                    }`}
-                                >
-                                  Yes (2 Sports)
-                                </button>
-                              </div>
-                            </div>
-
-                            {/* CASE 1: NO (1 SPORT) - SELECT ANY SINGLE SPORT */}
-                            {!court.use_one_physical_court_for_two_sports ? (
-                              <div className="pt-3 border-t border-indigo-100 space-y-2">
-                                <label className="text-[11px] font-bold text-[#021526] block">
-                                  Select Sport for this Separate Court: <span className="text-rose-500 font-black">*</span>
-                                </label>
-                                <div className="flex flex-wrap gap-2">
-                                  {AVAILABLE_SPORTS.map((sport) => {
-                                    const isSelected = court.sports.includes(sport);
-                                    return (
-                                      <button
-                                        key={sport}
-                                        type="button"
-                                        onClick={() => {
-                                          setCourts((prev) =>
-                                            prev.map((item, i) =>
-                                              i === index ? { ...item, sports: [sport] } : item,
-                                            ),
-                                          );
-                                        }}
-                                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${isSelected
-                                            ? 'bg-[#F94001] text-white shadow-xs'
-                                            : 'bg-white text-[#5F6368] border border-[#CBD5E1] hover:border-slate-400'
-                                          }`}
-                                      >
-                                        {isSelected && <Check className="h-3.5 w-3.5" />}
-                                        <span>{sport}</span>
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            ) : (
-                              /* CASE 2: YES (2 SPORTS) - SELECT WHICH UPPER COURT TO SHARE GROUND WITH */
-                              <div className="pt-3 border-t border-indigo-100 space-y-3.5">
-                                {/* Step A: Select Upper Court Display Card */}
-                                <div>
-                                  <label className="text-[11px] font-bold text-[#021526] block mb-2">
-                                    1. Select Which Physical Court Above Shares This Ground: <span className="text-rose-500 font-black">*</span>
-                                  </label>
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                                    {courts.slice(0, index).map((upperCourt, uIndex) => {
-                                      const parentIndex = (court as { shared_with_court_index?: number }).shared_with_court_index ?? 0;
-                                      const isSelectedParent = parentIndex === uIndex;
-                                      const upperSport = upperCourt.sports[0] || 'FOOTBALL';
-
-                                      return (
-                                        <button
-                                          key={`upper-card-${uIndex}`}
-                                          type="button"
-                                          onClick={() => {
-                                            setCourts((prev) =>
-                                              prev.map((item, i) => {
-                                                if (i !== index) return item;
-                                                const currentSecondary =
-                                                  item.sports.find((s) => s !== upperSport) ||
-                                                  AVAILABLE_SPORTS.find((s) => s !== upperSport) ||
-                                                  'CRICKET';
-                                                return {
-                                                  ...item,
-                                                  shared_with_court_index: uIndex,
-                                                  sports: [upperSport, currentSecondary],
-                                                };
-                                              }),
-                                            );
-                                          }}
-                                          className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between gap-2.5 ${isSelectedParent
-                                              ? 'border-indigo-600 bg-white shadow-sm ring-2 ring-indigo-500/20'
-                                              : 'border-[#CBD5E1] bg-white/80 hover:border-indigo-300 hover:bg-white'
-                                            }`}
-                                        >
-                                          <div className="flex items-center justify-between gap-2">
-                                            <div className="flex items-center gap-2">
-                                              <div
-                                                className={`h-6 w-6 rounded-md flex items-center justify-center font-bold text-[11px] font-mono ${isSelectedParent
-                                                    ? 'bg-indigo-600 text-white'
-                                                    : 'bg-slate-200 text-slate-700'
-                                                  }`}
-                                              >
-                                                {uIndex + 1}
-                                              </div>
-                                              <span className="text-xs font-bold text-[#021526] uppercase">
-                                                {upperCourt.court_name || `Court #${uIndex + 1}`}
-                                              </span>
-                                            </div>
-                                            {isSelectedParent ? (
-                                              <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded">
-                                                ✓ Selected
-                                              </span>
-                                            ) : (
-                                              <span className="text-[10px] text-slate-400 font-medium">
-                                                Click to select
-                                              </span>
-                                            )}
-                                          </div>
-
-                                          <div className="flex items-center justify-between text-[11px] text-[#5F6368] pt-1 border-t border-slate-100">
-                                            <span className="truncate max-w-[140px]">
-                                              {upperCourt.display_name}
-                                            </span>
-                                            <span className="px-2 py-0.5 rounded bg-[#021526] text-white text-[10px] font-bold shrink-0">
-                                              {upperSport}
-                                            </span>
-                                          </div>
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-
-                                {/* Step B: Select Companion 2nd Sport */}
-                                {(() => {
-                                  const parentIndex = (court as { shared_with_court_index?: number }).shared_with_court_index ?? 0;
-                                  const parentCourt = courts[parentIndex] || courts[0];
-                                  const parentSport = parentCourt?.sports[0] || 'FOOTBALL';
-                                  const current2ndSport = court.sports.find((s) => s !== parentSport) || court.sports[1] || 'CRICKET';
-
-                                  return (
-                                    <div className="space-y-2 pt-2 border-t border-indigo-100">
-                                      <label className="text-[11px] font-bold text-[#021526] block">
-                                        2. Select 2nd Sport for this Court (Sharing with {parentCourt?.court_name} - {parentSport}): <span className="text-rose-500 font-black">*</span>
-                                      </label>
-                                      <div className="flex flex-wrap gap-2">
-                                        {AVAILABLE_SPORTS.filter((s) => s !== parentSport).map((sport) => {
-                                          const isSelected = current2ndSport === sport;
-                                          return (
-                                            <button
-                                              key={sport}
-                                              type="button"
-                                              onClick={() => {
-                                                setCourts((prev) =>
-                                                  prev.map((item, i) =>
-                                                    i === index
-                                                      ? {
-                                                        ...item,
-                                                        sports: [parentSport, sport],
-                                                      }
-                                                      : item,
-                                                  ),
-                                                );
-                                              }}
-                                              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${isSelected
-                                                  ? 'bg-indigo-600 text-white shadow-xs'
-                                                  : 'bg-white text-[#5F6368] border border-[#CBD5E1] hover:border-slate-400'
-                                                }`}
-                                            >
-                                              {isSelected && <Check className="h-3.5 w-3.5" />}
-                                              <span>{sport}</span>
-                                            </button>
-                                          );
-                                        })}
-                                      </div>
-
-                                      {/* Resource Protection Rule Box */}
-                                      <div className="mt-3 p-3 rounded-xl bg-indigo-100/80 border border-indigo-200 text-[11px] text-indigo-950 font-medium leading-relaxed flex items-center gap-2.5">
-                                        <Trophy className="h-4 w-4 text-indigo-600 shrink-0" />
-                                        <span>
-                                          <strong>Resource Protection Rule:</strong> This court shares physical space with <strong>{parentCourt?.court_name || 'Selected Court'}</strong>. When <strong>{parentSport}</strong> is booked on that court, this court (<strong>{current2ndSport}</strong>) will automatically be blocked during that time slot to prevent double-booking.
-                                        </span>
-                                      </div>
-                                    </div>
-                                  );
-                                })()}
-                              </div>
-                            )}
+                              );
+                            })}
                           </div>
-                        )}
+                        </div>
 
                         {/* 2. SECOND: Court Identifier Name & Customer Display Name */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -3846,11 +3612,6 @@ export default function PartnerOnboardingWizard() {
                                       {sp}
                                     </span>
                                   ))}
-                                  {court.use_one_physical_court_for_two_sports && (
-                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 block">
-                                      ⚡ Dual-Sport
-                                    </span>
-                                  )}
                                 </div>
                               </div>
 
