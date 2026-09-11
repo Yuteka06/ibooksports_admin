@@ -214,11 +214,30 @@ export default function WebsiteLeadForm() {
 
     setIsSubmitting(true);
 
-    const generatedId = `REQ-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    let effectiveId = `REQ-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    try {
+      const payload: SubmitVenueDetailsPayload = {
+        name: trimmedName,
+        email: trimmedEmail || undefined,
+        mobile_number: Number(formData.mobileNumber),
+        venue_name: trimmedVenueName,
+        venue_location_name: trimmedLocationUrl,
+        state: formData.state.trim(),
+        district: formData.district.trim(),
+        sports: primarySportString,
+      };
+      const res: any = await websiteApi.submitVenueDetails(payload).catch(() => null);
+      if (res?.data?.requestId) {
+        effectiveId = res.data.requestId;
+      }
+    } catch {
+      // Backend is optional during preview
+    }
 
     // Create partner request item and persist to localStorage
     const partnerRequestRecord = {
-      request_id: generatedId,
+      request_id: effectiveId,
       request_type: 'ONBOARDING' as const,
       requester_name: trimmedName,
       requester_email: trimmedEmail || `${trimmedName.toLowerCase().replace(/[^a-z0-9]/g, '')}@turfpartner.com`,
@@ -244,24 +263,8 @@ export default function WebsiteLeadForm() {
       }
     }
 
-    try {
-      const payload: SubmitVenueDetailsPayload = {
-        name: trimmedName,
-        email: trimmedEmail || undefined,
-        mobile_number: Number(formData.mobileNumber),
-        venue_name: trimmedVenueName,
-        venue_location_name: trimmedLocationUrl,
-        state: formData.state.trim(),
-        district: formData.district.trim(),
-        sports: primarySportString,
-      };
-      await websiteApi.submitVenueDetails(payload).catch(() => null);
-    } catch {
-      // Backend is optional during preview
-    }
-
     setSubmissionResult({
-      requestId: generatedId,
+      requestId: effectiveId,
       name: trimmedName,
       email: trimmedEmail,
       mobile_number: Number(formData.mobileNumber),

@@ -252,8 +252,25 @@ export default function PartnerRequestsPage() {
           if (stored) {
             const parsed = JSON.parse(stored);
             if (Array.isArray(parsed) && parsed.length > 0) {
-              const ids = new Set(parsed.map((p: any) => p.request_id));
-              combined = [...parsed, ...combined.filter((c) => !ids.has(c.request_id))];
+              const backendIds = new Set(combined.map((c) => c.request_id));
+              const backendPhones = new Set(
+                combined.map((c) => (c.mobile_number || '').replace(/\D/g, '').slice(-10)).filter(Boolean)
+              );
+
+              // Filter out local entries that already exist in backend (by id or normalized phone)
+              const remainingLocal = parsed.filter((p: any) => {
+                const pPhone = (p.mobile_number || '').replace(/\D/g, '').slice(-10);
+                if (backendIds.has(p.request_id)) return false;
+                if (pPhone && backendPhones.has(pPhone)) return false;
+                return true;
+              });
+
+              // Keep local storage clean & synchronized with backend
+              if (remainingLocal.length !== parsed.length) {
+                localStorage.setItem('ibooksports_partner_requests', JSON.stringify(remainingLocal));
+              }
+
+              combined = [...remainingLocal, ...combined];
             }
           }
         } catch (e) {
@@ -270,8 +287,17 @@ export default function PartnerRequestsPage() {
           if (stored) {
             const parsed = JSON.parse(stored);
             if (Array.isArray(parsed) && parsed.length > 0) {
-              const ids = new Set(parsed.map((p: any) => p.request_id));
-              combined = [...parsed, ...combined.filter((c) => !ids.has(c.request_id))];
+              const backendIds = new Set(combined.map((c) => c.request_id));
+              const backendPhones = new Set(
+                combined.map((c) => (c.mobile_number || '').replace(/\D/g, '').slice(-10)).filter(Boolean)
+              );
+              const remainingLocal = parsed.filter((p: any) => {
+                const pPhone = (p.mobile_number || '').replace(/\D/g, '').slice(-10);
+                if (backendIds.has(p.request_id)) return false;
+                if (pPhone && backendPhones.has(pPhone)) return false;
+                return true;
+              });
+              combined = [...remainingLocal, ...combined];
             }
           }
         } catch {}
@@ -405,55 +431,7 @@ export default function PartnerRequestsPage() {
         }
         localStorage.setItem('ibooksports_partner_requests', JSON.stringify(parsed));
 
-        // Auto-seed application into ibooksports_onboarding_apps so it appears in /admin/onboarding
-        const storedApps = localStorage.getItem('ibooksports_onboarding_apps');
-        let onboardingApps = storedApps ? JSON.parse(storedApps) : [];
-        const appId = approvingRequest.request_id;
-        const exists = onboardingApps.some((a: any) => a.application_id === appId);
-        if (!exists) {
-          const newApp = {
-            application_id: appId,
-            status: 'PENDING_REVIEW',
-            current_step: 8,
-            mobile_number: Number(approvingRequest.mobile_number) || 9876543210,
-            partner_details: {
-              name: approvingRequest.requester_name,
-              email: approvingRequest.requester_email,
-              district: approvingRequest.district,
-              state: approvingRequest.state,
-              aadhaar_number: 'XXXX-XXXX-8921',
-              address: `${approvingRequest.district}, ${approvingRequest.state}`,
-            },
-            business_details: {
-              venue_name: approvingRequest.venue_name,
-              address: `${approvingRequest.district}, ${approvingRequest.state}`,
-              google_maps_url: approvingRequest.venue_location,
-              gstin: '33AAAPL1298D1Z5',
-              sports: (approvingRequest.sports || []).join(', '),
-            },
-            sports_and_courts: {
-              sports: approvingRequest.sports || ['FOOTBALL'],
-              courts: (approvingRequest.sports || ['Football']).map((sp: string, idx: number) => ({
-                court_name: `Ground ${idx + 1} (${sp})`,
-                display_name: `Pitch ${idx + 1}`,
-                sports: [sp],
-                regular_price: 1200,
-                peak_hour_price: 1600,
-                weekend_price: 1500,
-              })),
-            },
-            bank_details: {
-              account_holder_name: approvingRequest.requester_name,
-              bank_name: 'HDFC Bank Ltd',
-              account_number: '50200084920194',
-              ifsc_code: 'HDFC0001248',
-              account_type: 'CURRENT',
-            },
-            created_at: new Date().toISOString(),
-          };
-          onboardingApps.unshift(newApp);
-          localStorage.setItem('ibooksports_onboarding_apps', JSON.stringify(onboardingApps));
-        }
+        // Approval link is saved with the request and backend session is created dynamically
       }
 
       setToastMessage({

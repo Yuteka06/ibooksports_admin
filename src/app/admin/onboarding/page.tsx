@@ -55,6 +55,14 @@ export default function PartnerOnboardingAdminTrackerPage() {
 
   useEffect(() => {
     setMounted(true);
+    // Purge any stale mock onboarding apps cached in localStorage
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('ibooksports_onboarding_apps');
+      } catch (e) {
+        // ignore
+      }
+    }
   }, []);
 
   // Slide-out Full Inspection Drawer State
@@ -197,125 +205,11 @@ export default function PartnerOnboardingAdminTrackerPage() {
   const fetchApplications = useCallback(async () => {
     setLoading(true);
     try {
-      // Fallback demo data
-      const fallback: OnboardingSessionData[] = [
-        {
-          session_id: 'APP10231',
-          application_id: 'APP10231',
-          onboarding_token: 'onb_tok_demo_10231',
-          current_step: 8,
-          mobile_number: '9876543210',
-          mobile_verified: true,
-          partner_details: {
-            name: 'Karthik Rajan',
-            mobile_number: '9876543210',
-            email: 'partner@ibooksports.com',
-            aadhaar_document_id: 'doc_aadhaar_001',
-            profile_photo_document_id: 'doc_profile_001',
-            address: '45 Race Course Road, Peelamedu',
-            state: 'Tamil Nadu',
-            district: 'Coimbatore',
-            pincode: '641018',
-          },
-          business_details: {
-            venue_name: 'Sky Sports Arena',
-            venue_email: 'contact@skysports.com',
-            venue_mobile_number: '9876543210',
-            venue_address: '123 Avinashi Road, Peelamedu, Coimbatore',
-            venue_google_maps_link: 'https://www.google.com/maps?q=11.0283,77.0012',
-            has_gst: true,
-            gst_number: '33ABCDE1234F1Z5',
-            gst_document_id: 'doc_gst_001',
-          },
-          court_photos: ['doc_court_001', 'doc_court_002', 'doc_court_003', 'doc_court_004'],
-          operating_hours: {
-            working_days: ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'],
-            operating_time: '06:00 AM',
-            closing_time: '10:00 PM',
-            starting_time: '06:00 AM',
-            day_schedules: [
-              { day: 'MONDAY', is_open: true, open_time: '06:00 AM', close_time: '10:00 PM' },
-              { day: 'TUESDAY', is_open: true, open_time: '06:00 AM', close_time: '10:00 PM' },
-              { day: 'WEDNESDAY', is_open: true, open_time: '06:00 AM', close_time: '10:00 PM' },
-              { day: 'THURSDAY', is_open: true, open_time: '06:00 AM', close_time: '10:00 PM' },
-              { day: 'FRIDAY', is_open: true, open_time: '06:00 AM', close_time: '10:00 PM' },
-              { day: 'SATURDAY', is_open: true, open_time: '06:00 AM', close_time: '11:00 PM' },
-              { day: 'SUNDAY', is_open: true, open_time: '06:00 AM', close_time: '10:00 PM' },
-            ],
-          },
-          courts_config: {
-            number_of_sports: 2,
-            sports: ['FOOTBALL', 'CRICKET'],
-            courts: [
-              {
-                court_name: 'Turf 1',
-                display_name: 'Premium 7v7 Football Turf',
-                sports: ['FOOTBALL'],
-                minimum_booking_time_minutes: 60,
-                regular_price: 1000,
-                peak_days: ['SATURDAY', 'SUNDAY'],
-                peak_hours: [{ start_time: '06:00 PM', end_time: '10:00 PM' }],
-                peak_hour_price: 1500,
-                weekend_price: 1400,
-                advance_booking_price: 500,
-                use_one_physical_court_for_two_sports: false,
-              },
-              {
-                court_name: 'Box Turf 2',
-                display_name: 'Dual Multi-Sport Court',
-                sports: ['BADMINTON', 'PICKLEBALL'],
-                minimum_booking_time_minutes: 60,
-                regular_price: 800,
-                peak_days: ['SATURDAY', 'SUNDAY'],
-                peak_hours: [{ start_time: '05:00 PM', end_time: '10:00 PM' }],
-                peak_hour_price: 1200,
-                weekend_price: 1100,
-                advance_booking_price: 400,
-                use_one_physical_court_for_two_sports: true,
-              },
-            ],
-          },
-          bank_details: {
-            account_holder_name: 'Sky Sports Private Limited',
-            bank_name: 'HDFC Bank',
-            account_number: '50200012345678',
-            confirm_account_number: '50200012345678',
-            branch_name: 'Peelamedu',
-            ifsc_code: 'HDFC0001234',
-            account_type: 'CURRENT',
-            branch_proof_document_id: 'doc_bank_001',
-          },
-          status: 'PENDING_REVIEW',
-          created_at: '30-08-2026 09:30:00 PM IST',
-          updated_at: '31-08-2026 04:53:15 PM IST',
-        },
-      ];
-
-      let combined: OnboardingSessionData[] = [];
-      try {
-        const data = await onboardingApi.listAdminApplications();
-        combined = (data && data.length > 0) ? data : fallback;
-      } catch {
-        combined = fallback;
-      }
-
-      // Merge newly seeded onboarding applications from localStorage
-      if (typeof window !== 'undefined') {
-        try {
-          const stored = localStorage.getItem('ibooksports_onboarding_apps');
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              const ids = new Set(parsed.map((p: any) => p.application_id));
-              combined = [...parsed, ...combined.filter((c) => !ids.has(c.application_id))];
-            }
-          }
-        } catch (e) {
-          console.error('Error loading local onboarding applications', e);
-        }
-      }
-
-      setApplications(combined);
+      const data = await onboardingApi.listAdminApplications();
+      setApplications(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Error fetching onboarding applications from API:', err);
+      setApplications([]);
     } finally {
       setLoading(false);
     }
@@ -356,20 +250,9 @@ export default function PartnerOnboardingAdminTrackerPage() {
         console.warn('API review failed or simulated', err);
       }
 
-      // 1. Update status in localStorage ibooksports_onboarding_apps
+      // Convert to Live Venue in localStorage ibooksports_live_venues
       if (typeof window !== 'undefined') {
         try {
-          const stored = localStorage.getItem('ibooksports_onboarding_apps');
-          let parsed = stored ? JSON.parse(stored) : [];
-          const found = parsed.find((a: any) => a.application_id === actionTargetApp.application_id);
-          if (found) {
-            found.status = 'APPROVED';
-          } else {
-            parsed.unshift({ ...actionTargetApp, status: 'APPROVED' });
-          }
-          localStorage.setItem('ibooksports_onboarding_apps', JSON.stringify(parsed));
-
-          // 2. Convert to Live Venue in localStorage ibooksports_live_venues
           const storedVenues = localStorage.getItem('ibooksports_live_venues');
           let liveVenues: VenueDetail[] = storedVenues ? JSON.parse(storedVenues) : [];
 
