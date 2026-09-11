@@ -33,6 +33,7 @@ import {
 } from '@/lib/mockData';
 
 export default function VenuesManagementPage() {
+  const [mounted, setMounted] = useState(false);
   const [venues, setVenues] = useState<VenueDetail[]>(INITIAL_VENUES);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedState, setSelectedState] = useState('ALL');
@@ -225,6 +226,10 @@ export default function VenuesManagementPage() {
   };
 
   const isAnyFilterActive = searchQuery || selectedState !== 'ALL' || selectedStatus !== 'ALL' || selectedSport !== 'ALL';
+
+  // Mounted guard — prevents browser extension hydration mismatch
+  useEffect(() => { setMounted(true); }, []);
+  if (!mounted) return null;
 
   return (
     <div className="animate-in fade-in duration-200 space-y-4 max-w-[1600px] mx-auto">

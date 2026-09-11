@@ -34,6 +34,7 @@ import {
 import { INITIAL_SUPPORT_TICKETS, INITIAL_VENUES, SupportTicketItem } from '@/lib/mockData';
 
 export default function SupportHelpdeskPage() {
+  const [mounted, setMounted] = useState(false);
   const [tickets, setTickets] = useState<SupportTicketItem[]>(INITIAL_SUPPORT_TICKETS);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
@@ -433,8 +434,12 @@ export default function SupportHelpdeskPage() {
     }
   };
 
+  // Mounted guard — prevents browser extension hydration mismatch
+  useEffect(() => { setMounted(true); }, []);
+  if (!mounted) return null;
+
   return (
-    <div className="space-y-6" suppressHydrationWarning>
+    <div className="space-y-6">
       {/* PAGE HEADER (SIMPLE & MINIMAL) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E5E7EB] pb-5">
         <div>

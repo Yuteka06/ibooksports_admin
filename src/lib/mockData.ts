@@ -2669,6 +2669,7 @@ export interface CourtExtensionHistory {
 
 export interface CourtExtensionRequest {
   id: string;
+  court_id?: string;
   venue_id: string;
   venue_name: string;
   venue_city: string;

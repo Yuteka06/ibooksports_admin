@@ -188,6 +188,7 @@ const FALLBACK_PARTNER_REQUESTS: PartnerRequestItem[] = [
 ];
 
 export default function PartnerRequestsPage() {
+  const [mounted, setMounted] = useState(false);
   const [requests, setRequests] = useState<PartnerRequestItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
@@ -195,7 +196,6 @@ export default function PartnerRequestsPage() {
   const [selectedCity, setSelectedCity] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [mounted, setMounted] = useState(false);
 
   const handleCopy = (text: string, id: string) => {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
@@ -582,6 +582,16 @@ export default function PartnerRequestsPage() {
     }
     return true;
   });
+
+  const getSportBadgeStyle = (sport: string) => {
+    const s = sport.toLowerCase();
+    if (s.includes('cricket')) return 'bg-emerald-50 text-emerald-800 border-emerald-200/80';
+    if (s.includes('football')) return 'bg-sky-50 text-sky-800 border-sky-200/80';
+    if (s.includes('badminton')) return 'bg-purple-50 text-purple-800 border-purple-200/80';
+    if (s.includes('tennis')) return 'bg-amber-50 text-amber-800 border-amber-200/80';
+    if (s.includes('pickleball') || s.includes('padel')) return 'bg-pink-50 text-pink-800 border-pink-200/80';
+    return 'bg-slate-100 text-slate-800 border-slate-200';
+  };
 
   return (
     <div className="space-y-6" suppressHydrationWarning>

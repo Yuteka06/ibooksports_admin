@@ -552,6 +552,7 @@ export const adminApi = {
 
 export interface CourtRequestItem {
   id: string;
+  court_id?: string;
   court_name: string;
   display_name?: string;
   sports: string[];

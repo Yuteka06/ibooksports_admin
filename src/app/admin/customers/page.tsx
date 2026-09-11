@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Users,
   Search,
@@ -46,6 +46,7 @@ type DrawerItem =
   | { type: 'cancellation'; data: BookingItem };
 
 export default function CustomerManagementPage() {
+  const [mounted, setMounted] = useState(false);
   const [customers, setCustomers] = useState<CustomerItem[]>(INITIAL_CUSTOMERS);
   const [allBookings, setAllBookings] = useState<BookingItem[]>(INITIAL_BOOKINGS);
   const [allPayments, setAllPayments] = useState<PaymentTransactionItem[]>(INITIAL_PAYMENTS);
@@ -227,6 +228,11 @@ export default function CustomerManagementPage() {
   // =========================================================================
   // VIEW 2: CUSTOMER DETAIL PAGE VIEW (MATCHING VENUE MANAGEMENT FULL VIEW)
   // =========================================================================
+
+  // Mounted guard — prevents browser extension hydration mismatch
+  useEffect(() => { setMounted(true); }, []);
+  if (!mounted) return null;
+
   if (selectedCustomer) {
     const formattedId = formatCustomerId(selectedCustomer.id);
     const hoursSpent =

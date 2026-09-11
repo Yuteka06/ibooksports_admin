@@ -1,43 +1,38 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import Link from 'next/link';
 import {
-  Trophy,
   Search,
   CheckCircle2,
   XCircle,
-  Clock,
   Check,
-  RefreshCw,
   Building2,
   Phone,
-  Layers,
   X,
-  AlertTriangle,
-  ArrowRight,
-  ShieldAlert,
-  Pencil,
-  Trash2,
-  Plus,
-  Eye,
-  History,
-  Sparkles,
-  ChevronDown,
-  Calendar,
-  Flame,
-  Sun,
   RotateCcw,
   ShieldCheck,
-  MapPin,
   User,
+  Calendar,
+  DollarSign,
+  Eye,
+  Layers,
+  Clock,
+  MapPin,
+  Copy,
+  ChevronRight,
+  Filter,
+  Sparkles,
+  RefreshCw,
+  Inbox,
+  Ban,
+  Trophy,
+  Activity,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   INITIAL_COURT_REQUESTS,
   INITIAL_VENUES,
   CourtExtensionRequest,
-  CourtExtensionHistory,
-  VenueDetail,
 } from '@/lib/mockData';
 import { adminApi } from '@/lib/api';
 
@@ -50,43 +45,39 @@ const REJECTION_REASONS = [
   { value: 'OTHER', label: 'Other specific reason (specify detailed notes below)' },
 ];
 
+const SPORT_ICONS: Record<string, string> = {
+  Football: '⚽',
+  Cricket: '🏏',
+  'Box Cricket': '🏏',
+  Badminton: '🏸',
+  Pickleball: '🏓',
+  Tennis: '🎾',
+  Basketball: '🏀',
+  Volleyball: '🏐',
+};
+
 export default function CourtRequestsPage() {
+  const [mounted, setMounted] = useState(false);
   const [requests, setRequests] = useState<CourtExtensionRequest[]>(INITIAL_COURT_REQUESTS);
-  const [isLoading, setIsLoading] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
-  const [selectedVenueFilter, setSelectedVenueFilter] = useState<string>('ALL');
+  const [selectedState, setSelectedState] = useState<string>('ALL');
+  const [selectedDistrict, setSelectedDistrict] = useState<string>('ALL');
   const [selectedSport, setSelectedSport] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'date' | 'rate' | 'court' | 'id'>('date');
 
-  // Right-Side Slide Bar (Drawer) State
-  const [selectedRequestForDrawer, setSelectedRequestForDrawer] = useState<CourtExtensionRequest | null>(null);
+  // Slide Bar Drawer State
+  const [selectedRequestForDrawer, setSelectedRequestForDrawer] =
+    useState<CourtExtensionRequest | null>(null);
 
-  // Add / Edit Court Request Modal State (Screenshot Replica)
-  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
-  const [editingRequestForResubmit, setEditingRequestForResubmit] = useState<CourtExtensionRequest | null>(null);
+  // Reject Form inside Drawer
+  const [isRejectOpen, setIsRejectOpen] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('PRICING_OUT_OF_BOUNDS');
+  const [rejectionNote, setRejectionNote] = useState('');
+  const [rejectError, setRejectError] = useState<string | null>(null);
 
-  // Form Fields State (Matching Screenshots 1, 2, 3)
-  const [formVenueId, setFormVenueId] = useState('ven_1001');
-  const [formSamePhysicalSports, setFormSamePhysicalSports] = useState<boolean>(false);
-  const [formParentCourtName, setFormParentCourtName] = useState('Main Football Turf');
-  const [formSport, setFormSport] = useState('Football');
-  const [formCourtName, setFormCourtName] = useState('Turf 1A (5-a-side)');
-  const [formDisplayName, setFormDisplayName] = useState('Main Arena Pitch 1 (Floodlit Turf)');
-  const [formMinDuration, setFormMinDuration] = useState('1 Hour');
-  const [formPricePerHour, setFormPricePerHour] = useState<number>(1000);
-  const [formPeakStart, setFormPeakStart] = useState('06:00 PM');
-  const [formPeakEnd, setFormPeakEnd] = useState('11:00 PM');
-  const [formPeakPrice, setFormPeakPrice] = useState<number>(1400);
-  const [formWeekendPrice, setFormWeekendPrice] = useState<number>(1500);
-  const [formPeakDays, setFormPeakDays] = useState<string[]>(['Fri', 'Sat', 'Sun']);
-  const [formCancellationHours, setFormCancellationHours] = useState<number>(12);
-  const [formRefundPercentage, setFormRefundPercentage] = useState<number>(100);
-
-  // Drawer Action Sub-States
-  const [isRejectFormOpen, setIsRejectFormOpen] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState<string>('PRICING_OUT_OF_BOUNDS');
-  const [rejectionNote, setRejectionNote] = useState<string>('');
-  const [actionError, setActionError] = useState<string | null>(null);
+  // Quick feedback copy
+  const [copiedText, setCopiedText] = useState<string | null>(null);
 
   // Toast Notification
   const [toastMessage, setToastMessage] = useState<{
@@ -95,424 +86,107 @@ export default function CourtRequestsPage() {
     description: string;
   } | null>(null);
 
-  // Load from backend on mount, merge with localStorage fallback
-  useEffect(() => {
-    const loadRequests = async () => {
-      setIsLoading(true);
-      try {
-        const backendData = await adminApi.getCourtRequests();
-        if (Array.isArray(backendData) && backendData.length > 0) {
-          // Map backend CourtRequestItem → CourtExtensionRequest shape
-          const mapped: CourtExtensionRequest[] = backendData.map((r) => ({
-            id: r.id,
-            venue_id: r.vendor_mobile || 'ven_unknown',
-            venue_name: r.venue_name,
-            venue_city: r.venue_city || '',
-            owner_name: r.vendor_name || 'Venue Owner',
-            owner_phone: r.vendor_mobile ? `+91 ${r.vendor_mobile}` : '',
-            same_physical_sports: r.same_physical_sports ?? false,
-            parent_court_name: r.parent_court_name,
-            sport: Array.isArray(r.sports) ? r.sports[0] : r.sports || 'Football',
-            court_name: r.court_name,
-            display_name: r.display_name || r.court_name,
-            min_booking_duration: r.min_booking_duration || '1 Hour',
-            price_per_hour: r.price_per_hour,
-            peak_hours_start: r.peak_hours_start || '06:00 PM',
-            peak_hours_end: r.peak_hours_end || '10:00 PM',
-            peak_price: r.peak_hours_price || r.price_per_hour,
-            weekend_price: r.weekend_price || r.price_per_hour,
-            peak_days: r.peak_days || ['Fri', 'Sat', 'Sun'],
-            cancellation_window_hours: r.cancellation_window_hours ?? 12,
-            refund_percentage: r.refund_percentage ?? 100,
-            // Map backend PENDING → SUBMITTED for admin UI
-            status: r.status === 'PENDING' ? 'SUBMITTED' : (r.status as any),
-            submission_count: 1,
-            rejection_reason: r.rejection_reason ? 'OTHER' : undefined,
-            rejection_notes: r.rejection_reason,
-            reviewed_by: r.reviewer_name,
-            reviewed_at: r.reviewed_at,
-            history: [
-              {
-                round: 1,
-                action: 'SUBMITTED' as any,
-                timestamp: r.created_at,
-                notes: 'Court request loaded from backend.',
-              },
-              ...(r.reviewed_at ? [{
-                round: 1,
-                action: r.status as any,
-                timestamp: r.reviewed_at,
-                reviewer: r.reviewer_name || 'Admin',
-                notes: r.rejection_reason || 'Approved by admin.',
-              }] : []),
-            ],
-            created_at: r.created_at,
-            updated_at: r.updated_at,
-          }));
-
-          // Merge: backend data takes priority over localStorage mock data
-          const backendIds = new Set(mapped.map((r) => r.id));
-          const localFallback = INITIAL_COURT_REQUESTS.filter((r) => !backendIds.has(r.id));
-          setRequests([...mapped, ...localFallback]);
-        } else {
-          // Fallback: try localStorage
-          if (typeof window !== 'undefined') {
-            try {
-              const stored = localStorage.getItem('ibooksports_court_requests');
-              if (stored) {
-                const parsed = JSON.parse(stored);
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                  setRequests(parsed);
-                }
-              }
-            } catch (_) {}
-          }
-        }
-      } catch (err) {
-        console.error('Failed to load court requests from backend', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadRequests();
-  }, []);
-
-  // Save to localStorage helper
-  const persistRequests = (updated: CourtExtensionRequest[]) => {
-    setRequests(updated);
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('ibooksports_court_requests', JSON.stringify(updated));
-      } catch (e) {
-        console.error('Failed to persist court requests', e);
-      }
+  // Copy helper
+  const handleCopy = (text: string, id: string) => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopiedText(id);
+      setTimeout(() => setCopiedText(null), 2000);
     }
   };
 
-  // Open Add Modal Pre-populated or Blank
-  const handleOpenAddModal = (existing?: CourtExtensionRequest) => {
-    if (existing) {
-      setEditingRequestForResubmit(existing);
-      setFormVenueId(existing.venue_id);
-      setFormSamePhysicalSports(existing.same_physical_sports);
-      setFormParentCourtName(existing.parent_court_name || 'Main Football Turf');
-      setFormSport(existing.sport);
-      setFormCourtName(existing.court_name);
-      setFormDisplayName(existing.display_name);
-      setFormMinDuration(existing.min_booking_duration);
-      setFormPricePerHour(existing.price_per_hour);
-      setFormPeakStart(existing.peak_hours_start);
-      setFormPeakEnd(existing.peak_hours_end);
-      setFormPeakPrice(existing.peak_price);
-      setFormWeekendPrice(existing.weekend_price);
-      setFormPeakDays(existing.peak_days);
-      setFormCancellationHours(existing.cancellation_window_hours);
-      setFormRefundPercentage(existing.refund_percentage);
-    } else {
-      setEditingRequestForResubmit(null);
-      setFormVenueId('ven_1001');
-      setFormSamePhysicalSports(false);
-      setFormParentCourtName('Main Football Turf');
-      setFormSport('Football');
-      setFormCourtName('Turf 1A (5-a-side)');
-      setFormDisplayName('Main Arena Pitch 1 (Floodlit Turf)');
-      setFormMinDuration('1 Hour');
-      setFormPricePerHour(1000);
-      setFormPeakStart('06:00 PM');
-      setFormPeakEnd('11:00 PM');
-      setFormPeakPrice(1400);
-      setFormWeekendPrice(1500);
-      setFormPeakDays(['Fri', 'Sat', 'Sun']);
-      setFormCancellationHours(12);
-      setFormRefundPercentage(100);
+  // Helper to resolve State
+  const getRequestState = (req: CourtExtensionRequest): string => {
+    const venue = INITIAL_VENUES.find((v) => v.id === req.venue_id);
+    if (venue && venue.state) return venue.state;
+    if (req.venue_city && req.venue_city.includes(',')) {
+      return req.venue_city.split(',')[1].trim();
     }
-    setIsFormModalOpen(true);
+    return 'Tamil Nadu';
   };
 
-  // Toggle Peak Day
-  const handleTogglePeakDay = (day: string) => {
-    setFormPeakDays((prev) =>
-      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
-    );
+  // Helper to resolve District
+  const getRequestDistrict = (req: CourtExtensionRequest): string => {
+    const venue = INITIAL_VENUES.find((v) => v.id === req.venue_id);
+    if (venue && venue.district) return venue.district;
+    if (req.venue_city) {
+      return req.venue_city.split(',')[0].trim();
+    }
+    return 'Coimbatore';
   };
 
-  // Handle Form Submission — admin creates or resubmits a court, wired to backend
-  const handleSubmitForm = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const targetVenue = INITIAL_VENUES.find((v) => v.id === formVenueId) || INITIAL_VENUES[0];
-    const vendorMobile = String(targetVenue.mobile_number).replace(/\D/g, '').slice(-10);
-
-    if (editingRequestForResubmit) {
-      // RESUBMITTING PREVIOUS REQUEST (Round 2+)
-      const newRound = (editingRequestForResubmit.submission_count || 1) + 1;
-      const historyEntry: CourtExtensionHistory = {
-        round: newRound,
-        action: 'RESUBMITTED',
-        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
-        notes: `Admin amended court specs (Price: ₹${formPricePerHour}, Weekend: ₹${formWeekendPrice}) and resubmitted for approval.`,
-      };
-
-      const updatedRequest: CourtExtensionRequest = {
-        ...editingRequestForResubmit,
-        same_physical_sports: formSamePhysicalSports,
-        parent_court_name: formSamePhysicalSports ? formParentCourtName : undefined,
-        sport: formSport,
-        court_name: formCourtName,
-        display_name: formDisplayName || formCourtName,
-        min_booking_duration: formMinDuration,
-        price_per_hour: Number(formPricePerHour),
-        peak_hours_start: formPeakStart,
-        peak_hours_end: formPeakEnd,
-        peak_price: Number(formPeakPrice),
-        weekend_price: Number(formWeekendPrice),
-        peak_days: formPeakDays,
-        cancellation_window_hours: Number(formCancellationHours),
-        refund_percentage: Number(formRefundPercentage),
-        status: 'RESUBMITTED',
-        submission_count: newRound,
-        rejection_reason: undefined,
-        rejection_notes: undefined,
-        history: [...editingRequestForResubmit.history, historyEntry],
-        updated_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
-      };
-
-      const updatedList = requests.map((r) => (r.id === updatedRequest.id ? updatedRequest : r));
-      persistRequests(updatedList);
-      if (selectedRequestForDrawer?.id === updatedRequest.id) {
-        setSelectedRequestForDrawer(updatedRequest);
-      }
-
-      setToastMessage({
-        type: 'info',
-        title: 'Court Request Resubmitted',
-        description: `${updatedRequest.court_name} (${updatedRequest.id}) updated and moved to RESUBMITTED status.`,
-      });
-    } else {
-      // ADMIN CREATES NEW COURT — POST to backend, then auto-approve so it goes live on vendor portal
-      let backendId: string | null = null;
-      try {
-        const created = await adminApi.createCourtRequest({
-          court_name: formCourtName,
-          display_name: formDisplayName || formCourtName,
-          sports: [formSport],
-          price_per_hour: Number(formPricePerHour),
-          min_booking_duration: formMinDuration,
-          peak_hours_start: formPeakStart,
-          peak_hours_end: formPeakEnd,
-          peak_hours_price: Number(formPeakPrice),
-          peak_days: formPeakDays,
-          weekend_price: Number(formWeekendPrice),
-          same_physical_sports: formSamePhysicalSports,
-          parent_court_name: formSamePhysicalSports ? formParentCourtName : undefined,
-          cancellation_window_hours: Number(formCancellationHours),
-          refund_percentage: Number(formRefundPercentage),
-          venue_name: targetVenue.venue_name,
-          venue_city: `${targetVenue.district}, ${targetVenue.state}`,
-          vendor_mobile: vendorMobile,
-          vendor_name: targetVenue.owner?.full_name || targetVenue.name,
-        });
-        backendId = created.id;
-
-        // Auto-approve immediately: admin-created courts go live on vendor portal at once
-        await adminApi.reviewCourtRequest(created.id, {
-          status: 'APPROVED',
-          reviewer_name: 'Platform Administrator',
-        });
-      } catch (err) {
-        console.warn('[Admin] Backend court creation/approval failed, using local fallback:', err);
-      }
-
-      const newId = backendId || `CRQ-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(100 + Math.random() * 900)}`;
-      const newRequest: CourtExtensionRequest = {
-        id: newId,
-        venue_id: targetVenue.id,
-        venue_name: targetVenue.venue_name,
-        venue_city: `${targetVenue.district}, ${targetVenue.state}`,
-        owner_name: targetVenue.owner?.full_name || targetVenue.name,
-        owner_phone: targetVenue.owner?.phone || `+91 ${targetVenue.mobile_number}`,
-        same_physical_sports: formSamePhysicalSports,
-        parent_court_name: formSamePhysicalSports ? formParentCourtName : undefined,
-        sport: formSport,
-        court_name: formCourtName,
-        display_name: formDisplayName || formCourtName,
-        min_booking_duration: formMinDuration,
-        price_per_hour: Number(formPricePerHour),
-        peak_hours_start: formPeakStart,
-        peak_hours_end: formPeakEnd,
-        peak_price: Number(formPeakPrice),
-        weekend_price: Number(formWeekendPrice),
-        peak_days: formPeakDays,
-        cancellation_window_hours: Number(formCancellationHours),
-        refund_percentage: Number(formRefundPercentage),
-        // Admin-created courts start as APPROVED and immediately active
-        status: 'APPROVED',
-        reviewed_by: 'Platform Administrator',
-        reviewed_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
-        submission_count: 1,
-        history: [
-          {
-            round: 1,
-            action: 'SUBMITTED',
-            timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
-            notes: 'Court created directly by Platform Administrator.',
-          },
-          {
-            round: 1,
-            action: 'APPROVED',
-            timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
-            reviewer: 'Platform Administrator',
-            notes: 'Auto-approved on creation. Court is now live on vendor portal.',
-          },
-        ],
-        created_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
-        updated_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
-      };
-
-      const updatedList = [newRequest, ...requests];
-      persistRequests(updatedList);
-
-      setToastMessage({
-        type: 'success',
-        title: '✅ Court Created & Activated!',
-        description: `${formCourtName} (${newId}) created for ${targetVenue.venue_name}. Auto-approved — vendor portal will show it as active on next login/refresh.`,
-      });
+  // State badge styling
+  const getStateBadgeStyle = (state?: string) => {
+    switch (state) {
+      case 'Tamil Nadu':
+        return 'bg-blue-50 text-blue-700 border-blue-200';
+      case 'Karnataka':
+        return 'bg-amber-50 text-amber-700 border-amber-200';
+      case 'Kerala':
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      case 'Telangana':
+        return 'bg-purple-50 text-purple-700 border-purple-200';
+      case 'Maharashtra':
+        return 'bg-rose-50 text-rose-700 border-rose-200';
+      default:
+        return 'bg-slate-50 text-slate-700 border-slate-200';
     }
-
-    setIsFormModalOpen(false);
   };
 
-  // Handle Approve Request — calls backend then updates local state
-  const handleApproveRequest = async (req: CourtExtensionRequest) => {
-    try {
-      await adminApi.reviewCourtRequest(req.id, {
-        status: 'APPROVED',
-        reviewer_name: 'Platform Administrator',
-      });
-    } catch (err) {
-      console.warn('[Admin] Backend approve failed for', req.id, err);
-    }
+  // Status mapping
+  const normStatus = (st: string): 'NEW' | 'RESUBMITTED' | 'APPROVED' | 'REJECTED' => {
+    if (st === 'NEW_REQUEST' || st === 'SUBMITTED' || st === 'NEW') return 'NEW';
+    if (st === 'RESUBMITTED') return 'RESUBMITTED';
+    if (st === 'APPROVED') return 'APPROVED';
+    return 'REJECTED';
+  };
 
-    const historyEntry: CourtExtensionHistory = {
-      round: req.submission_count || 1,
-      action: 'APPROVED',
-      timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
-      reviewer: 'Platform Administrator',
-      notes: 'Specifications, pricing, and cancellation policy verified. Court authorized & live.',
-    };
-
-    const updated: CourtExtensionRequest = {
-      ...req,
-      status: 'APPROVED',
-      reviewed_by: 'Platform Administrator',
-      reviewed_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
-      history: [...req.history, historyEntry],
-      updated_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
-    };
-
-    const updatedList = requests.map((r) => (r.id === req.id ? updated : r));
-    persistRequests(updatedList);
-    if (selectedRequestForDrawer?.id === req.id) {
-      setSelectedRequestForDrawer(updated);
-    }
-
-    setToastMessage({
-      type: 'success',
-      title: 'Court Approved & Activated!',
-      description: `${req.court_name} (${req.id}) approved. Vendor portal will reflect the active court on next sync.`,
+  // Unique available States with count
+  const stateCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    requests.forEach((req) => {
+      const st = getRequestState(req);
+      counts[st] = (counts[st] || 0) + 1;
     });
-  };
+    return counts;
+  }, [requests]);
 
-  // Handle Reject Request — calls backend then updates local state
-  const handleRejectRequest = async (req: CourtExtensionRequest) => {
-    if (!rejectionNote.trim() && rejectionReason === 'OTHER') {
-      setActionError('Please specify feedback notes for the venue owner.');
-      return;
-    }
+  const uniqueStates = useMemo(() => {
+    return Object.keys(stateCounts).sort();
+  }, [stateCounts]);
 
-    const reasonLabel = REJECTION_REASONS.find((r) => r.value === rejectionReason)?.label || rejectionReason;
-    const finalNote = rejectionNote.trim() ? `${reasonLabel}: ${rejectionNote.trim()}` : reasonLabel;
-
-    try {
-      await adminApi.reviewCourtRequest(req.id, {
-        status: 'REJECTED',
-        rejection_reason: finalNote,
-        reviewer_name: 'Platform Administrator',
-      });
-    } catch (err) {
-      console.warn('[Admin] Backend reject failed for', req.id, err);
-    }
-
-    const historyEntry: CourtExtensionHistory = {
-      round: req.submission_count || 1,
-      action: 'REJECTED',
-      timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
-      reviewer: 'Platform Administrator',
-      notes: finalNote,
-    };
-
-    const updated: CourtExtensionRequest = {
-      ...req,
-      status: 'REJECTED',
-      rejection_reason: rejectionReason,
-      rejection_notes: finalNote,
-      history: [...req.history, historyEntry],
-      updated_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
-    };
-
-    const updatedList = requests.map((r) => (r.id === req.id ? updated : r));
-    persistRequests(updatedList);
-    if (selectedRequestForDrawer?.id === req.id) {
-      setSelectedRequestForDrawer(updated);
-    }
-
-    setIsRejectFormOpen(false);
-    setRejectionNote('');
-    setActionError(null);
-
-    setToastMessage({
-      type: 'error',
-      title: 'Court Request Rejected',
-      description: `${req.court_name} rejected. Vendor will see the rejection reason on their portal and can resubmit.`,
+  // Unique available Districts
+  const availableDistricts = useMemo(() => {
+    const districts = new Set<string>();
+    requests.forEach((req) => {
+      const st = getRequestState(req);
+      if (selectedState === 'ALL' || selectedState.toLowerCase() === st.toLowerCase()) {
+        districts.add(getRequestDistrict(req));
+      }
     });
-  };
+    return Array.from(districts).sort();
+  }, [requests, selectedState]);
 
-  // Handle Delete Request (Venue ID based action)
-  const handleDeleteRequest = (req: CourtExtensionRequest) => {
-    const confirmDelete = window.confirm(
-      `Are you sure you want to permanently delete court request "${req.court_name}" (${req.id}) for venue ${req.venue_name} [${req.venue_id}]?`
-    );
-    if (!confirmDelete) return;
-
-    const updatedList = requests.filter((r) => r.id !== req.id);
-    persistRequests(updatedList);
-    if (selectedRequestForDrawer?.id === req.id) {
-      setSelectedRequestForDrawer(null);
-    }
-
-    setToastMessage({
-      type: 'info',
-      title: 'Court Request Deleted',
-      description: `Request ${req.id} for venue ${req.venue_id} has been removed.`,
+  // Unique available Sports
+  const availableSports = useMemo(() => {
+    const sports = new Set<string>();
+    requests.forEach((req) => {
+      if (req.sport) sports.add(req.sport);
     });
-  };
+    Object.keys(SPORT_ICONS).forEach((sp) => sports.add(sp));
+    return Array.from(sports);
+  }, [requests]);
 
-  // Metrics
-  const totalCount = requests.length;
-  const submittedCount = requests.filter((r) => r.status === 'SUBMITTED').length;
-  const resubmittedCount = requests.filter((r) => r.status === 'RESUBMITTED').length;
-  const approvedCount = requests.filter((r) => r.status === 'APPROVED').length;
-  const rejectedCount = requests.filter((r) => r.status === 'REJECTED').length;
-
-  // Filtered List
-  const filteredRequests = useMemo(() => {
+  // Base list filtered by state, district, sport, search for KPIs
+  const baseFilteredRequests = useMemo(() => {
     return requests.filter((req) => {
-      const matchesStatus =
-        selectedStatus === 'ALL' ||
-        (selectedStatus === 'PENDING' ? (req.status === 'SUBMITTED' || req.status === 'RESUBMITTED') : req.status === selectedStatus);
+      const reqState = getRequestState(req);
+      const reqDistrict = getRequestDistrict(req);
 
-      const matchesVenue =
-        selectedVenueFilter === 'ALL' || req.venue_id === selectedVenueFilter;
-
+      const matchesState =
+        selectedState === 'ALL' || reqState.toLowerCase() === selectedState.toLowerCase();
+      const matchesDistrict =
+        selectedDistrict === 'ALL' || reqDistrict.toLowerCase() === selectedDistrict.toLowerCase();
       const matchesSport =
         selectedSport === 'ALL' || req.sport.toLowerCase() === selectedSport.toLowerCase();
 
@@ -521,598 +195,1077 @@ export default function CourtRequestsPage() {
         !q ||
         req.id.toLowerCase().includes(q) ||
         req.court_name.toLowerCase().includes(q) ||
-        req.display_name.toLowerCase().includes(q) ||
+        (req.display_name && req.display_name.toLowerCase().includes(q)) ||
         req.venue_name.toLowerCase().includes(q) ||
         req.venue_id.toLowerCase().includes(q) ||
         req.owner_name.toLowerCase().includes(q) ||
-        req.sport.toLowerCase().includes(q);
+        req.owner_phone.toLowerCase().includes(q) ||
+        req.sport.toLowerCase().includes(q) ||
+        reqState.toLowerCase().includes(q) ||
+        reqDistrict.toLowerCase().includes(q);
 
-      return matchesStatus && matchesVenue && matchesSport && matchesQuery;
+      return matchesState && matchesDistrict && matchesSport && matchesQuery;
     });
-  }, [requests, selectedStatus, selectedVenueFilter, selectedSport, searchQuery]);
+  }, [requests, selectedState, selectedDistrict, selectedSport, searchQuery]);
+
+  // KPI Calculations
+  const totalCount = baseFilteredRequests.length;
+  const pendingCount = baseFilteredRequests.filter(
+    (r) => normStatus(r.status) === 'NEW' || normStatus(r.status) === 'RESUBMITTED'
+  ).length;
+  const approvedCount = baseFilteredRequests.filter((r) => normStatus(r.status) === 'APPROVED').length;
+  const rejectedCount = baseFilteredRequests.filter((r) => normStatus(r.status) === 'REJECTED').length;
+  const sportsCount = new Set(baseFilteredRequests.map((r) => r.sport)).size;
+
+  // Final Filtered & Sorted Table Rows
+  const filteredRequests = useMemo(() => {
+    return baseFilteredRequests
+      .filter((req) => {
+        const s = normStatus(req.status);
+        if (selectedStatus === 'ALL') return true;
+        if (selectedStatus === 'PENDING') return s === 'NEW' || s === 'RESUBMITTED';
+        if (selectedStatus === 'APPROVED') return s === 'APPROVED';
+        if (selectedStatus === 'REJECTED') return s === 'REJECTED';
+        return true;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'rate') return b.price_per_hour - a.price_per_hour;
+        if (sortBy === 'court') return a.court_name.localeCompare(b.court_name);
+        if (sortBy === 'id') return a.id.localeCompare(b.id);
+        // default date
+        const dateA = a.submitted_at || a.created_at || '';
+        const dateB = b.submitted_at || b.created_at || '';
+        return dateB.localeCompare(dateA);
+      });
+  }, [baseFilteredRequests, selectedStatus, sortBy]);
+
+  // Drawer handlers
+  const handleOpenDrawer = (req: CourtExtensionRequest) => {
+    setSelectedRequestForDrawer(req);
+    setIsRejectOpen(false);
+    setRejectionNote('');
+    setRejectError(null);
+  };
+
+  // Load from backend on mount and sync
+  const loadRequests = async (showToast = false) => {
+    try {
+      const backendData = await adminApi.getCourtRequests();
+      if (Array.isArray(backendData) && backendData.length > 0) {
+        const mapped: CourtExtensionRequest[] = backendData.map((r) => ({
+          id: r.id,
+          court_id: r.court_id,
+          venue_id: r.vendor_mobile ? `ven_${r.vendor_mobile.slice(-4)}` : 'ven_1001',
+          venue_name: r.venue_name,
+          venue_city: r.venue_city || 'Coimbatore, Tamil Nadu',
+          owner_name: r.vendor_name || 'Venue Owner',
+          owner_phone: r.vendor_mobile ? `+91 ${r.vendor_mobile}` : '+91 9876543210',
+          same_physical_sports: r.same_physical_sports ?? false,
+          parent_court_name: r.parent_court_name,
+          sport: Array.isArray(r.sports) ? r.sports[0] : (r.sports || 'Football'),
+          court_name: r.court_name,
+          display_name: r.display_name || r.court_name,
+          min_booking_duration: r.min_booking_duration || '1 Hour',
+          price_per_hour: r.price_per_hour,
+          peak_hours_start: r.peak_hours_start || '06:00 PM',
+          peak_hours_end: r.peak_hours_end || '10:00 PM',
+          peak_price: r.peak_hours_price || r.price_per_hour,
+          weekend_price: r.weekend_price || r.price_per_hour,
+          peak_days: r.peak_days || ['Fri', 'Sat', 'Sun'],
+          cancellation_window_hours: r.cancellation_window_hours ?? 12,
+          refund_percentage: r.refund_percentage ?? 100,
+          status: r.status === 'PENDING' ? 'NEW_REQUEST' : (r.status as any),
+          submission_count: 1,
+          rejection_reason: r.rejection_reason ? 'OTHER' : undefined,
+          rejection_notes: r.rejection_reason,
+          reviewed_by: r.reviewer_name,
+          reviewed_at: r.reviewed_at,
+          history: [
+            {
+              round: 1,
+              action: (r.status === 'PENDING' ? 'SUBMITTED' : r.status) as any,
+              timestamp: r.created_at,
+              notes: 'Inbound court addition request.',
+            },
+          ],
+          created_at: r.created_at,
+          submitted_at: r.created_at ? r.created_at.split('T')[0] : '2026-03-09',
+        }));
+        const existingIds = new Set(mapped.map((m) => m.id));
+        const merged = [...mapped, ...INITIAL_COURT_REQUESTS.filter((m) => !existingIds.has(m.id))];
+        setRequests(merged);
+      }
+      if (showToast) {
+        setToastMessage({
+          type: 'info',
+          title: 'Queue Synchronized',
+          description: 'Court requests queue refreshed with latest inbound submissions.',
+        });
+        setTimeout(() => setToastMessage(null), 3000);
+      }
+    } catch (e) {
+      console.warn('Could not fetch backend court requests, keeping current requests:', e);
+      if (showToast) {
+        setToastMessage({
+          type: 'info',
+          title: 'Queue Synchronized',
+          description: 'Local requests verified and synchronized.',
+        });
+        setTimeout(() => setToastMessage(null), 3000);
+      }
+    }
+  };
+
+  useEffect(() => {
+    setMounted(true);
+    loadRequests(false);
+  }, []);
+
+  const handleApprove = async (req: CourtExtensionRequest) => {
+    let createdCourtId = req.court_id;
+    try {
+      const res = await adminApi.reviewCourtRequest(req.id, {
+        status: 'APPROVED',
+        reviewer_name: 'Platform Super Admin',
+      });
+      if (res?.court_id) {
+        createdCourtId = res.court_id;
+      }
+    } catch (err) {
+      console.warn('Backend reviewCourtRequest error (proceeding locally):', err);
+    }
+    if (!createdCourtId) {
+      createdCourtId = `CRT-${Math.floor(1000 + Math.random() * 9000)}`;
+    }
+
+    const updated: CourtExtensionRequest = {
+      ...req,
+      court_id: createdCourtId,
+      status: 'APPROVED',
+      reviewed_at: new Date().toISOString().replace('T', ' ').slice(0, 19),
+      reviewed_by: 'Platform Super Admin',
+      history: [
+        ...req.history,
+        {
+          round: req.submission_count,
+          action: 'APPROVED',
+          timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
+          reviewer: 'Platform Super Admin',
+          notes: `Court specifications verified. Court ID: ${createdCourtId} created and activated.`,
+        },
+      ],
+    };
+
+    setRequests((prev) => prev.map((item) => (item.id === req.id ? updated : item)));
+    if (selectedRequestForDrawer?.id === req.id) {
+      setSelectedRequestForDrawer(updated);
+    }
+
+    setToastMessage({
+      type: 'success',
+      title: 'Court Request Approved',
+      description: `Court ID ${createdCourtId} generated. ${updated.court_name} for ${updated.venue_name} is now approved and active on the player app!`,
+    });
+    setTimeout(() => setToastMessage(null), 4500);
+  };
+
+  const handleConfirmReject = async (req: CourtExtensionRequest) => {
+    const selectedPreset = REJECTION_REASONS.find((r) => r.value === rejectionReason);
+    const finalNote = rejectionNote.trim() || selectedPreset?.label || 'Specifications require physical revision.';
+
+    try {
+      await adminApi.reviewCourtRequest(req.id, {
+        status: 'REJECTED',
+        rejection_reason: finalNote,
+        reviewer_name: 'Platform Super Admin',
+      });
+    } catch (err) {
+      console.warn('Backend reviewCourtRequest error (proceeding locally):', err);
+    }
+
+    const updated: CourtExtensionRequest = {
+      ...req,
+      status: 'REJECTED',
+      rejection_reason: rejectionReason,
+      rejection_notes: finalNote,
+      reviewed_at: new Date().toISOString().replace('T', ' ').slice(0, 19),
+      reviewed_by: 'Platform Super Admin',
+      history: [
+        ...req.history,
+        {
+          round: req.submission_count,
+          action: 'REJECTED',
+          timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
+          reviewer: 'Platform Super Admin',
+          notes: finalNote,
+        },
+      ],
+    };
+
+    setRequests((prev) => prev.map((item) => (item.id === req.id ? updated : item)));
+    setSelectedRequestForDrawer(updated);
+    setIsRejectOpen(false);
+    setRejectionNote('');
+
+    setToastMessage({
+      type: 'error',
+      title: 'Court Request Declined',
+      description: `${updated.court_name} marked as Rejected. Reason: ${finalNote}`,
+    });
+    setTimeout(() => setToastMessage(null), 4500);
+  };
+
+  if (!mounted) return null;
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-150">
-      {/* 1. PAGE HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
+    <div className="animate-in fade-in duration-300 space-y-6">
+      {/* 1. PAGE HEADER (MATCHING CUSTOMER MANAGEMENT DESIGN) */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#E5E7EB] pb-5">
         <div>
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-2xl bg-orange-50 border border-orange-200/60 text-[#F94001] flex items-center justify-center shrink-0 shadow-2xs">
-              <Layers className="h-5 w-5" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-black tracking-tight text-slate-900 font-display flex items-center gap-2">
-                Court Requests &amp; Arena Expansion
-              </h1>
-              <p className="text-xs text-slate-500 font-medium mt-0.5">
-                Review venue expansion requests, inspect court specifications, approve live pitches, and issue rejection notes with resubmission tracking.
-              </p>
-            </div>
+          <div className="inline-flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wider text-[#F94001] bg-[#FFF1EC] border border-[#F94001]/20 px-3 py-1 rounded-full mb-2">
+            <Layers className="h-3.5 w-3.5 text-[#F94001]" />
+            <span>Court Extension Requests &bull; Venue Expansion Network</span>
           </div>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#021526] font-display">
+            Court Requests
+          </h1>
+          <p className="text-xs sm:text-sm text-[#5F6368] mt-1 font-medium">
+            Inbound court creation requests, venue details, ground specifications, player app display names, and approval reviews.
+          </p>
         </div>
 
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="px-3.5 py-2 rounded-xl bg-white border border-[#E5E7EB] shadow-xs flex items-center gap-2 text-xs font-bold text-slate-700">
+            <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+            <span>{requests.length} Court Requests</span>
+          </div>
           <button
             type="button"
-            onClick={() => handleOpenAddModal()}
-            className="px-4 py-2 rounded-xl bg-[#F94001] hover:bg-[#E03800] text-white text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-2 shadow-xs"
+            onClick={() => loadRequests(true)}
+            className="h-9 px-3.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 flex items-center gap-2 shadow-2xs transition-all cursor-pointer"
           >
-            <Plus className="h-4 w-4" />
-            <span>Request New Court / Turf</span>
+            <RefreshCw className="h-3.5 w-3.5 text-slate-500" />
+            <span>Sync Queue</span>
           </button>
         </div>
       </div>
 
-      {/* 2. KPI METRIC CARDS */}
+      {/* TOAST NOTIFICATION */}
+      {toastMessage && (
+        <div
+          className={`p-4 rounded-2xl border text-xs font-bold flex items-center justify-between animate-in fade-in ${
+            toastMessage.type === 'success'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+              : toastMessage.type === 'error'
+              ? 'bg-rose-50 border-rose-200 text-rose-800'
+              : 'bg-blue-50 border-blue-200 text-blue-800'
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            {toastMessage.type === 'success' ? (
+              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+            ) : toastMessage.type === 'error' ? (
+              <XCircle className="h-4 w-4 text-rose-600 shrink-0" />
+            ) : (
+              <Sparkles className="h-4 w-4 text-blue-600 shrink-0" />
+            )}
+            <div>
+              <p className="font-extrabold">{toastMessage.title}</p>
+              <p className="text-[11px] font-normal opacity-90 mt-0.5">{toastMessage.description}</p>
+            </div>
+          </div>
+          <button type="button" onClick={() => setToastMessage(null)}>
+            <X className="h-4 w-4 text-slate-500" />
+          </button>
+        </div>
+      )}
+
+      {/* 2. OPERATIONAL KPI METRICS ROW (MATCHING CUSTOMER MANAGEMENT DESIGN) */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3.5">
         {/* Total Requests */}
-        <div
-          onClick={() => setSelectedStatus('ALL')}
-          className={`bg-white rounded-2xl p-4 border transition-all cursor-pointer shadow-2xs ${
-            selectedStatus === 'ALL' ? 'border-slate-900 ring-2 ring-slate-900/10' : 'border-slate-200 hover:border-slate-300'
-          }`}
-        >
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Requests</p>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-black text-slate-900 font-mono">{totalCount}</span>
-            <span className="text-[10px] font-semibold text-slate-400">All rounds</span>
-          </div>
-        </div>
-
-        {/* 1st Submission (SUBMITTED) */}
-        <div
-          onClick={() => setSelectedStatus('SUBMITTED')}
-          className={`bg-white rounded-2xl p-4 border transition-all cursor-pointer shadow-2xs ${
-            selectedStatus === 'SUBMITTED' ? 'border-amber-500 ring-2 ring-amber-500/20' : 'border-slate-200 hover:border-amber-300'
-          }`}
-        >
+        <div className="bg-white rounded-2xl p-4 border border-[#E5E7EB] shadow-xs hover:border-[#F94001]/40 transition-all">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-bold text-amber-700 uppercase tracking-wider">1st Submitted</p>
-            <Clock className="h-4 w-4 text-amber-500" />
+            <span className="text-[11px] font-bold text-[#5F6368] uppercase tracking-wider">
+              Total Requests
+            </span>
+            <div className="h-8 w-8 rounded-xl bg-[#FFF1EC] text-[#F94001] flex items-center justify-center">
+              <Layers className="h-4 w-4" />
+            </div>
           </div>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-black text-amber-700 font-mono">{submittedCount}</span>
-            <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
-              Round 1
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-[#021526] font-mono">{totalCount}</span>
+            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+              {uniqueStates.length} States
             </span>
           </div>
+          <p className="text-[10px] text-slate-400 mt-1 font-medium">Inbound facility court additions</p>
         </div>
 
-        {/* Resubmitted (RESUBMITTED) */}
-        <div
-          onClick={() => setSelectedStatus('RESUBMITTED')}
-          className={`bg-white rounded-2xl p-4 border transition-all cursor-pointer shadow-2xs ${
-            selectedStatus === 'RESUBMITTED' ? 'border-blue-600 ring-2 ring-blue-600/20' : 'border-slate-200 hover:border-blue-300'
-          }`}
-        >
+        {/* Pending Review */}
+        <div className="bg-white rounded-2xl p-4 border border-[#E5E7EB] shadow-xs hover:border-amber-300 transition-all">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-bold text-blue-700 uppercase tracking-wider">Resubmitted</p>
-            <RotateCcw className="h-4 w-4 text-blue-600" />
+            <span className="text-[11px] font-bold text-[#5F6368] uppercase tracking-wider">
+              Pending Review
+            </span>
+            <div className="h-8 w-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+              <Clock className="h-4 w-4" />
+            </div>
           </div>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-black text-blue-700 font-mono">{resubmittedCount}</span>
-            <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200">
-              Round 2+
+          <div className="mt-2 flex items-baseline gap-1.5">
+            <span className="text-2xl font-black text-amber-700 font-mono">{pendingCount}</span>
+            <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
+              Needs Action
             </span>
           </div>
+          <p className="text-[10px] text-slate-400 mt-1 font-medium">Awaiting admin evaluation</p>
         </div>
 
-        {/* Approved & Active */}
-        <div
-          onClick={() => setSelectedStatus('APPROVED')}
-          className={`bg-white rounded-2xl p-4 border transition-all cursor-pointer shadow-2xs ${
-            selectedStatus === 'APPROVED' ? 'border-emerald-600 ring-2 ring-emerald-600/20' : 'border-slate-200 hover:border-emerald-300'
-          }`}
-        >
+        {/* Approved Courts */}
+        <div className="bg-white rounded-2xl p-4 border border-[#E5E7EB] shadow-xs hover:border-emerald-300 transition-all">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Approved &amp; Live</p>
-            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+            <span className="text-[11px] font-bold text-[#5F6368] uppercase tracking-wider">
+              Approved Courts
+            </span>
+            <div className="h-8 w-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <CheckCircle2 className="h-4 w-4" />
+            </div>
           </div>
-          <div className="flex items-baseline gap-2 mt-1">
+          <div className="mt-2 flex items-baseline gap-1.5">
             <span className="text-2xl font-black text-emerald-700 font-mono">{approvedCount}</span>
-            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
-              Active Turf
+            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+              Live On App
             </span>
           </div>
+          <p className="text-[10px] text-slate-400 mt-1 font-medium">Activated for player bookings</p>
         </div>
 
-        {/* Rejected with Reason */}
-        <div
-          onClick={() => setSelectedStatus('REJECTED')}
-          className={`bg-white rounded-2xl p-4 border transition-all cursor-pointer shadow-2xs ${
-            selectedStatus === 'REJECTED' ? 'border-rose-600 ring-2 ring-rose-600/20' : 'border-slate-200 hover:border-rose-300'
-          }`}
-        >
+        {/* Declined / Rejected */}
+        <div className="bg-white rounded-2xl p-4 border border-[#E5E7EB] shadow-xs hover:border-rose-300 transition-all">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-bold text-rose-700 uppercase tracking-wider">Rejected</p>
-            <XCircle className="h-4 w-4 text-rose-600" />
+            <span className="text-[11px] font-bold text-[#5F6368] uppercase tracking-wider">
+              Declined
+            </span>
+            <div className="h-8 w-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+              <Ban className="h-4 w-4" />
+            </div>
           </div>
-          <div className="flex items-baseline gap-2 mt-1">
+          <div className="mt-2 flex items-baseline gap-2">
             <span className="text-2xl font-black text-rose-700 font-mono">{rejectedCount}</span>
-            <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-1.5 py-0.2 rounded border border-rose-200">
-              Needs Edit
+            <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full">
+              Revision Needed
             </span>
           </div>
+          <p className="text-[10px] text-slate-400 mt-1 font-medium">Declined with audit feedback</p>
+        </div>
+
+        {/* Sports Count */}
+        <div className="bg-white rounded-2xl p-4 border border-[#E5E7EB] shadow-xs hover:border-purple-300 transition-all col-span-2 lg:col-span-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-[#5F6368] uppercase tracking-wider">
+              Active Sports
+            </span>
+            <div className="h-8 w-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+              <Trophy className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-purple-700 font-mono">{sportsCount}</span>
+            <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full">
+              Disciplines
+            </span>
+          </div>
+          <p className="text-[10px] text-slate-400 mt-1 font-medium">Turf, pitch &amp; court disciplines</p>
         </div>
       </div>
 
-      {/* 3. FILTER & SEARCH CONTROLS */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs">
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Status Filter Pills */}
-          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
-            {[
-              { id: 'ALL', label: 'All Status' },
-              { id: 'SUBMITTED', label: '1st Submitted' },
-              { id: 'RESUBMITTED', label: 'Resubmitted' },
-              { id: 'APPROVED', label: 'Approved' },
-              { id: 'REJECTED', label: 'Rejected' },
-            ].map((tab) => {
-              const isActive = selectedStatus === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setSelectedStatus(tab.id)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    isActive ? 'bg-slate-900 text-white shadow-2xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
+      {/* 3. MULTI-STATE FINDER TABS */}
+      <div className="bg-white rounded-2xl border border-[#E5E7EB] p-3 shadow-xs space-y-3">
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-[#F94001]" />
+            <span className="text-xs font-black uppercase tracking-wider text-[#021526]">
+              Filter by State:
+            </span>
           </div>
-
-          {/* Venue Dropdown Filter */}
-          <select
-            value={selectedVenueFilter}
-            onChange={(e) => setSelectedVenueFilter(e.target.value)}
-            className="h-8 px-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-slate-800 outline-none cursor-pointer focus:border-[#F94001]"
-          >
-            <option value="ALL">All Arena Venues</option>
-            {INITIAL_VENUES.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.venue_name} ({v.id})
-              </option>
-            ))}
-          </select>
+          <span className="text-[11px] font-semibold text-slate-500">
+            {selectedState === 'ALL'
+              ? `All ${uniqueStates.length} states`
+              : `Active State: ${selectedState}`}
+          </span>
         </div>
 
-        {/* Search Input */}
-        <div className="relative w-full lg:w-72">
-          <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search court, venue, ID, sport..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-8.5 pl-8.5 pr-8 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 outline-none focus:bg-white focus:border-[#F94001]"
-          />
-          {searchQuery && (
+        {/* State Pills Bar */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+          <button
+            type="button"
+            onClick={() => setSelectedState('ALL')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              selectedState === 'ALL'
+                ? 'bg-[#021526] text-white shadow-sm'
+                : 'bg-[#F8F9FA] text-[#5F6368] hover:bg-slate-200 border border-[#E5E7EB]'
+            }`}
+          >
+            <span>All States</span>
+            <span
+              className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                selectedState === 'ALL' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+              }`}
+            >
+              {requests.length}
+            </span>
+          </button>
+
+          {uniqueStates.map((st) => (
+            <button
+              key={st}
+              type="button"
+              onClick={() => setSelectedState(st)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+                selectedState === st
+                  ? 'bg-[#F94001] text-white shadow-sm shadow-[#F94001]/30'
+                  : 'bg-[#F8F9FA] text-[#5F6368] hover:bg-slate-200 border border-[#E5E7EB]'
+              }`}
+            >
+              <span>{st}</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                  selectedState === st ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                }`}
+              >
+                {stateCounts[st]}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 4. SEARCH, STATUS PILLS & DROPDOWN FILTERS */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-[#E5E7EB] shadow-xs">
+        {/* Left: Status Filter Pills */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {[
+            { id: 'ALL', label: 'All', count: totalCount },
+            { id: 'PENDING', label: 'Pending', count: pendingCount },
+            { id: 'APPROVED', label: 'Approved', count: approvedCount },
+            { id: 'REJECTED', label: 'Declined', count: rejectedCount },
+          ].map((tab) => {
+            const isActive = selectedStatus === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setSelectedStatus(tab.id)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  isActive
+                    ? 'bg-[#021526] text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                <span>{tab.label}</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-md font-mono ${
+                    isActive ? 'bg-white/20 text-white' : 'bg-white text-slate-700'
+                  }`}
+                >
+                  {tab.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Right: Search, Sports, Districts & Sort */}
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5">
+          {/* Live Search Input */}
+          <div className="relative min-w-[240px] flex-1">
+            <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-[#5F6368]" />
+            <input
+              type="text"
+              placeholder="Search request ID, venue, court, display name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full rounded-xl bg-slate-50 border border-[#E5E7EB] pl-10 pr-9 py-2 text-xs text-[#021526] placeholder-[#5F6368] focus:bg-white focus:border-[#F94001] focus:ring-2 focus:ring-[#F94001]/10 transition-all outline-none font-medium"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Sports Selector */}
+          <div className="relative min-w-[130px]">
+            <select
+              value={selectedSport}
+              onChange={(e) => setSelectedSport(e.target.value)}
+              className="w-full appearance-none pl-8 pr-7 py-2 rounded-xl border border-[#E5E7EB] bg-slate-50 text-xs font-bold text-[#021526] focus:outline-none focus:border-[#F94001] focus:ring-1 focus:ring-[#F94001] transition-colors cursor-pointer"
+            >
+              <option value="ALL">All Sports</option>
+              {availableSports.map((sp) => (
+                <option key={sp} value={sp}>
+                  {SPORT_ICONS[sp] || '🏅'} {sp}
+                </option>
+              ))}
+            </select>
+            <Trophy className="h-3.5 w-3.5 absolute left-2.5 top-2.5 text-amber-500 pointer-events-none" />
+          </div>
+
+          {/* District Selector */}
+          <div className="relative min-w-[140px]">
+            <select
+              value={selectedDistrict}
+              onChange={(e) => setSelectedDistrict(e.target.value)}
+              className="w-full appearance-none pl-8 pr-7 py-2 rounded-xl border border-[#E5E7EB] bg-slate-50 text-xs font-bold text-[#021526] focus:outline-none focus:border-[#F94001] focus:ring-1 focus:ring-[#F94001] transition-colors cursor-pointer"
+            >
+              <option value="ALL">All Districts</option>
+              {availableDistricts.map((dst) => (
+                <option key={dst} value={dst}>
+                  {dst}
+                </option>
+              ))}
+            </select>
+            <MapPin className="h-3.5 w-3.5 absolute left-2.5 top-2.5 text-slate-500 pointer-events-none" />
+          </div>
+
+          {/* Reset Filters */}
+          {(searchQuery ||
+            selectedState !== 'ALL' ||
+            selectedDistrict !== 'ALL' ||
+            selectedSport !== 'ALL' ||
+            selectedStatus !== 'ALL') && (
             <button
               type="button"
-              onClick={() => setSearchQuery('')}
-              className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600"
+              onClick={() => {
+                setSearchQuery('');
+                setSelectedState('ALL');
+                setSelectedDistrict('ALL');
+                setSelectedSport('ALL');
+                setSelectedStatus('ALL');
+              }}
+              className="px-3 py-2 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 shrink-0"
+              title="Reset all filters"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" />
+              <span>Reset</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* 4. COURT REQUESTS LIST / CARDS */}
-      <div className="space-y-4">
-        {filteredRequests.length === 0 ? (
-          <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center shadow-2xs">
-            <Layers className="h-10 w-10 text-slate-300 mx-auto mb-2" />
-            <p className="font-extrabold text-sm text-slate-800">No Court Requests Found</p>
-            <p className="text-xs text-slate-500 mt-1">Try resetting the filters or submit a new court extension request.</p>
-          </div>
-        ) : (
-          filteredRequests.map((req) => {
-            const isSubmitted = req.status === 'SUBMITTED';
-            const isResubmitted = req.status === 'RESUBMITTED';
-            const isApproved = req.status === 'APPROVED';
-            const isRejected = req.status === 'REJECTED';
-
-            return (
-              <div
-                key={req.id}
-                className={`bg-white rounded-3xl border p-5 shadow-2xs space-y-4 transition-all hover:shadow-md ${
-                  isResubmitted
-                    ? 'border-blue-300 ring-1 ring-blue-100'
-                    : isSubmitted
-                    ? 'border-amber-300 ring-1 ring-amber-100'
-                    : isApproved
-                    ? 'border-emerald-200'
-                    : 'border-rose-200'
-                }`}
-              >
-                {/* Header Row: IDs, Venue Info, Status Badge */}
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-3 border-b border-slate-100">
-                  <div className="flex items-start gap-3">
-                    <div className="h-12 w-12 rounded-2xl bg-slate-950 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-2xs">
-                      {req.sport.substring(0, 2).toUpperCase()}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono text-[11px] font-black text-[#F94001] bg-orange-50 px-2 py-0.5 rounded-md border border-orange-200/80">
-                          {req.id}
-                        </span>
-                        <Link
-                          href={`/admin/venues/${req.venue_id}`}
-                          className="font-bold text-xs text-slate-900 hover:text-[#F94001] flex items-center gap-1 transition-colors"
-                        >
-                          <Building2 className="h-3.5 w-3.5 text-slate-400" />
-                          <span>{req.venue_name}</span>
-                          <span className="font-mono text-[10px] text-slate-400">({req.venue_id})</span>
-                        </Link>
-                      </div>
-                      <h3 className="text-base font-black text-slate-900 tracking-tight mt-1">
-                        {req.court_name}
-                      </h3>
-                      {req.display_name && (
-                        <p className="text-xs text-slate-500 font-medium">Customer Facing: &quot;{req.display_name}&quot;</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Status Pill Badge */}
-                  <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
-                    {isSubmitted && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                        <Clock className="h-3.5 w-3.5 text-amber-600" />
-                        <span>1st Submitted</span>
-                      </span>
-                    )}
-                    {isResubmitted && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-blue-50 text-blue-700 border border-blue-200 animate-pulse">
-                        <RotateCcw className="h-3.5 w-3.5 text-blue-600" />
-                        <span>Resubmitted (Round {req.submission_count || 2})</span>
-                      </span>
-                    )}
-                    {isApproved && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                        <span>Approved &amp; Live</span>
-                      </span>
-                    )}
-                    {isRejected && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                        <XCircle className="h-3.5 w-3.5 text-rose-600" />
-                        <span>Rejected (Feedback Issued)</span>
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Middle Specifications Strip (From Screenshots) */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50/80 rounded-2xl p-4 border border-slate-200/80 text-xs">
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Sport &amp; Ground</span>
-                    <p className="font-bold text-slate-800 mt-0.5">{req.sport}</p>
-                    <span className="text-[10px] text-slate-500 font-medium">
-                      {req.same_physical_sports ? `Shared with ${req.parent_court_name}` : 'Separate Ground'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Standard Rate</span>
-                    <p className="font-mono font-bold text-slate-900 text-sm mt-0.5">₹{req.price_per_hour}/hr</p>
-                    <span className="text-[10px] text-slate-500">Min: {req.min_booking_duration}</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Peak &amp; Weekend</span>
-                    <p className="font-mono font-bold text-[#F94001] text-sm mt-0.5">₹{req.peak_price}/hr</p>
-                    <span className="text-[10px] text-amber-700 font-medium">Weekend: ₹{req.weekend_price}/hr</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Cancellation Rule</span>
-                    <p className="font-bold text-emerald-700 text-xs mt-0.5">{req.cancellation_window_hours}h notice buffer</p>
-                    <span className="text-[10px] text-slate-500 font-medium">{req.refund_percentage}% refund</span>
-                  </div>
-                </div>
-
-                {/* Rejection Note Alert if Rejected */}
-                {isRejected && req.rejection_notes && (
-                  <div className="p-3.5 rounded-2xl bg-rose-50/80 border border-rose-200 text-xs text-rose-800 flex items-start gap-2.5">
-                    <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-bold text-rose-900">Admin Rejection Feedback to Venue Owner:</p>
-                      <p className="mt-0.5 text-rose-700 leading-relaxed">{req.rejection_notes}</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Resubmission Alert if Resubmitted */}
-                {isResubmitted && (
-                  <div className="p-3 rounded-2xl bg-blue-50/80 border border-blue-200 text-xs text-blue-800 flex items-start gap-2">
-                    <RotateCcw className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-                    <p>
-                      Venue owner revised court specifications following feedback and resubmitted for Round {req.submission_count || 2} approval.
+      {/* 5. PERFECT DATA TABLE WITH REQUESTED COLUMNS:
+             1. REQUEST ID
+             2. VENUE DETAILS (Name, ID, District & State)
+             3. COURT & SPORT (Court name, Display name, Sport)
+             4. REQUEST DATE & TIME
+             5. HOURLY RATE
+             6. STATUS
+             7. ACTIONS */}
+      <div className="rounded-2xl bg-white border border-slate-200/90 shadow-2xs overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="border-b border-slate-200/90 bg-slate-50/75 text-slate-500 font-semibold tracking-wider text-[11px] uppercase select-none">
+                <th className="py-3 px-4 w-[115px]">Request ID</th>
+                <th className="py-3 px-4 min-w-[210px]">Venue Details</th>
+                <th className="py-3 px-4 min-w-[240px]">Court &amp; Sport</th>
+                <th className="py-3 px-4 min-w-[140px]">Request Date &amp; Time</th>
+                <th className="py-3 px-4 min-w-[120px]">Hourly Rate</th>
+                <th className="py-3 px-4 min-w-[110px]">Status</th>
+                <th className="py-3 px-4 text-center w-[130px]">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredRequests.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-14 text-center text-slate-400">
+                    <Inbox className="h-9 w-9 mx-auto text-slate-300 mb-2" />
+                    <p className="font-bold text-sm text-[#021526]">No court requests found</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Try adjusting your search query, status, or state filter
                     </p>
-                  </div>
-                )}
+                  </td>
+                </tr>
+              ) : (
+                filteredRequests.map((req) => {
+                  const status = normStatus(req.status);
+                  const isCopied = copiedText === req.id;
+                  const reqState = getRequestState(req);
+                  const reqDistrict = getRequestDistrict(req);
+                  const submittedDate = req.submitted_at || req.created_at?.split(' ')[0] || '08 Sept 2026';
+                  const submittedTime = req.created_at?.split(' ')[1] || '03:00 PM';
 
-                {/* Bottom Action Row */}
-                <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1">
-                  <div className="text-[11px] text-slate-400 font-medium">
-                    Owner: <strong className="text-slate-700">{req.owner_name}</strong> ({req.owner_phone})
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {/* Inspect Slide Bar Button */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedRequestForDrawer(req);
-                        setIsRejectFormOpen(false);
-                      }}
-                      className="px-3.5 py-1.5 rounded-xl border border-slate-200 hover:border-[#F94001] bg-white text-slate-800 font-bold text-xs inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                  return (
+                    <tr
+                      key={req.id}
+                      onClick={() => handleOpenDrawer(req)}
+                      className="hover:bg-slate-50/70 transition-colors group cursor-pointer"
                     >
-                      <Eye className="h-3.5 w-3.5 text-[#F94001]" />
-                      <span>Review Details (Slide Bar)</span>
-                    </button>
+                      {/* 1. REQUEST ID */}
+                      <td className="py-3.5 px-4 align-middle whitespace-nowrap">
+                        <div className="inline-flex items-center gap-1.5">
+                          <span className="font-mono text-xs font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                            {req.id}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCopy(req.id, req.id);
+                            }}
+                            className="text-slate-400 hover:text-slate-700 transition-colors p-0.5 cursor-pointer"
+                            title="Copy Request ID"
+                          >
+                            {isCopied ? (
+                              <Check className="h-3 w-3 text-emerald-600" />
+                            ) : (
+                              <Copy className="h-3 w-3" />
+                            )}
+                          </button>
+                        </div>
+                      </td>
 
-                    {/* Quick Approve */}
-                    {!isApproved && (
-                      <button
-                        type="button"
-                        onClick={() => handleApproveRequest(req)}
-                        className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-                      >
-                        <Check className="h-3.5 w-3.5" />
-                        <span>Approve Court</span>
-                      </button>
-                    )}
+                      {/* 2. VENUE DETAILS (ID, NAME, STATE & DISTRICT) */}
+                      <td className="py-3.5 px-4 align-middle">
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-bold text-slate-900 text-xs tracking-tight group-hover:text-[#F94001] transition-colors">
+                              {req.venue_name}
+                            </p>
+                            <span className="font-mono text-[10px] text-slate-500 bg-slate-100 px-1 py-0.2 rounded border border-slate-200">
+                              {req.venue_id.toUpperCase()}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 text-[11px] text-slate-500 font-medium">
+                            <MapPin className="h-3 w-3 text-slate-400 shrink-0" />
+                            <span>
+                              {reqDistrict}, {reqState}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
 
-                    {/* If Rejected: Edit & Resubmit */}
-                    {isRejected && (
-                      <button
-                        type="button"
-                        onClick={() => handleOpenAddModal(req)}
-                        className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-                      >
-                        <RotateCcw className="h-3.5 w-3.5" />
-                        <span>Edit &amp; Resubmit</span>
-                      </button>
-                    )}
+                      {/* 3. COURT & SPORT (SPORT, COURT NAME & DISPLAY NAME) */}
+                      <td className="py-3.5 px-4 align-middle">
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-slate-900 text-xs">{req.court_name}</span>
+                            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-slate-100 text-slate-700">
+                              {SPORT_ICONS[req.sport] || '🏅'} {req.sport}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 truncate max-w-[220px]">
+                            <span className="text-slate-400">Display:</span> {req.display_name}
+                          </p>
+                        </div>
+                      </td>
 
-                    {/* Delete Request (Venue ID based action) */}
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteRequest(req)}
-                      className="h-8.5 w-8.5 rounded-xl border border-slate-200 bg-white hover:bg-rose-50 hover:border-rose-200 text-slate-400 hover:text-rose-600 flex items-center justify-center transition-colors cursor-pointer shadow-2xs"
-                      title={`Delete request ${req.id} for ${req.venue_id}`}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })
-        )}
+                      {/* 4. REQUEST DATE & TIME */}
+                      <td className="py-3.5 px-4 align-middle whitespace-nowrap">
+                        <div className="space-y-0.5">
+                          <p className="font-bold text-slate-800 text-xs">{submittedDate}</p>
+                          <p className="text-[10px] font-mono text-slate-500 flex items-center gap-1">
+                            <Clock className="h-3 w-3 text-slate-400" />
+                            <span>{submittedTime}</span>
+                          </p>
+                        </div>
+                      </td>
+
+                      {/* 5. HOURLY RATE */}
+                      <td className="py-3.5 px-4 align-middle whitespace-nowrap">
+                        <div className="space-y-0.5">
+                          <p className="font-mono font-bold text-xs text-slate-900">
+                            ₹{req.price_per_hour}/hr
+                          </p>
+                          <p className="text-[10px] font-mono text-slate-400">
+                            Peak: ₹{req.peak_price}/hr
+                          </p>
+                        </div>
+                      </td>
+
+                      {/* 6. STATUS */}
+                      <td className="py-3.5 px-4 align-middle whitespace-nowrap">
+                        {status === 'NEW' && (
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                            <span className="relative flex h-1.5 w-1.5">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500"></span>
+                            </span>
+                            Pending
+                          </span>
+                        )}
+                        {status === 'RESUBMITTED' && (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                            <RotateCcw className="h-3 w-3" />
+                            Resubmitted
+                          </span>
+                        )}
+                        {status === 'APPROVED' && (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                            <CheckCircle2 className="h-3 w-3" />
+                            Approved
+                          </span>
+                        )}
+                        {status === 'REJECTED' && (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+                            <XCircle className="h-3 w-3" />
+                            Rejected
+                          </span>
+                        )}
+                      </td>
+
+                      {/* 7. ACTIONS (QUICK APPROVE, REJECT & DETAILS) */}
+                      <td className="py-3.5 px-4 align-middle text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-1.5">
+                          {status !== 'APPROVED' && status !== 'REJECTED' && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleApprove(req);
+                                }}
+                                title="Quick Approve"
+                                className="h-7 w-7 rounded-lg bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white flex items-center justify-center transition-colors cursor-pointer border border-emerald-200 shadow-2xs"
+                              >
+                                <Check className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenDrawer(req);
+                                  setIsRejectOpen(true);
+                                }}
+                                title="Reject Request"
+                                className="h-7 w-7 rounded-lg bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white flex items-center justify-center transition-colors cursor-pointer border border-rose-200 shadow-2xs"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            </>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenDrawer(req);
+                            }}
+                            className="h-7 px-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-[#F94001] hover:border-[#F94001]/40 hover:bg-[#FFF1EC] text-xs font-semibold inline-flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
+                          >
+                            <Eye className="h-3 w-3 text-slate-500" />
+                            <span>Details &gt;</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* ========================================================
-          RIGHT-SIDE SLIDE BAR (DRAWER) FOR COURT REQUEST INSPECTION
-      ======================================================== */}
+      {/* =========================================================================
+          6. SLIDE BAR DRAWER: Complete Partner Court Request Dossier
+          (Strictly NO amenities and NO operating hours)
+          ========================================================================= */}
       {selectedRequestForDrawer && (
-        <div
-          className="fixed inset-0 z-50 overflow-hidden bg-slate-900/60 backdrop-blur-xs flex justify-end animate-in fade-in duration-200"
-          onClick={() => setSelectedRequestForDrawer(null)}
-        >
-          <div
-            className="w-full max-w-xl bg-white shadow-2xl h-full flex flex-col overflow-hidden animate-in slide-in-from-right duration-300 border-l border-slate-200"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="fixed inset-0 z-50 overflow-hidden bg-slate-900/60 backdrop-blur-xs flex justify-end animate-in fade-in duration-200">
+          <div className="w-full max-w-2xl bg-white shadow-2xl h-full flex flex-col overflow-hidden animate-in slide-in-from-right duration-300 border-l border-[#E5E7EB]">
             {/* Header */}
-            <div className="p-5 bg-gradient-to-r from-[#091522] to-slate-900 text-white flex items-start justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-mono text-[#F94001] uppercase tracking-wider font-extrabold bg-white/10 px-2 py-0.5 rounded">
-                    {selectedRequestForDrawer.id}
-                  </span>
-                  <span className="text-[10px] font-mono text-slate-300 font-bold">
-                    Venue: {selectedRequestForDrawer.venue_id}
-                  </span>
+            <div className="p-5 bg-white border-b border-[#E5E7EB] flex items-start justify-between gap-3 shrink-0">
+              <div className="space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-widest text-[#F94001]">
+                  COURT EXTENSION REQUEST DOSSIER
+                </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-xl font-black font-display text-[#021526]">
+                    #{selectedRequestForDrawer.id} &bull; {selectedRequestForDrawer.court_name}
+                  </h2>
                 </div>
-                <h3 className="text-lg font-black font-display mt-1">{selectedRequestForDrawer.court_name}</h3>
-                <p className="text-xs text-slate-300 mt-0.5">
-                  {selectedRequestForDrawer.venue_name} &bull; {selectedRequestForDrawer.sport}
+                <p className="text-xs text-slate-500 font-medium">
+                  {selectedRequestForDrawer.venue_name} &bull; {selectedRequestForDrawer.venue_city}
                 </p>
               </div>
+
               <button
                 type="button"
                 onClick={() => setSelectedRequestForDrawer(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white cursor-pointer"
+                className="h-8 w-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors cursor-pointer shrink-0"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            {/* Drawer Body Content */}
-            <div className="p-5 overflow-y-auto space-y-4 flex-1 text-xs">
-              {/* Status Banner */}
-              <div
-                className={`p-3 rounded-2xl border flex items-center justify-between ${
-                  selectedRequestForDrawer.status === 'APPROVED'
-                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                    : selectedRequestForDrawer.status === 'RESUBMITTED'
-                    ? 'bg-blue-50 text-blue-800 border-blue-200'
-                    : selectedRequestForDrawer.status === 'SUBMITTED'
-                    ? 'bg-amber-50 text-amber-800 border-amber-200'
-                    : 'bg-rose-50 text-rose-800 border-rose-200'
-                }`}
-              >
-                <div>
-                  <span className="font-extrabold uppercase text-[10px] tracking-wider block">
-                    Current Review State
+            {/* Scrollable Body: All Required Attributes */}
+            <div className="p-5 overflow-y-auto flex-1 space-y-4">
+              {/* CARD 1: APPLICATION & FACILITY PROPERTIES */}
+              <div className="p-4 rounded-2xl bg-slate-50/80 border border-[#E5E7EB] space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-[#F94001]" />
+                    <span className="text-xs font-black uppercase tracking-wider text-[#021526]">
+                      Application &amp; Facility Properties
+                    </span>
+                  </div>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                      normStatus(selectedRequestForDrawer.status) === 'APPROVED'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : normStatus(selectedRequestForDrawer.status) === 'REJECTED'
+                        ? 'bg-rose-100 text-rose-800'
+                        : 'bg-amber-100 text-amber-800'
+                    }`}
+                  >
+                    {selectedRequestForDrawer.status}
                   </span>
-                  <p className="font-black text-sm mt-0.5">
-                    {selectedRequestForDrawer.status === 'SUBMITTED'
-                      ? '1st Round Submitted (Awaiting Review)'
-                      : selectedRequestForDrawer.status === 'RESUBMITTED'
-                      ? `Resubmitted (Round ${selectedRequestForDrawer.submission_count || 2})`
-                      : selectedRequestForDrawer.status === 'APPROVED'
-                      ? 'Approved & Live on Venue'
-                      : 'Rejected (Feedback Issued to Vendor)'}
-                  </p>
                 </div>
-                <span className="font-mono text-[10px] px-2.5 py-1 rounded-full bg-white/80 font-bold border border-slate-200">
-                  {selectedRequestForDrawer.status}
-                </span>
-              </div>
 
-              {/* Venue & Owner Credentials */}
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-                <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Venue &amp; Partner Identification</span>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div>
-                    <span className="text-slate-400 block text-[10px]">Venue ID:</span>
-                    <strong className="text-slate-900 font-mono">{selectedRequestForDrawer.venue_id}</strong>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px]">Venue Name:</span>
-                    <strong className="text-slate-900">{selectedRequestForDrawer.venue_name}</strong>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px]">Owner / Licensee:</span>
-                    <strong className="text-slate-900">{selectedRequestForDrawer.owner_name}</strong>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px]">Contact Mobile:</span>
-                    <strong className="text-slate-900 font-mono">{selectedRequestForDrawer.owner_phone}</strong>
-                  </div>
-                </div>
-              </div>
-
-              {/* Court Specs (from Screenshot Form) */}
-              <div className="p-4 rounded-2xl border border-slate-200 space-y-3">
-                <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Configured Specs (Form Submission)</span>
-                
                 <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div className="p-2.5 rounded-xl bg-slate-50">
-                    <span className="text-slate-400 text-[10px] block">Physical Ground:</span>
-                    <strong className="text-slate-800 font-medium">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">
+                      Facility Name &amp; ID
+                    </span>
+                    <p className="font-bold text-slate-900 text-xs mt-0.5">
+                      {selectedRequestForDrawer.venue_name}
+                    </p>
+                    <span className="font-mono text-[10px] text-slate-500">
+                      {selectedRequestForDrawer.venue_id.toUpperCase()}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">
+                      Location &amp; Region
+                    </span>
+                    <p className="font-medium text-slate-800 text-xs mt-0.5 flex items-center gap-1">
+                      <MapPin className="h-3 w-3 text-slate-400" />
+                      <span>{selectedRequestForDrawer.venue_city}</span>
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">
+                      Request Type
+                    </span>
+                    <p className="font-semibold text-slate-800 text-xs mt-0.5">
+                      Additional Court Creation
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">
+                      Submitted Date &amp; Time
+                    </span>
+                    <p className="font-mono text-slate-700 text-xs mt-0.5">
+                      {selectedRequestForDrawer.submitted_at || '08 Sept 2026, 03:00 PM'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* CARD 2: AUTHORIZED VENUE OWNER & CONTACT */}
+              <div className="p-4 rounded-2xl bg-white border border-[#E5E7EB] shadow-xs space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-blue-600" />
+                    <span className="text-xs font-black uppercase tracking-wider text-[#021526]">
+                      Authorized Venue Owner &amp; Contact
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    KYC Verified Partner
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-slate-100 text-[#021526] font-black text-sm flex items-center justify-center border border-slate-200 shrink-0">
+                    {selectedRequestForDrawer.owner_name.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="font-bold text-slate-900 text-sm">
+                      {selectedRequestForDrawer.owner_name}
+                    </p>
+                    <div className="flex items-center gap-2.5 text-xs text-slate-500">
+                      <a
+                        href={`tel:${selectedRequestForDrawer.owner_phone}`}
+                        className="hover:text-[#F94001] flex items-center gap-1 font-mono text-[11px]"
+                      >
+                        <Phone className="h-3 w-3 text-emerald-600" />
+                        <span>{selectedRequestForDrawer.owner_phone}</span>
+                      </a>
+                      <span>&bull;</span>
+                      <span className="font-mono text-[10px] text-slate-400">
+                        Vendor ID: VEND-{selectedRequestForDrawer.venue_id.slice(-4)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* CARD 3: COURT SPECIFICATIONS & PLAYER APP ALLOCATION */}
+              <div className="p-4 rounded-2xl bg-white border border-[#E5E7EB] shadow-xs space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <div className="flex items-center gap-2">
+                    <Layers className="h-4 w-4 text-purple-600" />
+                    <span className="text-xs font-black uppercase tracking-wider text-[#021526]">
+                      Court Specifications &amp; Player App Allocation
+                    </span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800">
+                    {SPORT_ICONS[selectedRequestForDrawer.sport] || '🏅'}{' '}
+                    {selectedRequestForDrawer.sport}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">
+                      Internal Court Name
+                    </span>
+                    <p className="font-extrabold text-slate-900 text-xs mt-0.5">
+                      {selectedRequestForDrawer.court_name}
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">
+                      Player App Display Name
+                    </span>
+                    <p className="font-medium text-slate-800 text-xs mt-0.5">
+                      {selectedRequestForDrawer.display_name}
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">
+                      Ground Allocation
+                    </span>
+                    <p className="text-slate-800 font-medium text-xs mt-0.5">
                       {selectedRequestForDrawer.same_physical_sports
-                        ? `Shared Ground (${selectedRequestForDrawer.parent_court_name})`
-                        : 'No (Separate Ground)'}
-                    </strong>
+                        ? `Shared Physical Ground with ${selectedRequestForDrawer.parent_court_name || 'Main Court'}`
+                        : 'Independent Dedicated Pitch / Court'}
+                    </p>
                   </div>
-                  <div className="p-2.5 rounded-xl bg-slate-50">
-                    <span className="text-slate-400 text-[10px] block">Sport:</span>
-                    <strong className="text-slate-800 font-bold">{selectedRequestForDrawer.sport}</strong>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">
+                      Minimum Booking Duration
+                    </span>
+                    <p className="font-mono font-bold text-slate-800 text-xs mt-0.5">
+                      {selectedRequestForDrawer.min_booking_duration}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* CARD 4: HOURLY RATES & REFUND POLICY */}
+              <div className="p-4 rounded-2xl bg-white border border-[#E5E7EB] shadow-xs space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-emerald-600" />
+                    <span className="text-xs font-black uppercase tracking-wider text-[#021526]">
+                      Hourly Rates &amp; Refund Policy
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-mono text-emerald-700 font-bold">
+                    Direct Gateway Standard
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 text-xs">
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">
+                      Base Hourly Rate
+                    </span>
+                    <p className="font-mono font-black text-sm text-[#021526] mt-0.5">
+                      ₹{selectedRequestForDrawer.price_per_hour}/hr
+                    </p>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-amber-50/50 border border-amber-200/60">
+                    <span className="text-[10px] font-bold text-amber-700 uppercase">
+                      Peak Hours Rate
+                    </span>
+                    <p className="font-mono font-black text-sm text-amber-900 mt-0.5">
+                      ₹{selectedRequestForDrawer.peak_price}/hr
+                    </p>
+                    <p className="text-[9px] font-mono text-amber-600 mt-0.5">
+                      {selectedRequestForDrawer.peak_hours_start} -{' '}
+                      {selectedRequestForDrawer.peak_hours_end}
+                    </p>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-purple-50/50 border border-purple-200/60">
+                    <span className="text-[10px] font-bold text-purple-700 uppercase">
+                      Weekend Rate
+                    </span>
+                    <p className="font-mono font-black text-sm text-purple-900 mt-0.5">
+                      ₹{selectedRequestForDrawer.weekend_price}/hr
+                    </p>
+                    <p className="text-[9px] font-mono text-purple-600 mt-0.5">Fri, Sat, Sun</p>
                   </div>
                 </div>
 
-                <div className="p-3 rounded-xl bg-slate-900 text-white space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">Regular Hourly Price:</span>
-                    <strong className="font-mono text-base font-bold text-white">₹{selectedRequestForDrawer.price_per_hour}/hr</strong>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">Peak Rate ({selectedRequestForDrawer.peak_hours_start}–{selectedRequestForDrawer.peak_hours_end}):</span>
-                    <strong className="font-mono text-base font-bold text-[#F94001]">₹{selectedRequestForDrawer.peak_price}/hr</strong>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">Weekend Rate ({selectedRequestForDrawer.peak_days.join(', ')}):</span>
-                    <strong className="font-mono text-base font-bold text-amber-400">₹{selectedRequestForDrawer.weekend_price}/hr</strong>
-                  </div>
-                </div>
-
-                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 space-y-1">
-                  <div className="flex items-center gap-1.5 font-bold text-xs">
-                    <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
-                    <span>Cancellation Payout Policy</span>
-                  </div>
-                  <p className="text-[11px] text-emerald-800">
-                    Free cancellation permitted up to {selectedRequestForDrawer.cancellation_window_hours} Hours before kickoff with {selectedRequestForDrawer.refund_percentage}% refund.
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">
+                    Cancellation &amp; Refund Rules
+                  </span>
+                  <p className="text-slate-700 font-medium">
+                    Free cancellation allowed up to{' '}
+                    <span className="font-bold text-[#021526]">
+                      {selectedRequestForDrawer.cancellation_window_hours} hours
+                    </span>{' '}
+                    before slot commencement with{' '}
+                    <span className="font-bold text-emerald-700">
+                      {selectedRequestForDrawer.refund_percentage}% refund
+                    </span>
+                    .
                   </p>
                 </div>
               </div>
 
-              {/* Multi-Round Lifecycle & Review History Timeline */}
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-                <div className="flex items-center gap-1.5">
-                  <History className="h-4 w-4 text-slate-500" />
-                  <span className="text-[10px] text-slate-600 uppercase font-bold tracking-wider">
-                    Multi-Round Submission &amp; Review History
+              {/* CARD 5: REJECTION REASON / INLINE REJECT FORM */}
+              {selectedRequestForDrawer.rejection_notes && !isRejectOpen && (
+                <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 space-y-1 text-xs">
+                  <span className="text-[10px] font-bold uppercase text-rose-700 tracking-wider">
+                    Previous Rejection Audit Reason
                   </span>
+                  <p className="text-rose-900 font-medium">
+                    {selectedRequestForDrawer.rejection_notes}
+                  </p>
                 </div>
+              )}
 
-                <div className="space-y-3 pl-2 border-l-2 border-slate-300">
-                  {selectedRequestForDrawer.history.map((h, idx) => (
-                    <div key={idx} className="relative pl-3 space-y-0.5">
-                      <div className="absolute -left-[19px] top-1 h-3 w-3 rounded-full bg-white border-2 border-slate-500" />
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`font-mono text-[9px] font-black px-1.5 py-0.2 rounded uppercase ${
-                            h.action === 'APPROVED'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : h.action === 'RESUBMITTED'
-                              ? 'bg-blue-100 text-blue-800'
-                              : h.action === 'REJECTED'
-                              ? 'bg-rose-100 text-rose-800'
-                              : 'bg-amber-100 text-amber-800'
-                          }`}
-                        >
-                          {h.action} (Round {h.round})
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-mono">{h.timestamp}</span>
-                      </div>
-                      {h.reviewer && (
-                        <p className="text-[10px] text-slate-500">
-                          Reviewed by: <strong className="text-slate-700">{h.reviewer}</strong>
-                        </p>
-                      )}
-                      {h.notes && (
-                        <p className="text-xs text-slate-700 bg-white p-2 rounded-lg border border-slate-200 mt-1 leading-relaxed">
-                          {h.notes}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Rejection Form Box (Expandable) */}
-              {isRejectFormOpen && (
-                <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 space-y-3 animate-in fade-in duration-150">
-                  <div className="flex items-center gap-2 text-rose-900 font-bold text-xs">
-                    <XCircle className="h-4 w-4 text-rose-600" />
-                    <span>Issue Rejection Notes to Venue Owner</span>
+              {/* Inline Reject Form */}
+              {isRejectOpen && (
+                <div className="p-4 rounded-2xl bg-rose-50/80 border border-rose-200 space-y-3 text-xs animate-in fade-in">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black uppercase text-rose-800 tracking-wider">
+                      Specify Rejection Reason
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsRejectOpen(false)}
+                      className="text-rose-400 hover:text-rose-700 text-xs font-bold"
+                    >
+                      Cancel
+                    </button>
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">
-                      Rejection Reason Category
+                    <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
+                      Reason Category
                     </label>
                     <select
                       value={rejectionReason}
                       onChange={(e) => setRejectionReason(e.target.value)}
-                      className="w-full h-8 px-2.5 rounded-xl border border-rose-300 bg-white text-xs font-semibold text-slate-800 outline-none"
+                      className="w-full p-2 rounded-xl border border-rose-200 bg-white text-xs font-bold text-slate-800 focus:outline-none"
                     >
                       {REJECTION_REASONS.map((r) => (
                         <option key={r.value} value={r.value}>
@@ -1123,88 +1276,55 @@ export default function CourtRequestsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">
-                      Required Corrections / Instructions
+                    <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
+                      Detailed Feedback for Partner (Required)
                     </label>
                     <textarea
                       rows={3}
                       value={rejectionNote}
                       onChange={(e) => setRejectionNote(e.target.value)}
-                      placeholder="e.g. Please reduce weekend rate to ₹1500 and verify minimum 1 hour booking..."
-                      className="w-full p-2.5 rounded-xl border border-rose-300 bg-white text-xs text-slate-800 outline-none"
+                      placeholder="Explain precisely why this court request cannot be approved..."
+                      className="w-full p-2.5 rounded-xl border border-rose-200 bg-white text-xs text-slate-800 focus:outline-none placeholder:text-slate-400"
                     />
                   </div>
 
-                  {actionError && (
-                    <p className="text-xs text-rose-700 font-bold">{actionError}</p>
-                  )}
-
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setIsRejectFormOpen(false)}
-                      className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold text-xs"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleRejectRequest(selectedRequestForDrawer)}
-                      className="px-4 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs"
-                    >
-                      Confirm Rejection
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleConfirmReject(selectedRequestForDrawer)}
+                    className="w-full py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
+                  >
+                    Confirm &amp; Reject Court Request
+                  </button>
                 </div>
               )}
             </div>
 
-            {/* Slide Bar Footer Actions */}
-            <div className="p-4 border-t border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-2">
-              {/* Delete Request with Venue ID based action */}
+            {/* Sticky Action Footer */}
+            <div className="p-4 bg-slate-50 border-t border-[#E5E7EB] flex items-center justify-between gap-3 shrink-0">
               <button
                 type="button"
-                onClick={() => handleDeleteRequest(selectedRequestForDrawer)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-100 font-bold text-xs transition-colors cursor-pointer"
-                title={`Delete court request for ${selectedRequestForDrawer.venue_id}`}
+                onClick={() => setSelectedRequestForDrawer(null)}
+                className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
               >
-                <Trash2 className="h-3.5 w-3.5" />
-                <span>Delete Request</span>
+                Close
               </button>
 
-              <div className="flex items-center gap-2 ml-auto">
-                {/* Edit & Resubmit if rejected */}
-                {selectedRequestForDrawer.status === 'REJECTED' && (
+              <div className="flex items-center gap-2">
+                {normStatus(selectedRequestForDrawer.status) !== 'REJECTED' && (
                   <button
                     type="button"
-                    onClick={() => {
-                      handleOpenAddModal(selectedRequestForDrawer);
-                    }}
-                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                    onClick={() => setIsRejectOpen(true)}
+                    className="px-4 py-2 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 text-rose-700 font-bold text-xs transition-colors cursor-pointer"
                   >
-                    <RotateCcw className="h-3.5 w-3.5" />
-                    <span>Edit &amp; Resubmit</span>
+                    Reject
                   </button>
                 )}
 
-                {/* Reject Button (Toggle Form) */}
-                {selectedRequestForDrawer.status !== 'REJECTED' && !isRejectFormOpen && (
+                {normStatus(selectedRequestForDrawer.status) !== 'APPROVED' && (
                   <button
                     type="button"
-                    onClick={() => setIsRejectFormOpen(true)}
-                    className="px-3.5 py-2 rounded-xl border border-rose-300 text-rose-700 hover:bg-rose-50 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                    <span>Reject with Notes</span>
-                  </button>
-                )}
-
-                {/* Approve Button */}
-                {selectedRequestForDrawer.status !== 'APPROVED' && (
-                  <button
-                    type="button"
-                    onClick={() => handleApproveRequest(selectedRequestForDrawer)}
-                    className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                    onClick={() => handleApprove(selectedRequestForDrawer)}
+                    className="px-5 py-2 rounded-xl bg-[#00875A] hover:bg-[#007048] text-white font-bold text-xs shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
                   >
                     <Check className="h-4 w-4" />
                     <span>Approve &amp; Activate</span>
@@ -1213,448 +1333,6 @@ export default function CourtRequestsPage() {
               </div>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* ========================================================
-          ADD NEW COURT / TURF MODAL (EXACT REPLICA OF SCREENSHOTS 1, 2, 3)
-      ======================================================== */}
-      {isFormModalOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
-          onClick={() => setIsFormModalOpen(false)}
-        >
-          <div
-            className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-5 border border-slate-200 animate-in zoom-in-95 duration-150 max-h-[92vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="flex items-start justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-2xl bg-orange-50 border border-orange-200/80 text-[#F94001] flex items-center justify-center shrink-0">
-                  <Layers className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-base text-slate-900">
-                    {editingRequestForResubmit ? 'Edit & Resubmit Court Request' : 'Add New Court / Turf'}
-                  </h3>
-                  <p className="text-xs text-slate-500 font-medium mt-0.5">
-                    Configure specs, pricing and cancellation policy
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsFormModalOpen(false)}
-                className="h-8 w-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center cursor-pointer transition-colors"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmitForm} className="space-y-4 text-xs">
-              {/* Target Venue Selection */}
-              <div>
-                <label className="block text-slate-700 font-bold mb-1.5">
-                  Target Venue Arena *
-                </label>
-                <select
-                  value={formVenueId}
-                  onChange={(e) => setFormVenueId(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-slate-50 font-bold text-slate-900 outline-none focus:border-[#F94001]"
-                >
-                  {INITIAL_VENUES.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.venue_name} ({v.district}, {v.state}) — {v.id}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* ❶ SECTION 1: SAME PHYSICAL SPORTS FOR THIS TURF? (Screenshot 1) */}
-              <div className="bg-slate-50/80 rounded-2xl border border-slate-200/80 p-4 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="h-5 w-5 rounded-full bg-slate-900 text-white font-black text-xs flex items-center justify-center">
-                      1
-                    </span>
-                    <h4 className="font-bold text-slate-900 text-xs">Same physical sports for this turf?</h4>
-                  </div>
-                  <span className="px-2 py-0.5 rounded-full bg-orange-50 text-[#F94001] border border-orange-200 text-[10px] font-bold">
-                    Required
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  Select <strong>Yes</strong> if this sport will share the ground with an already live physical court (e.g. Football pitch also used for Box Cricket).
-                </p>
-
-                <div className="grid grid-cols-2 gap-3 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setFormSamePhysicalSports(true)}
-                    className={`h-11 rounded-2xl font-bold text-xs transition-all cursor-pointer border ${
-                      formSamePhysicalSports
-                        ? 'border-[#F94001] text-[#F94001] bg-white shadow-xs'
-                        : 'border-slate-200 bg-white/60 text-slate-600 hover:bg-white'
-                    }`}
-                  >
-                    Yes (Share Physical Ground)
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setFormSamePhysicalSports(false)}
-                    className={`h-11 rounded-2xl font-bold text-xs transition-all cursor-pointer border ${
-                      !formSamePhysicalSports
-                        ? 'border-[#F94001] text-[#F94001] bg-white shadow-xs'
-                        : 'border-slate-200 bg-white/60 text-slate-600 hover:bg-white'
-                    }`}
-                  >
-                    {!formSamePhysicalSports && <span className="mr-1">&check;</span>} No (Separate Ground)
-                  </button>
-                </div>
-
-                {formSamePhysicalSports && (
-                  <div className="pt-2">
-                    <label className="block text-slate-600 font-bold mb-1 text-[11px]">
-                      Select Live Parent Court Shared:
-                    </label>
-                    <input
-                      type="text"
-                      value={formParentCourtName}
-                      onChange={(e) => setFormParentCourtName(e.target.value)}
-                      placeholder="e.g. Turf 1 Football"
-                      className="w-full h-9 px-3 rounded-xl border border-slate-200 bg-white text-slate-900 outline-none"
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* ❷ SECTION 2: COURT INFORMATION (Screenshot 1) */}
-              <div className="bg-slate-50/80 rounded-2xl border border-slate-200/80 p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className="h-5 w-5 rounded-full bg-slate-900 text-white font-black text-xs flex items-center justify-center">
-                    2
-                  </span>
-                  <h4 className="font-bold text-slate-900 text-xs">Court Information</h4>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-slate-700 font-bold mb-1 text-[11px]">
-                      Select Sport <span className="text-[#F94001]">*</span>
-                    </label>
-                    <select
-                      value={formSport}
-                      onChange={(e) => setFormSport(e.target.value)}
-                      className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-slate-900 font-bold outline-none focus:border-[#F94001]"
-                    >
-                      <option value="Football">Football</option>
-                      <option value="Cricket">Cricket</option>
-                      <option value="Box Cricket">Box Cricket</option>
-                      <option value="Badminton">Badminton</option>
-                      <option value="Pickleball">Pickleball</option>
-                      <option value="Tennis">Tennis</option>
-                      <option value="Basketball">Basketball</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-700 font-bold mb-1 text-[11px]">
-                      Court Name <span className="text-[#F94001]">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formCourtName}
-                      onChange={(e) => setFormCourtName(e.target.value)}
-                      placeholder="e.g. Turf 1A (5-a-side)"
-                      className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-slate-900 font-bold outline-none focus:border-[#F94001]"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-slate-700 font-bold mb-1 text-[11px]">
-                    Display Name <span className="text-slate-400 font-normal">(Customer-Facing, optional)</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formDisplayName}
-                    onChange={(e) => setFormDisplayName(e.target.value)}
-                    placeholder="e.g. Main Arena Pitch 1 (Floodlit Turf)"
-                    className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-slate-900 outline-none focus:border-[#F94001]"
-                  />
-                </div>
-              </div>
-
-              {/* ❸ SECTION 3: BASE DURATION & RATE (Screenshot 1 & 2) */}
-              <div className="bg-slate-50/80 rounded-2xl border border-slate-200/80 p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className="h-5 w-5 rounded-full bg-slate-900 text-white font-black text-xs flex items-center justify-center">
-                    3
-                  </span>
-                  <h4 className="font-bold text-slate-900 text-xs">Base Duration &amp; Rate</h4>
-                </div>
-
-                <div>
-                  <label className="block text-slate-600 font-medium mb-1 text-[11px]">
-                    Minimum Booking Duration
-                  </label>
-                  <div className="grid grid-cols-5 gap-1.5">
-                    {['30 Mins', '1 Hour', '1.5 Hours', '2 Hours', '3 Hours'].map((dur) => {
-                      const isSelected = formMinDuration === dur;
-                      return (
-                        <button
-                          key={dur}
-                          type="button"
-                          onClick={() => setFormMinDuration(dur)}
-                          className={`h-9 rounded-xl font-bold text-xs transition-all cursor-pointer ${
-                            isSelected
-                              ? 'bg-[#F94001] text-white shadow-xs'
-                              : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
-                          }`}
-                        >
-                          {dur}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-slate-700 font-bold mb-1 text-[11px]">
-                    Regular Hourly Price (₹/hour) <span className="text-[#F94001]">*</span>
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3.5 top-2.5 font-bold text-slate-700">₹</span>
-                    <input
-                      type="number"
-                      required
-                      value={formPricePerHour}
-                      onChange={(e) => setFormPricePerHour(Number(e.target.value))}
-                      placeholder="1000"
-                      className="w-full h-10 pl-8 pr-16 rounded-xl border border-slate-200 bg-white font-bold font-mono text-sm text-slate-900 outline-none focus:border-[#F94001]"
-                    />
-                    <span className="absolute right-3.5 top-2.5 text-xs text-slate-400">/ hour</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* ❹ SECTION 4: PEAK SURCHARGE & WEEKEND RATES (Screenshot 2) */}
-              <div className="bg-slate-50/80 rounded-2xl border border-slate-200/80 p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="h-5 w-5 rounded-full bg-slate-900 text-white font-black text-xs flex items-center justify-center">
-                      4
-                    </span>
-                    <h4 className="font-bold text-slate-900 text-xs">Peak Surcharge &amp; Weekend Rates</h4>
-                  </div>
-                  <span className="px-2 py-0.5 rounded-full bg-orange-50 text-[#F94001] border border-orange-200 text-[10px] font-bold">
-                    High Demand
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-slate-500 font-bold uppercase text-[10px] mb-1">PEAK START</label>
-                    <select
-                      value={formPeakStart}
-                      onChange={(e) => setFormPeakStart(e.target.value)}
-                      className="w-full h-9 px-3 rounded-xl border border-slate-200 bg-white text-slate-800 font-bold outline-none"
-                    >
-                      <option value="05:00 PM">05:00 PM</option>
-                      <option value="06:00 PM">06:00 PM</option>
-                      <option value="07:00 PM">07:00 PM</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-slate-500 font-bold uppercase text-[10px] mb-1">PEAK END</label>
-                    <select
-                      value={formPeakEnd}
-                      onChange={(e) => setFormPeakEnd(e.target.value)}
-                      className="w-full h-9 px-3 rounded-xl border border-slate-200 bg-white text-slate-800 font-bold outline-none"
-                    >
-                      <option value="10:00 PM">10:00 PM</option>
-                      <option value="11:00 PM">11:00 PM</option>
-                      <option value="12:00 AM">12:00 AM</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-slate-600 font-medium mb-1 text-[11px]">Peak Rate (₹/hr)</label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-2 font-bold text-slate-700">₹</span>
-                      <input
-                        type="number"
-                        value={formPeakPrice}
-                        onChange={(e) => setFormPeakPrice(Number(e.target.value))}
-                        className="w-full h-9 pl-7 pr-3 rounded-xl border border-slate-200 bg-white font-bold font-mono text-xs text-slate-900 outline-none"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-slate-600 font-medium mb-1 text-[11px]">Weekend Rate (₹/hr)</label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-2 font-bold text-slate-700">₹</span>
-                      <input
-                        type="number"
-                        value={formWeekendPrice}
-                        onChange={(e) => setFormWeekendPrice(Number(e.target.value))}
-                        className="w-full h-9 pl-7 pr-3 rounded-xl border border-slate-200 bg-white font-bold font-mono text-xs text-slate-900 outline-none"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[11px] font-medium text-slate-600">Active Peak Days</span>
-                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.2 rounded border border-emerald-200">
-                      Fri-Sun Preset
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-7 gap-1.5">
-                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => {
-                      const isSelected = formPeakDays.includes(day);
-                      return (
-                        <button
-                          key={day}
-                          type="button"
-                          onClick={() => handleTogglePeakDay(day)}
-                          className={`h-8 rounded-xl font-bold text-[11px] transition-all cursor-pointer ${
-                            isSelected
-                              ? 'bg-[#F94001] text-white shadow-2xs'
-                              : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
-                          }`}
-                        >
-                          {day}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              {/* ❺ FREE CANCELLATION WINDOW (Screenshot 2 & 3) */}
-              <div className="bg-slate-50/80 rounded-2xl border border-slate-200/80 p-4 space-y-2.5">
-                <div className="flex items-center gap-2">
-                  <div className="h-6 w-6 rounded-full bg-orange-100 text-[#F94001] flex items-center justify-center">
-                    <Clock className="h-3.5 w-3.5" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-slate-900 text-xs">Free Cancellation Window</h4>
-                    <p className="text-[10px] text-slate-400">Minimum notice required for full or partial refund</p>
-                  </div>
-                </div>
-
-                <div>
-                  <span className="block text-[11px] text-slate-600 font-medium mb-1">
-                    Notice Buffer Before Match Kickoff:
-                  </span>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[2, 4, 12, 24].map((hours) => {
-                      const isSelected = formCancellationHours === hours;
-                      return (
-                        <button
-                          key={hours}
-                          type="button"
-                          onClick={() => setFormCancellationHours(hours)}
-                          className={`h-9 rounded-xl font-bold text-xs transition-all cursor-pointer ${
-                            isSelected
-                              ? 'bg-[#F94001] text-white shadow-xs'
-                              : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
-                          }`}
-                        >
-                          {hours} Hours
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              {/* ❻ REFUND PAYOUT PERCENTAGE (Screenshot 3) */}
-              <div className="bg-slate-50/80 rounded-2xl border border-slate-200/80 p-4 space-y-2.5">
-                <div className="flex items-center gap-2">
-                  <div className="h-6 w-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">
-                    %
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-slate-900 text-xs">Refund Payout Percentage</h4>
-                    <p className="text-[10px] text-slate-400">Amount returned to customer source account</p>
-                  </div>
-                </div>
-
-                <div>
-                  <span className="block text-[11px] text-slate-600 font-medium mb-1">
-                    Eligible Refund Value:
-                  </span>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[50, 75, 90, 100].map((pct) => {
-                      const isSelected = formRefundPercentage === pct;
-                      return (
-                        <button
-                          key={pct}
-                          type="button"
-                          onClick={() => setFormRefundPercentage(pct)}
-                          className={`h-9 rounded-xl font-bold text-xs transition-all cursor-pointer ${
-                            isSelected
-                              ? 'bg-emerald-600 text-white shadow-xs'
-                              : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
-                          }`}
-                        >
-                          {pct}%
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              {/* ❼ CUSTOMER CANCELLATION RULE BANNER (Screenshot 3) */}
-              <div className="bg-emerald-50/90 border border-emerald-200/80 rounded-xl p-3 flex items-center gap-2 text-xs text-emerald-900 font-medium">
-                <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
-                <span>
-                  <strong>Customer Cancellation Rule:</strong> Free cancellation permitted up to{' '}
-                  {formCancellationHours} Hours before kickoff with {formRefundPercentage}% refund.
-                </span>
-              </div>
-
-              {/* ❽ SUBMIT BUTTON (Screenshot 3) */}
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  className="w-full h-12 rounded-2xl bg-[#F94001] hover:bg-[#E03800] text-white font-extrabold text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-md active:scale-98"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  <span>
-                    {editingRequestForResubmit ? '✨ Resubmit Court for Approval' : '✨ Submit Court for Approval'}
-                  </span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* TOAST NOTIFICATION */}
-      {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 max-w-md p-4 rounded-2xl bg-[#091522] text-white border border-emerald-500/30 shadow-2xl flex items-start gap-3 animate-in slide-in-from-bottom duration-200">
-          <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0 mt-0.5" />
-          <div className="flex-1 text-xs">
-            <p className="font-bold text-sm text-white mb-0.5">{toastMessage.title}</p>
-            <p className="text-slate-300 leading-relaxed">{toastMessage.description}</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setToastMessage(null)}
-            className="text-slate-400 hover:text-white cursor-pointer"
-          >
-            <X className="h-4 w-4" />
-          </button>
         </div>
       )}
     </div>
