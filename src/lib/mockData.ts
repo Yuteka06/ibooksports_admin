@@ -166,9 +166,9 @@ export interface BookingItem {
   total_amount: number;
   platform_fee: number;
   venue_share: number;
-  payment_status: 'PAID' | 'REFUNDED' | 'FAILED';
+  payment_status: 'PAID' | 'PARTIAL_PAID' | 'ADVANCE_PAID' | 'REFUNDED' | 'FAILED';
   booking_status: 'CONFIRMED' | 'IN_PLAY' | 'COMPLETED' | 'CANCELLED';
-  payment_method: 'UPI' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'NET_BANKING' | 'WALLET';
+  payment_method: 'UPI' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'NET_BANKING' | 'WALLET' | string;
   transaction_id: string;
   created_at: string;
   cancellation_reason?: string;
@@ -176,7 +176,13 @@ export interface BookingItem {
   refund_amount?: number;
   refund_status?: 'REFUNDED' | 'PROCESSING' | 'WALLET_CREDITED' | 'NOT_APPLICABLE';
   refund_utr?: string;
+  advance_amount?: number;
+  balance_amount?: number;
+  due_mode?: 'CASH' | 'ONLINE';
 }
+
+export type PaymentStatusType = 'FULLY_PAID' | 'ADVANCE_PAID' | 'REFUNDED' | 'FAILED';
+export type PaymentMethodCategory = 'UPI' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'NET_BANKING' | 'CASH';
 
 export interface PaymentTransactionItem {
   id: string;
@@ -184,18 +190,56 @@ export interface PaymentTransactionItem {
   gateway_order_id: string;
   gateway_payment_id: string;
   booking_code: string;
+  booking_status?: 'CONFIRMED' | 'IN_PLAY' | 'COMPLETED' | 'CANCELLED';
   venue_name: string;
+  court_name?: string;
+  sport?: string;
   customer_name: string;
   customer_phone: string;
-  gross_amount: number;
+  
+  // Amounts & Advance Breakdown (iBookSports 50% Advance Policy)
+  total_booking_amount: number; // Full booking amount e.g. 2800
+  gross_amount: number; // Received payment amount e.g. 1400 (50% advance) or 2800 (100% full)
+  received_amount: number; // Synonym for gross_amount for clarity
+  balance_amount: number; // Remaining due amount e.g. 1400 or 0
+  advance_percentage?: number; // 50 or 100
+  payment_status: PaymentStatusType; // 'FULLY_PAID' | 'ADVANCE_PAID' | 'REFUNDED' | 'FAILED'
+  
+  // Financial Splits
   gateway_fee: number;
   platform_commission: number;
   tax_gst: number;
   net_venue_payout: number;
+  
+  // Method & Gateway
+  payment_type: PaymentMethodCategory;
   payment_method: string;
-  gateway: 'RAZORPAY' | 'PHONEPE' | 'CASHFREE';
-  status: 'SUCCESS' | 'REFUNDED' | 'FAILED' | 'PROCESSING';
+  gateway: 'RAZORPAY' | 'PHONEPE' | 'CASHFREE' | 'DIRECT_VENUE';
+  status: 'SUCCESS' | 'REFUNDED' | 'FAILED' | 'PROCESSING'; // Gateway status
   timestamp: string;
+  
+  // Invoice & Payment Link Details
+  invoice_number?: string;
+  payment_link?: string;
+  balance_payment_link?: string;
+  slot_time?: string;
+  booking_date?: string;
+  due_mode?: 'CASH' | 'ONLINE';
+}
+
+export interface SettlementBookingItem {
+  booking_code: string;
+  slot_date: string;
+  slot_time: string;
+  court_name: string;
+  sport: string;
+  actual_court_price: number;
+  online_advance_paid: number;
+  cash_collected_at_venue: number;
+  payment_mode: 'ONLINE_FULL' | 'ONLINE_ADVANCE_PLUS_CASH' | 'ONLINE_ADVANCE_PLUS_ONLINE';
+  platform_fee: number;
+  platform_fee_gst: number;
+  net_venue_share: number;
 }
 
 export interface SettlementBatchItem {
@@ -209,14 +253,28 @@ export interface SettlementBatchItem {
   ifsc_code: string;
   period_start: string;
   period_end: string;
+  settlement_date: string; // T+2 settlement date, e.g. '2026-03-08'
+  cycle_month: string; // e.g. '2026-03'
+  cycle_year: number; // e.g. 2026
+  t_plus_days: number; // 2
   bookings_count: number;
-  gross_booking_amount: number;
-  platform_commission_deducted: number;
-  tds_deducted: number;
-  net_payable: number;
+  
+  // Amounts
+  actual_court_price_total: number; // Total actual court slot price
+  gross_booking_amount: number; // Synonym
+  online_advance_held: number; // Collected online by iBookSports
+  cash_collected_at_venue: number; // Cash received directly by venue owner
+  platform_commission_deducted: number; // 10% platform fee
+  platform_fee_gst: number; // 18% GST on platform fee
+  tds_deducted: number; // 1% TDS Sec 194O
+  net_payable: number; // Final net amount transferred to owner's bank
+  
   status: 'SETTLED' | 'PROCESSING' | 'PENDING_APPROVAL';
   utr_number?: string;
   settled_at?: string;
+  
+  // Itemized bookings in this batch
+  itemized_bookings?: SettlementBookingItem[];
 }
 
 export interface SupportTicketItem {
@@ -1586,9 +1644,10 @@ export const INITIAL_BOOKINGS: BookingItem[] = [
     total_amount: 2800,
     platform_fee: 280,
     venue_share: 2520,
-    payment_status: 'PAID',
+    payment_status: 'PARTIAL_PAID',
     booking_status: 'CONFIRMED',
     payment_method: 'CREDIT_CARD',
+    due_mode: 'CASH',
     transaction_id: 'pay_rzp_981240994',
     created_at: '2026-03-08T09:12:00Z',
   },
@@ -1632,9 +1691,10 @@ export const INITIAL_BOOKINGS: BookingItem[] = [
     total_amount: 2400,
     platform_fee: 240,
     venue_share: 2160,
-    payment_status: 'PAID',
+    payment_status: 'PARTIAL_PAID',
     booking_status: 'CONFIRMED',
     payment_method: 'UPI',
+    due_mode: 'ONLINE',
     transaction_id: 'pay_rzp_981241045',
     created_at: '2026-03-08T07:45:00Z',
   },
@@ -1846,18 +1906,31 @@ export const INITIAL_PAYMENTS: PaymentTransactionItem[] = [
     gateway_order_id: 'order_rZP_9918231',
     gateway_payment_id: 'pay_rzp_981240981',
     booking_code: 'IBS-2603-9001',
+    booking_status: 'CONFIRMED',
     venue_name: 'Sky Sports Arena & Box Turf',
+    court_name: 'Main Football Turf A',
+    sport: 'Football',
     customer_name: 'Rahul Krishnan',
     customer_phone: '+91 98401 23456',
+    total_booking_amount: 1600,
     gross_amount: 1600,
+    received_amount: 1600,
+    balance_amount: 0,
+    advance_percentage: 100,
+    payment_status: 'FULLY_PAID',
     gateway_fee: 32,
     platform_commission: 160,
     tax_gst: 28.8,
     net_venue_payout: 1379.2,
+    payment_type: 'UPI',
     payment_method: 'UPI (GooglePay)',
     gateway: 'RAZORPAY',
     status: 'SUCCESS',
     timestamp: '2026-03-07 14:21:05',
+    invoice_number: 'INV-2026-IBS-9001',
+    payment_link: 'https://pay.ibooksports.com/rec/IBS-2603-9001',
+    booking_date: '2026-03-08',
+    slot_time: '06:00 PM - 07:00 PM',
   },
   {
     id: 'txn_7002',
@@ -1865,18 +1938,32 @@ export const INITIAL_PAYMENTS: PaymentTransactionItem[] = [
     gateway_order_id: 'order_rZP_9918244',
     gateway_payment_id: 'pay_rzp_981240994',
     booking_code: 'IBS-2603-9002',
+    booking_status: 'CONFIRMED',
     venue_name: 'Sky Sports Arena & Box Turf',
+    court_name: 'Box Cricket Pitch 1',
+    sport: 'Cricket',
     customer_name: 'Dinesh Karthik',
     customer_phone: '+91 97910 87654',
-    gross_amount: 2800,
-    gateway_fee: 56,
-    platform_commission: 280,
-    tax_gst: 50.4,
-    net_venue_payout: 2413.6,
-    payment_method: 'HDFC Credit Card',
+    total_booking_amount: 2800,
+    gross_amount: 1400,
+    received_amount: 1400,
+    balance_amount: 1400,
+    advance_percentage: 50,
+    payment_status: 'ADVANCE_PAID',
+    gateway_fee: 28,
+    platform_commission: 140,
+    tax_gst: 25.2,
+    net_venue_payout: 1206.8,
+    payment_type: 'CREDIT_CARD',
+    payment_method: 'HDFC Visa Credit Card',
     gateway: 'RAZORPAY',
     status: 'SUCCESS',
     timestamp: '2026-03-08 09:12:44',
+    invoice_number: 'INV-2026-IBS-9002',
+    balance_payment_link: 'https://pay.ibooksports.com/bal/IBS-2603-9002',
+    due_mode: 'CASH',
+    booking_date: '2026-03-08',
+    slot_time: '07:00 PM - 09:00 PM',
   },
   {
     id: 'txn_7003',
@@ -1884,18 +1971,32 @@ export const INITIAL_PAYMENTS: PaymentTransactionItem[] = [
     gateway_order_id: 'order_rZP_9918289',
     gateway_payment_id: 'pay_rzp_981241011',
     booking_code: 'IBS-2603-9003',
+    booking_status: 'COMPLETED',
     venue_name: 'Green Field Sports Park',
+    court_name: 'Synthetic Badminton Court 2',
+    sport: 'Badminton',
     customer_name: 'Pooja Sundaram',
     customer_phone: '+91 98845 11223',
+    total_booking_amount: 1000,
     gross_amount: 500,
+    received_amount: 500,
+    balance_amount: 500,
+    advance_percentage: 50,
+    payment_status: 'ADVANCE_PAID',
     gateway_fee: 10,
     platform_commission: 50,
     tax_gst: 9.0,
     net_venue_payout: 431.0,
+    payment_type: 'UPI',
     payment_method: 'UPI (PhonePe)',
     gateway: 'PHONEPE',
     status: 'SUCCESS',
     timestamp: '2026-03-06 19:01:12',
+    invoice_number: 'INV-2026-IBS-9003',
+    balance_payment_link: 'https://pay.ibooksports.com/bal/IBS-2603-9003',
+    due_mode: 'ONLINE',
+    booking_date: '2026-03-07',
+    slot_time: '05:00 PM - 06:00 PM',
   },
   {
     id: 'txn_7004',
@@ -1903,18 +2004,31 @@ export const INITIAL_PAYMENTS: PaymentTransactionItem[] = [
     gateway_order_id: 'order_rZP_9918301',
     gateway_payment_id: 'pay_rzp_981241045',
     booking_code: 'IBS-2603-9004',
+    booking_status: 'CONFIRMED',
     venue_name: 'Apex Arena & Sports Club',
+    court_name: 'Main Turf Pitch 1',
+    sport: 'Cricket',
     customer_name: 'Arjun Nambiar',
     customer_phone: '+91 99001 54321',
+    total_booking_amount: 2400,
     gross_amount: 2400,
+    received_amount: 2400,
+    balance_amount: 0,
+    advance_percentage: 100,
+    payment_status: 'FULLY_PAID',
     gateway_fee: 48,
     platform_commission: 240,
     tax_gst: 43.2,
     net_venue_payout: 2068.8,
-    payment_method: 'UPI (Paytm)',
+    payment_type: 'NET_BANKING',
+    payment_method: 'SBI Net Banking',
     gateway: 'RAZORPAY',
     status: 'SUCCESS',
     timestamp: '2026-03-08 07:46:20',
+    invoice_number: 'INV-2026-IBS-9004',
+    payment_link: 'https://pay.ibooksports.com/rec/IBS-2603-9004',
+    booking_date: '2026-03-09',
+    slot_time: '06:30 AM - 08:30 AM',
   },
   {
     id: 'txn_7005',
@@ -1922,18 +2036,126 @@ export const INITIAL_PAYMENTS: PaymentTransactionItem[] = [
     gateway_order_id: 'order_rZP_9918112',
     gateway_payment_id: 'pay_rzp_981240672',
     booking_code: 'IBS-2603-9006',
+    booking_status: 'CANCELLED',
     venue_name: 'Green Field Sports Park',
+    court_name: 'Astroturf Pitch 2',
+    sport: 'Football',
     customer_name: 'Rahul Krishnan',
     customer_phone: '+91 98401 23456',
+    total_booking_amount: 1900,
     gross_amount: 1900,
+    received_amount: 1900,
+    balance_amount: 0,
+    advance_percentage: 100,
+    payment_status: 'REFUNDED',
     gateway_fee: 38,
     platform_commission: 190,
     tax_gst: 34.2,
     net_venue_payout: 0,
+    payment_type: 'UPI',
     payment_method: 'UPI (GooglePay)',
     gateway: 'RAZORPAY',
     status: 'REFUNDED',
     timestamp: '2026-03-05 16:32:00',
+    invoice_number: 'INV-2026-IBS-9006',
+    booking_date: '2026-03-06',
+    slot_time: '08:00 PM - 09:00 PM',
+  },
+  {
+    id: 'txn_7006',
+    txn_id: 'TXN-20260308-06',
+    gateway_order_id: 'order_rZP_9918355',
+    gateway_payment_id: 'pay_rzp_981241102',
+    booking_code: 'IBS-2603-9007',
+    booking_status: 'IN_PLAY',
+    venue_name: 'Strike Velocity Arena',
+    court_name: 'Padel Glass Court 1',
+    sport: 'Pickleball',
+    customer_name: 'Nikhil Mathew',
+    customer_phone: '+91 98471 66778',
+    total_booking_amount: 3200,
+    gross_amount: 1600,
+    received_amount: 1600,
+    balance_amount: 1600,
+    advance_percentage: 50,
+    payment_status: 'ADVANCE_PAID',
+    gateway_fee: 32,
+    platform_commission: 160,
+    tax_gst: 28.8,
+    net_venue_payout: 1379.2,
+    payment_type: 'CREDIT_CARD',
+    payment_method: 'ICICI Coral Credit Card',
+    gateway: 'RAZORPAY',
+    status: 'SUCCESS',
+    timestamp: '2026-03-08 17:30:10',
+    invoice_number: 'INV-2026-IBS-9007',
+    balance_payment_link: 'https://pay.ibooksports.com/bal/IBS-2603-9007',
+    booking_date: '2026-03-08',
+    slot_time: '06:00 PM - 08:00 PM',
+  },
+  {
+    id: 'txn_7007',
+    txn_id: 'TXN-20260308-07',
+    gateway_order_id: 'order_rZP_9918378',
+    gateway_payment_id: 'pay_rzp_981241150',
+    booking_code: 'IBS-2603-9008',
+    booking_status: 'CONFIRMED',
+    venue_name: 'SmashZone Badminton Hub',
+    court_name: 'BWF Court 3',
+    sport: 'Badminton',
+    customer_name: 'Rohit Varma',
+    customer_phone: '+91 90002 88991',
+    total_booking_amount: 1200,
+    gross_amount: 1200,
+    received_amount: 1200,
+    balance_amount: 0,
+    advance_percentage: 100,
+    payment_status: 'FULLY_PAID',
+    gateway_fee: 24,
+    platform_commission: 120,
+    tax_gst: 21.6,
+    net_venue_payout: 1034.4,
+    payment_type: 'NET_BANKING',
+    payment_method: 'HDFC Net Banking',
+    gateway: 'RAZORPAY',
+    status: 'SUCCESS',
+    timestamp: '2026-03-08 18:45:00',
+    invoice_number: 'INV-2026-IBS-9008',
+    payment_link: 'https://pay.ibooksports.com/rec/IBS-2603-9008',
+    booking_date: '2026-03-09',
+    slot_time: '07:00 PM - 08:00 PM',
+  },
+  {
+    id: 'txn_7008',
+    txn_id: 'TXN-20260308-08',
+    gateway_order_id: 'order_rZP_9918412',
+    gateway_payment_id: 'pay_rzp_981241220',
+    booking_code: 'IBS-2603-9009',
+    booking_status: 'CONFIRMED',
+    venue_name: 'Decathlon United Turf Complex',
+    court_name: 'Tennis Court 1 (Clay)',
+    sport: 'Tennis',
+    customer_name: 'Sameer Merchant',
+    customer_phone: '+91 98201 55667',
+    total_booking_amount: 2000,
+    gross_amount: 1000,
+    received_amount: 1000,
+    balance_amount: 1000,
+    advance_percentage: 50,
+    payment_status: 'ADVANCE_PAID',
+    gateway_fee: 20,
+    platform_commission: 100,
+    tax_gst: 18.0,
+    net_venue_payout: 862.0,
+    payment_type: 'UPI',
+    payment_method: 'UPI (Paytm)',
+    gateway: 'RAZORPAY',
+    status: 'SUCCESS',
+    timestamp: '2026-03-08 19:10:30',
+    invoice_number: 'INV-2026-IBS-9009',
+    balance_payment_link: 'https://pay.ibooksports.com/bal/IBS-2603-9009',
+    booking_date: '2026-03-09',
+    slot_time: '05:00 PM - 06:00 PM',
   },
 ];
 
@@ -1947,16 +2169,68 @@ export const INITIAL_SETTLEMENTS: SettlementBatchItem[] = [
     bank_name: 'HDFC Bank Ltd',
     account_number_masked: '•••• •••• 9012',
     ifsc_code: 'HDFC0001248',
-    period_start: '2026-02-24',
-    period_end: '2026-03-02',
+    period_start: '2026-03-06',
+    period_end: '2026-03-06',
+    settlement_date: '2026-03-08', // T+2 after 06 March match
+    cycle_month: '2026-03',
+    cycle_year: 2026,
+    t_plus_days: 2,
     bookings_count: 48,
+    actual_court_price_total: 76800,
     gross_booking_amount: 76800,
-    platform_commission_deducted: 7680,
-    tds_deducted: 768,
-    net_payable: 68352,
+    online_advance_held: 46000,
+    cash_collected_at_venue: 30800,
+    platform_commission_deducted: 7680, // 10%
+    platform_fee_gst: 1382.4, // 18% of fee
+    tds_deducted: 768, // 1%
+    net_payable: 36169.6, // Online Advance (46,000) - Fee (7,680) - GST (1,382.4) - TDS (768)
     status: 'SETTLED',
-    utr_number: 'HDFCR20260303912048',
-    settled_at: '2026-03-03 11:30 AM',
+    utr_number: 'HDFCR20260308912048',
+    settled_at: '2026-03-08 11:30 AM',
+    itemized_bookings: [
+      {
+        booking_code: 'IBS-2603-9001',
+        slot_date: '2026-03-06',
+        slot_time: '06:00 PM - 07:00 PM',
+        court_name: 'Main Football Turf A',
+        sport: 'Football',
+        actual_court_price: 1600,
+        online_advance_paid: 1600,
+        cash_collected_at_venue: 0,
+        payment_mode: 'ONLINE_FULL',
+        platform_fee: 160,
+        platform_fee_gst: 28.8,
+        net_venue_share: 1379.2,
+      },
+      {
+        booking_code: 'IBS-2603-9002',
+        slot_date: '2026-03-06',
+        slot_time: '07:00 PM - 09:00 PM',
+        court_name: 'Box Cricket Pitch 1',
+        sport: 'Cricket',
+        actual_court_price: 2800,
+        online_advance_paid: 1400,
+        cash_collected_at_venue: 1400,
+        payment_mode: 'ONLINE_ADVANCE_PLUS_CASH',
+        platform_fee: 280,
+        platform_fee_gst: 50.4,
+        net_venue_share: 1041.6, // Transferred from online advance after cash offset
+      },
+      {
+        booking_code: 'IBS-2603-9015',
+        slot_date: '2026-03-06',
+        slot_time: '09:00 PM - 10:00 PM',
+        court_name: 'Main Football Turf A',
+        sport: 'Football',
+        actual_court_price: 1800,
+        online_advance_paid: 900,
+        cash_collected_at_venue: 900,
+        payment_mode: 'ONLINE_ADVANCE_PLUS_CASH',
+        platform_fee: 180,
+        platform_fee_gst: 32.4,
+        net_venue_share: 669.6,
+      },
+    ],
   },
   {
     id: 'stl_402',
@@ -1967,16 +2241,40 @@ export const INITIAL_SETTLEMENTS: SettlementBatchItem[] = [
     bank_name: 'ICICI Bank',
     account_number_masked: '•••• •••• 4421',
     ifsc_code: 'ICIC0000412',
-    period_start: '2026-02-24',
-    period_end: '2026-03-02',
+    period_start: '2026-03-05',
+    period_end: '2026-03-05',
+    settlement_date: '2026-03-07', // T+2
+    cycle_month: '2026-03',
+    cycle_year: 2026,
+    t_plus_days: 2,
     bookings_count: 72,
+    actual_court_price_total: 115200,
     gross_booking_amount: 115200,
+    online_advance_held: 72000,
+    cash_collected_at_venue: 43200,
     platform_commission_deducted: 11520,
+    platform_fee_gst: 2073.6,
     tds_deducted: 1152,
-    net_payable: 102528,
+    net_payable: 57254.4,
     status: 'SETTLED',
-    utr_number: 'ICICR20260303884102',
-    settled_at: '2026-03-03 11:45 AM',
+    utr_number: 'ICICR20260307884102',
+    settled_at: '2026-03-07 11:45 AM',
+    itemized_bookings: [
+      {
+        booking_code: 'IBS-2603-9003',
+        slot_date: '2026-03-05',
+        slot_time: '05:00 PM - 06:00 PM',
+        court_name: 'Synthetic Badminton Court 2',
+        sport: 'Badminton',
+        actual_court_price: 1000,
+        online_advance_paid: 500,
+        cash_collected_at_venue: 500,
+        payment_mode: 'ONLINE_ADVANCE_PLUS_CASH',
+        platform_fee: 100,
+        platform_fee_gst: 18.0,
+        net_venue_share: 372.0,
+      },
+    ],
   },
   {
     id: 'stl_403',
@@ -1987,16 +2285,24 @@ export const INITIAL_SETTLEMENTS: SettlementBatchItem[] = [
     bank_name: 'Axis Bank',
     account_number_masked: '•••• •••• 6789',
     ifsc_code: 'UTIB0000843',
-    period_start: '2026-02-24',
-    period_end: '2026-03-02',
+    period_start: '2026-03-06',
+    period_end: '2026-03-06',
+    settlement_date: '2026-03-08', // T+2
+    cycle_month: '2026-03',
+    cycle_year: 2026,
+    t_plus_days: 2,
     bookings_count: 38,
+    actual_court_price_total: 54000,
     gross_booking_amount: 54000,
+    online_advance_held: 42000,
+    cash_collected_at_venue: 12000,
     platform_commission_deducted: 5400,
+    platform_fee_gst: 972.0,
     tds_deducted: 540,
-    net_payable: 48060,
+    net_payable: 35088.0,
     status: 'SETTLED',
-    utr_number: 'AXISR20260303774910',
-    settled_at: '2026-03-03 12:10 PM',
+    utr_number: 'AXISR20260308774910',
+    settled_at: '2026-03-08 12:10 PM',
   },
   {
     id: 'stl_404',
@@ -2007,13 +2313,21 @@ export const INITIAL_SETTLEMENTS: SettlementBatchItem[] = [
     bank_name: 'HDFC Bank Ltd',
     account_number_masked: '•••• •••• 9012',
     ifsc_code: 'HDFC0001248',
-    period_start: '2026-03-03',
+    period_start: '2026-03-07',
     period_end: '2026-03-07',
+    settlement_date: '2026-03-09', // T+2
+    cycle_month: '2026-03',
+    cycle_year: 2026,
+    t_plus_days: 2,
     bookings_count: 32,
+    actual_court_price_total: 47200,
     gross_booking_amount: 47200,
+    online_advance_held: 28000,
+    cash_collected_at_venue: 19200,
     platform_commission_deducted: 4720,
+    platform_fee_gst: 849.6,
     tds_deducted: 472,
-    net_payable: 42008,
+    net_payable: 21958.4,
     status: 'PENDING_APPROVAL',
   },
   {
@@ -2025,14 +2339,78 @@ export const INITIAL_SETTLEMENTS: SettlementBatchItem[] = [
     bank_name: 'ICICI Bank',
     account_number_masked: '•••• •••• 4421',
     ifsc_code: 'ICIC0000412',
-    period_start: '2026-03-03',
+    period_start: '2026-03-07',
     period_end: '2026-03-07',
+    settlement_date: '2026-03-09', // T+2
+    cycle_month: '2026-03',
+    cycle_year: 2026,
+    t_plus_days: 2,
     bookings_count: 51,
+    actual_court_price_total: 82400,
     gross_booking_amount: 82400,
+    online_advance_held: 51000,
+    cash_collected_at_venue: 31400,
     platform_commission_deducted: 8240,
+    platform_fee_gst: 1483.2,
     tds_deducted: 824,
-    net_payable: 73336,
+    net_payable: 40452.8,
     status: 'PROCESSING',
+  },
+  {
+    id: 'stl_406',
+    batch_number: 'STL-202602-012',
+    venue_id: 'ven_1001',
+    venue_name: 'Sky Sports Arena & Box Turf',
+    owner_name: 'Karthik Rajan',
+    bank_name: 'HDFC Bank Ltd',
+    account_number_masked: '•••• •••• 9012',
+    ifsc_code: 'HDFC0001248',
+    period_start: '2026-02-26',
+    period_end: '2026-02-26',
+    settlement_date: '2026-02-28', // T+2
+    cycle_month: '2026-02',
+    cycle_year: 2026,
+    t_plus_days: 2,
+    bookings_count: 60,
+    actual_court_price_total: 96000,
+    gross_booking_amount: 96000,
+    online_advance_held: 58000,
+    cash_collected_at_venue: 38000,
+    platform_commission_deducted: 9600,
+    platform_fee_gst: 1728.0,
+    tds_deducted: 960,
+    net_payable: 45712.0,
+    status: 'SETTLED',
+    utr_number: 'HDFCR20260228941019',
+    settled_at: '2026-02-28 10:20 AM',
+  },
+  {
+    id: 'stl_407',
+    batch_number: 'STL-202512-045',
+    venue_id: 'ven_1003',
+    venue_name: 'Apex Arena & Sports Club',
+    owner_name: 'Ananya Sharma',
+    bank_name: 'Axis Bank',
+    account_number_masked: '•••• •••• 6789',
+    ifsc_code: 'UTIB0000843',
+    period_start: '2025-12-28',
+    period_end: '2025-12-28',
+    settlement_date: '2025-12-30', // T+2
+    cycle_month: '2025-12',
+    cycle_year: 2025,
+    t_plus_days: 2,
+    bookings_count: 45,
+    actual_court_price_total: 67500,
+    gross_booking_amount: 67500,
+    online_advance_held: 45000,
+    cash_collected_at_venue: 22500,
+    platform_commission_deducted: 6750,
+    platform_fee_gst: 1215.0,
+    tds_deducted: 675,
+    net_payable: 36360.0,
+    status: 'SETTLED',
+    utr_number: 'AXISR20251230114992',
+    settled_at: '2025-12-30 02:15 PM',
   },
 ];
 

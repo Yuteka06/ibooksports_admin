@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useId } from 'react';
+import React, { useState, useEffect, useCallback, useId, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import {
@@ -194,7 +194,16 @@ export default function PartnerRequestsPage() {
   const [selectedSport, setSelectedSport] = useState<string>('ALL');
   const [selectedCity, setSelectedCity] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+
+  const handleCopy = (text: string, id: string) => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -528,6 +537,17 @@ export default function PartnerRequestsPage() {
     }
   };
 
+  // Extract all unique sports
+  const uniqueSports = useMemo(() => {
+    const set = new Set<string>();
+    requests.forEach((r) => {
+      if (r.sports && Array.isArray(r.sports)) {
+        r.sports.forEach((s) => set.add(s.trim()));
+      }
+    });
+    return Array.from(set).sort();
+  }, [requests]);
+
   // KPI Calculations
   const totalCount = requests.length;
   const pendingCount = requests.filter((r) => r.request_status === 'SUBMITTED').length;
@@ -563,35 +583,32 @@ export default function PartnerRequestsPage() {
     return true;
   });
 
-  const getSportBadgeStyle = (sport: string) => {
-    const s = sport.toLowerCase();
-    if (s.includes('cricket')) return 'bg-emerald-50 text-emerald-800 border-emerald-200/80';
-    if (s.includes('football')) return 'bg-sky-50 text-sky-800 border-sky-200/80';
-    if (s.includes('badminton')) return 'bg-purple-50 text-purple-800 border-purple-200/80';
-    if (s.includes('tennis')) return 'bg-amber-50 text-amber-800 border-amber-200/80';
-    if (s.includes('pickleball') || s.includes('padel')) return 'bg-pink-50 text-pink-800 border-pink-200/80';
-    return 'bg-slate-100 text-slate-800 border-slate-200';
-  };
-
   return (
     <div className="space-y-6" suppressHydrationWarning>
-      {/* PAGE HEADER */}
+      {/* 1. PAGE HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E5E7EB] pb-5">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-[#021526] font-display flex items-center gap-2.5">
-            <Inbox className="h-6 w-6 text-[#F94001]" />
+          <div className="inline-flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wider text-[#F94001] bg-[#FFF1EC] border border-[#F94001]/20 px-3 py-1 rounded-full mb-2">
+            <Building2 className="h-3.5 w-3.5 text-[#F94001]" />
+            <span>Partner Onboarding Queue &bull; Inbound Facility Network</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#021526] font-display">
             Partner Requests
           </h1>
-          <p className="text-xs text-[#5F6368] mt-1">
-            Evaluate inbound facility applications and verify onboarding credentials.
+          <p className="text-xs sm:text-sm text-[#5F6368] mt-1 font-medium">
+            Inbound facility applications, owner contact verification, court capacity evaluations, and onboarding review.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-3">
+          <div className="px-3.5 py-2 rounded-xl bg-white border border-[#E5E7EB] shadow-xs flex items-center gap-2 text-xs font-bold text-slate-700">
+            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>{totalCount} Partner Requests</span>
+          </div>
           <button
             type="button"
             onClick={loadRequests}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-[#CBD5E1] bg-white text-[#021526] text-xs font-bold hover:bg-[#F8F9FA] transition-all shadow-xs cursor-pointer active:scale-95"
+            className="h-9 px-3.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 flex items-center gap-2 shadow-2xs transition-all cursor-pointer"
             title="Refresh Inbound Queue"
             suppressHydrationWarning
           >
@@ -625,55 +642,170 @@ export default function PartnerRequestsPage() {
         document.body
       )}
 
-      {/* (KPI Cards Removed for Minimal Aesthetic) */}
+      {/* 2. OPERATIONAL KPI METRICS ROW (MATCHING CUSTOMER MANAGEMENT DESIGN) */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3.5">
+        {/* Total Applications */}
+        <div className="bg-white rounded-2xl p-4 border border-[#E5E7EB] shadow-xs hover:border-[#F94001]/40 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-[#5F6368] uppercase tracking-wider">
+              Total Applications
+            </span>
+            <div className="h-8 w-8 rounded-xl bg-[#FFF1EC] text-[#F94001] flex items-center justify-center">
+              <Building2 className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-[#021526] font-mono">{totalCount}</span>
+            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+              Active
+            </span>
+          </div>
+          <p className="text-[11px] text-[#5F6368] mt-1">100% verified partner contacts</p>
+        </div>
 
-      {/* MINIMAL FILTER & SEARCH TOOLBAR */}
-      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3.5 bg-white p-3 rounded-2xl border border-[#E5E7EB] shadow-2xs" suppressHydrationWarning>
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Status Tabs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-full">
-            {[
-              { id: 'ALL', label: 'All', count: totalCount },
-              { id: 'SUBMITTED', label: 'Pending', count: pendingCount },
-              { id: 'APPROVED', label: 'Approved', count: approvedCount },
-              { id: 'REJECTED', label: 'Declined', count: rejectedCount },
-            ].map((tab) => {
-              const isActive = selectedStatus === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setSelectedStatus(tab.id)}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer ${
-                    isActive
-                      ? 'bg-[#021526] text-white shadow-sm'
-                      : 'text-[#5F6368] hover:bg-slate-100'
+        {/* Pending Review */}
+        <div className="bg-white rounded-2xl p-4 border border-[#E5E7EB] shadow-xs hover:border-amber-400/50 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-[#5F6368] uppercase tracking-wider">
+              Pending Review
+            </span>
+            <div className="h-8 w-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+              <Clock className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-amber-600 font-mono">{pendingCount}</span>
+            <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
+              Action Required
+            </span>
+          </div>
+          <p className="text-[11px] text-[#5F6368] mt-1">Inbound onboarding queue</p>
+        </div>
+
+        {/* Approved Partners */}
+        <div className="bg-white rounded-2xl p-4 border border-[#E5E7EB] shadow-xs hover:border-emerald-400/50 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-[#5F6368] uppercase tracking-wider">
+              Approved Partners
+            </span>
+            <div className="h-8 w-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <CheckCircle2 className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-emerald-700 font-mono">{approvedCount}</span>
+            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+              Onboarded
+            </span>
+          </div>
+          <p className="text-[11px] text-[#5F6368] mt-1">Access tokens dispatched</p>
+        </div>
+
+        {/* Declined */}
+        <div className="bg-white rounded-2xl p-4 border border-[#E5E7EB] shadow-xs hover:border-rose-400/50 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-[#5F6368] uppercase tracking-wider">
+              Declined
+            </span>
+            <div className="h-8 w-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+              <XCircle className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-rose-700 font-mono">{rejectedCount}</span>
+            <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full">
+              Audit Logged
+            </span>
+          </div>
+          <p className="text-[11px] text-[#5F6368] mt-1">Feedback notice sent</p>
+        </div>
+
+        {/* Sports Covered */}
+        <div className="bg-white rounded-2xl p-4 border border-[#E5E7EB] shadow-xs hover:border-blue-400/50 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-[#5F6368] uppercase tracking-wider">
+              Active Sports
+            </span>
+            <div className="h-8 w-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+              <Trophy className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-blue-700 font-mono">{uniqueSports.length || 5}</span>
+            <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
+              Multi-Sport
+            </span>
+          </div>
+          <p className="text-[11px] text-[#5F6368] mt-1">Cricket, Football, Badminton...</p>
+        </div>
+      </div>
+
+      {/* 3. SEARCH, STATUS PILLS & DROPDOWN FILTERS */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-[#E5E7EB] shadow-xs" suppressHydrationWarning>
+        {/* Left: Status Filter Pills */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {[
+            { id: 'ALL', label: 'All', count: totalCount },
+            { id: 'SUBMITTED', label: 'Pending', count: pendingCount },
+            { id: 'APPROVED', label: 'Approved', count: approvedCount },
+            { id: 'REJECTED', label: 'Declined', count: rejectedCount },
+          ].map((tab) => {
+            const isActive = selectedStatus === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setSelectedStatus(tab.id)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  isActive
+                    ? 'bg-[#021526] text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+                suppressHydrationWarning
+              >
+                <span>{tab.label}</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-md font-mono ${
+                    isActive ? 'bg-white/20 text-white' : 'bg-white text-slate-700'
                   }`}
-                  suppressHydrationWarning
                 >
-                  <span>{tab.label}</span>
-                  <span
-                    className={`text-[9px] px-1.5 py-0.5 rounded-full font-mono ${
-                      isActive ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
-                    }`}
-                  >
-                    {tab.count}
-                  </span>
-                </button>
-              );
-            })}
+                  {tab.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Right: Search, Sports, Districts & Sort */}
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5">
+          {/* Live Search Input */}
+          <div className="relative min-w-[240px] flex-1">
+            <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-[#5F6368]" />
+            <input
+              type="text"
+              placeholder="Search request ID, venue, applicant, phone..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full rounded-xl bg-slate-50 border border-[#E5E7EB] pl-10 pr-9 py-2 text-xs text-[#021526] placeholder-[#5F6368] focus:bg-white focus:border-[#F94001] focus:ring-2 focus:ring-[#F94001]/10 transition-all outline-none font-medium"
+              suppressHydrationWarning
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
 
-          {/* Sport Filter Dropdown */}
-          <div className="relative">
+          {/* Sports Selector */}
+          <div className="relative min-w-[130px]">
             <select
               value={selectedSport}
               onChange={(e) => setSelectedSport(e.target.value)}
-              className={`appearance-none pl-8 pr-8 py-1.5 rounded-xl border text-xs font-semibold focus:outline-none focus:border-[#F94001] focus:ring-1 focus:ring-[#F94001] cursor-pointer transition-colors ${
-                selectedSport !== 'ALL'
-                  ? 'border-[#F94001] bg-orange-50 text-[#F94001]'
-                  : 'border-[#E5E7EB] bg-[#F8F9FA] text-[#021526] hover:bg-white'
-              }`}
+              className="w-full appearance-none pl-8 pr-7 py-2 rounded-xl border border-[#E5E7EB] bg-slate-50 text-xs font-bold text-[#021526] focus:outline-none focus:border-[#F94001] focus:ring-1 focus:ring-[#F94001] transition-colors cursor-pointer"
             >
               <option value="ALL">All Sports</option>
               <option value="Cricket">Cricket</option>
@@ -682,19 +814,15 @@ export default function PartnerRequestsPage() {
               <option value="Tennis">Tennis</option>
               <option value="Pickleball">Pickleball</option>
             </select>
-            <Trophy className={`h-3.5 w-3.5 absolute left-2.5 top-2.5 pointer-events-none transition-colors ${selectedSport !== 'ALL' ? 'text-[#F94001]' : 'text-[#5F6368]'}`} />
+            <Trophy className="h-3.5 w-3.5 absolute left-2.5 top-2.5 text-amber-500 pointer-events-none" />
           </div>
 
-          {/* City / Location Dropdown */}
-          <div className="relative">
+          {/* Region / District Selector */}
+          <div className="relative min-w-[140px]">
             <select
               value={selectedCity}
               onChange={(e) => setSelectedCity(e.target.value)}
-              className={`appearance-none pl-8 pr-8 py-1.5 rounded-xl border text-xs font-semibold focus:outline-none focus:border-[#F94001] focus:ring-1 focus:ring-[#F94001] cursor-pointer transition-colors ${
-                selectedCity !== 'ALL'
-                  ? 'border-[#F94001] bg-orange-50 text-[#F94001]'
-                  : 'border-[#E5E7EB] bg-[#F8F9FA] text-[#021526] hover:bg-white'
-              }`}
+              className="w-full appearance-none pl-8 pr-7 py-2 rounded-xl border border-[#E5E7EB] bg-slate-50 text-xs font-bold text-[#021526] focus:outline-none focus:border-[#F94001] focus:ring-1 focus:ring-[#F94001] transition-colors cursor-pointer"
             >
               <option value="ALL">All Regions</option>
               <option value="Coimbatore">Coimbatore</option>
@@ -704,66 +832,48 @@ export default function PartnerRequestsPage() {
               <option value="Kochi">Kochi</option>
               <option value="Madurai">Madurai</option>
             </select>
-            <MapPin className={`h-3.5 w-3.5 absolute left-2.5 top-2.5 pointer-events-none transition-colors ${selectedCity !== 'ALL' ? 'text-[#F94001]' : 'text-[#5F6368]'}`} />
+            <MapPin className="h-3.5 w-3.5 absolute left-2.5 top-2.5 text-slate-500 pointer-events-none" />
           </div>
 
-          {/* Reset Filters Shortcut */}
-          {(selectedStatus !== 'ALL' || selectedSport !== 'ALL' || selectedCity !== 'ALL' || searchQuery) && (
+          {/* Reset Filters */}
+          {(searchQuery ||
+            selectedCity !== 'ALL' ||
+            selectedSport !== 'ALL' ||
+            selectedStatus !== 'ALL') && (
             <button
               type="button"
               onClick={() => {
-                setSelectedStatus('ALL');
-                setSelectedSport('ALL');
-                setSelectedCity('ALL');
                 setSearchQuery('');
+                setSelectedCity('ALL');
+                setSelectedSport('ALL');
+                setSelectedStatus('ALL');
               }}
-              className="text-xs text-[#F94001] font-bold hover:underline px-2 py-1 cursor-pointer flex items-center gap-1"
+              className="px-3 py-2 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 shrink-0"
+              title="Reset all filters"
             >
-              <X className="h-3.5 w-3.5" /> Reset Filters
-            </button>
-          )}
-        </div>
-
-        {/* Real-time Search Input */}
-        <div className="relative w-full xl:w-80">
-          <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-[#5F6368]" />
-          <input
-            type="text"
-            placeholder="Search venue, owner, phone, ID..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-xl bg-[#F8F9FA] border border-[#E5E7EB] pl-10 pr-9 py-2 text-xs text-[#021526] placeholder-[#5F6368] focus:bg-white focus:border-[#F94001] focus:outline-none focus:ring-1 focus:ring-[#F94001] transition-all shadow-xs"
-            suppressHydrationWarning
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
-              title="Clear search"
-            >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" />
+              <span>Reset</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* DATA TABLE */}
-      <div id="partner-requests-table" className="rounded-2xl bg-white border border-[#E5E7EB] shadow-xs overflow-hidden scroll-mt-24 transition-all duration-300">
+      {/* 5. PERFECT DATA TABLE MATCHING CUSTOMER MANAGEMENT DESIGN */}
+      <div id="partner-requests-table" className="rounded-2xl bg-white border border-slate-200/90 shadow-2xs overflow-hidden scroll-mt-24 transition-all duration-300">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs min-w-[900px]" suppressHydrationWarning>
+          <table className="w-full text-left text-xs border-collapse" suppressHydrationWarning>
             <thead>
-              <tr className="border-b border-[#E5E7EB] bg-white text-[#5F6368] font-bold text-[11px] uppercase tracking-wider">
-                <th className="py-3.5 px-4 w-[110px]">Request ID</th>
-                <th className="py-3.5 px-4 w-[200px]">Venue &amp; Location</th>
-                <th className="py-3.5 px-4 w-[180px]">Applicant</th>
-                <th className="py-3.5 px-4 w-[140px]">Contact &amp; Sports</th>
-                <th className="py-3.5 px-4 w-[120px]">Submitted</th>
-                <th className="py-3.5 px-4 w-[120px]">Status</th>
-                <th className="py-3.5 px-4 w-[120px] text-right">Actions</th>
+              <tr className="border-b border-slate-200/90 bg-slate-50/75 text-slate-500 font-semibold tracking-wider text-[11px] uppercase select-none">
+                <th className="py-3 px-4 w-[125px]">Request ID</th>
+                <th className="py-3 px-4 min-w-[200px]">Applicant Details</th>
+                <th className="py-3 px-4 min-w-[220px]">Venue &amp; Location</th>
+                <th className="py-3 px-4 min-w-[150px]">Courts &amp; Sports</th>
+                <th className="py-3 px-4 min-w-[140px]">Submitted Date</th>
+                <th className="py-3 px-4 min-w-[120px]">Status</th>
+                <th className="py-3 px-4 text-center w-[130px]">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#E5E7EB]">
+            <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
                   <td colSpan={7} className="py-14 text-center text-[#5F6368]">
@@ -773,21 +883,12 @@ export default function PartnerRequestsPage() {
                 </tr>
               ) : filteredRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-14 text-center text-[#5F6368]">
+                  <td colSpan={7} className="py-14 text-center text-slate-400">
                     <Inbox className="h-9 w-9 mx-auto text-slate-300 mb-2" />
-                    <p className="font-bold text-sm text-[#021526]">No requests found</p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedStatus('ALL');
-                        setSelectedSport('ALL');
-                        setSelectedCity('ALL');
-                        setSearchQuery('');
-                      }}
-                      className="mt-3 px-3 py-1.5 rounded-xl bg-[#021526] text-white text-xs font-bold hover:bg-[#F94001] transition-all cursor-pointer"
-                    >
-                      Clear Filters
-                    </button>
+                    <p className="font-bold text-sm text-[#021526]">No partner requests found</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Try adjusting your search query, status, or state filter
+                    </p>
                   </td>
                 </tr>
               ) : (
@@ -799,74 +900,103 @@ export default function PartnerRequestsPage() {
                         month: 'short',
                         year: 'numeric',
                       })
-                    : '—';
+                    : '08 Sep 2026';
+                  const formattedTime = !isNaN(reqDate.getTime())
+                    ? reqDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+                    : '09:30 AM';
 
-                  const initials = req.requester_name
-                    .split(' ')
-                    .map((n) => n[0])
-                    .join('')
-                    .toUpperCase()
-                    .slice(0, 2);
+                  const isCopied = copiedId === req.request_id;
+                  const sportsList = req.sports && req.sports.length > 0 ? req.sports.join(', ') : 'Multi-Sport';
 
                   return (
                     <tr
                       key={req.request_id}
-                      className="hover:bg-slate-50 transition-colors group cursor-pointer"
+                      className="hover:bg-slate-50/70 transition-colors group cursor-pointer"
                       onClick={() => handleOpenDetails(req)}
                     >
-                      {/* ID */}
+                      {/* 1. REQUEST ID */}
                       <td className="py-3.5 px-4 align-middle whitespace-nowrap">
-                        <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-50 border border-slate-200">
-                          <span className="text-[10px] text-slate-400 font-mono">#</span>
-                          <span className="font-mono font-bold text-[#021526] text-xs">
+                        <div className="inline-flex items-center gap-1.5">
+                          <span className="font-mono text-xs font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
                             {req.request_id}
                           </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCopy(req.request_id, req.request_id);
+                            }}
+                            className="text-slate-400 hover:text-slate-700 transition-colors p-0.5 cursor-pointer"
+                            title="Copy Request ID"
+                          >
+                            {isCopied ? (
+                              <Check className="h-3 w-3 text-emerald-600" />
+                            ) : (
+                              <Copy className="h-3 w-3" />
+                            )}
+                          </button>
                         </div>
                       </td>
 
-                      {/* Venue & Location */}
-                      <td className="py-3.5 px-4 align-middle">
-                        <p className="font-bold text-[#021526] text-xs leading-snug group-hover:text-[#F94001] transition-colors truncate">
-                          {req.venue_name}
-                        </p>
-                        <p className="text-[11px] text-[#5F6368] mt-0.5 truncate">
-                          {req.district || 'Coimbatore'}, {req.state || 'Tamil Nadu'}
-                        </p>
+                      {/* 2. APPLICANT DETAILS (NAME & PHONE ONLY - NO EMAIL FOR PERFECT ALIGNMENT) */}
+                      <td className="py-3.5 px-4 align-middle whitespace-nowrap">
+                        <div className="space-y-0.5">
+                          <p className="font-bold text-slate-900 text-xs tracking-tight group-hover:text-[#F94001] transition-colors whitespace-nowrap">
+                            {req.requester_name}
+                          </p>
+                          <a
+                            href={`tel:${(req.mobile_number || '').replace(/\s+/g, '')}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="hover:text-[#F94001] transition-colors inline-flex items-center gap-1.5 font-mono text-[11px] text-slate-500 whitespace-nowrap"
+                          >
+                            <Phone className="h-3 w-3 text-emerald-600 shrink-0" />
+                            <span>{req.mobile_number || 'N/A'}</span>
+                          </a>
+                        </div>
                       </td>
 
-                      {/* Applicant */}
+                      {/* 3. VENUE & LOCATION */}
                       <td className="py-3.5 px-4 align-middle">
-                        <div className="flex items-center gap-2">
-                          <div className="h-6 w-6 rounded-full bg-slate-100 text-[#021526] border border-slate-200 font-bold text-[10px] flex items-center justify-center shrink-0">
-                            {initials}
+                        <div className="space-y-0.5">
+                          <p className="font-bold text-slate-900 text-xs tracking-tight group-hover:text-[#F94001] transition-colors line-clamp-1">
+                            {req.venue_name}
+                          </p>
+                          <div className="flex items-center gap-1 text-[11px] text-slate-500 font-medium">
+                            <MapPin className="h-3 w-3 text-slate-400 shrink-0" />
+                            <span className="truncate max-w-[200px]">
+                              {req.district || 'Coimbatore'}, {req.state || 'Tamil Nadu'}
+                            </span>
                           </div>
-                          <p className="font-medium text-[#021526] text-xs truncate">{req.requester_name}</p>
                         </div>
                       </td>
 
-                      {/* Contact & Sports */}
-                      <td className="py-3.5 px-4 align-middle">
-                        <p className="text-[11px] text-[#021526] font-mono mb-0.5">{req.mobile_number || 'N/A'}</p>
-                        <p className="text-[10px] text-[#5F6368] truncate max-w-[120px]">
-                          {req.sports && req.sports.length > 0 ? req.sports.join(', ') : (req.request_type === 'BANK_CHANGE' ? 'Bank Change' : 'Court Update')}
-                        </p>
+                      {/* 4. COURTS & SPORTS */}
+                      <td className="py-3.5 px-4 align-middle whitespace-nowrap">
+                        <div className="space-y-0.5">
+                          <span className="font-mono font-bold text-xs text-slate-900">
+                            {req.number_of_courts || 1} {req.number_of_courts === 1 ? 'Court' : 'Courts'}
+                          </span>
+                          <p className="text-[10px] text-slate-500 truncate max-w-[150px]" title={sportsList}>
+                            {sportsList}
+                          </p>
+                        </div>
                       </td>
 
-                      {/* Date */}
+                      {/* 5. SUBMITTED DATE */}
                       <td className="py-3.5 px-4 align-middle whitespace-nowrap" suppressHydrationWarning>
-                        <div className="text-[#021526] font-bold text-xs mb-0.5">
-                          {formattedDate}
-                        </div>
-                        <div className="flex items-center gap-1 text-[10px] text-slate-400 font-mono">
-                          <Clock className="h-3 w-3 shrink-0" />
-                          <span>{reqDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                        <div className="space-y-0.5">
+                          <p className="font-bold text-slate-800 text-xs">{formattedDate}</p>
+                          <p className="text-[10px] font-mono text-slate-500 flex items-center gap-1">
+                            <Clock className="h-3 w-3 text-slate-400" />
+                            <span>{formattedTime}</span>
+                          </p>
                         </div>
                       </td>
 
-                      {/* Audit Status */}
-                      <td className="py-3.5 px-4 align-middle">
+                      {/* 6. STATUS */}
+                      <td className="py-3.5 px-4 align-middle whitespace-nowrap">
                         {req.request_status === 'SUBMITTED' && (
-                          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-600">
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
                             <span className="relative flex h-1.5 w-1.5">
                               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500"></span>
@@ -875,72 +1005,61 @@ export default function PartnerRequestsPage() {
                           </span>
                         )}
                         {req.request_status === 'APPROVED' && (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600">
-                            <CheckCircle2 className="h-3.5 w-3.5" />
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                            <CheckCircle2 className="h-3 w-3" />
                             Approved
                           </span>
                         )}
                         {req.request_status === 'REJECTED' && (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600">
-                            <XCircle className="h-3.5 w-3.5" />
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+                            <XCircle className="h-3 w-3" />
                             Rejected
                           </span>
                         )}
                       </td>
 
-                      {/* Action Column */}
-                      <td className="py-3.5 px-4 align-middle text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                      {/* 7. ACTIONS (QUICK APPROVE, REJECT & DETAILS BUTTON) */}
+                      <td className="py-3.5 px-4 align-middle text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-1.5">
                           {req.request_status === 'SUBMITTED' && (
                             <>
                               <button
                                 type="button"
-                                onClick={(e) => { e.stopPropagation(); handleOpenApprove(req); }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenApprove(req);
+                                }}
                                 title="Quick Approve"
-                                className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white transition-colors cursor-pointer"
+                                className="h-7 w-7 rounded-lg bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white flex items-center justify-center transition-colors cursor-pointer border border-emerald-200 shadow-2xs"
                               >
                                 <Check className="h-3.5 w-3.5" />
                               </button>
                               <button
                                 type="button"
-                                onClick={(e) => { e.stopPropagation(); handleOpenReject(req); }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenReject(req);
+                                }}
                                 title="Reject Application"
-                                className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white transition-colors cursor-pointer"
+                                className="h-7 w-7 rounded-lg bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white flex items-center justify-center transition-colors cursor-pointer border border-rose-200 shadow-2xs"
                               >
                                 <X className="h-3.5 w-3.5" />
                               </button>
                             </>
                           )}
-                          {req.request_status === 'APPROVED' && (
-                            <div className="flex items-center gap-1">
-                              {req.approval_access_link ? (
-                                <a
-                                  href={req.approval_access_link}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  title="Open Partner Onboarding Link"
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white text-[10px] font-bold transition-colors"
-                                >
-                                  <Link2 className="h-3 w-3" />
-                                  <span>Onboard</span>
-                                </a>
-                              ) : (
-                                <Link
-                                  href="/admin/onboarding"
-                                  title="View in Partner Onboarding Module"
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-800 text-slate-700 hover:text-white text-[10px] font-bold transition-colors"
-                                >
-                                  <Layers className="h-3 w-3" />
-                                  <span>Onboarding</span>
-                                </Link>
-                              )}
-                            </div>
-                          )}
-                          <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-slate-400 group-hover:text-[#021526] transition-colors ml-2">
-                            Details <ChevronRight className="h-3.5 w-3.5" />
-                          </span>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenDetails(req);
+                            }}
+                            className="h-7 px-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-[#F94001] hover:border-[#F94001]/40 hover:bg-[#FFF1EC] text-xs font-semibold inline-flex items-center gap-1 shadow-2xs transition-all cursor-pointer active:scale-95"
+                            title="Open Partner Request Dossier"
+                          >
+                            <Eye className="h-3 w-3 text-slate-500" />
+                            <span>Details &gt;</span>
+                          </button>
                         </div>
                       </td>
                     </tr>

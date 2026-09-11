@@ -52,7 +52,6 @@ export default function CustomerManagementPage() {
 
   // Filter state for main customers list
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedState, setSelectedState] = useState('ALL');
   const [tierFilter, setTierFilter] = useState('ALL');
   const [sortBy, setSortBy] = useState<'spend' | 'hours' | 'bookings' | 'name' | 'id'>('spend');
 
@@ -84,20 +83,6 @@ export default function CustomerManagementPage() {
     return id.toUpperCase();
   };
 
-  // Extract unique states with customer counts
-  const stateCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    customers.forEach((c) => {
-      const st = c.state || 'Other';
-      counts[st] = (counts[st] || 0) + 1;
-    });
-    return counts;
-  }, [customers]);
-
-  const uniqueStates = useMemo(() => {
-    return Object.keys(stateCounts).sort();
-  }, [stateCounts]);
-
   // Filtered and Sorted Customers for main list
   const filteredCustomers = useMemo(() => {
     return customers
@@ -116,12 +101,9 @@ export default function CustomerManagementPage() {
           formattedId.includes(q) ||
           c.id.toLowerCase().includes(q);
 
-        const matchesState =
-          selectedState === 'ALL' || (c.state && c.state.toLowerCase() === selectedState.toLowerCase());
-
         const matchesTier = tierFilter === 'ALL' || c.tier === tierFilter;
 
-        return matchesSearch && matchesState && matchesTier;
+        return matchesSearch && matchesTier;
       })
       .sort((a, b) => {
         if (sortBy === 'spend') return b.total_spent - a.total_spent;
@@ -131,7 +113,7 @@ export default function CustomerManagementPage() {
         if (sortBy === 'id') return a.id.localeCompare(b.id);
         return 0;
       });
-  }, [customers, searchQuery, selectedState, tierFilter, sortBy]);
+  }, [customers, searchQuery, tierFilter, sortBy]);
 
   // Overall KPIs for main list (NO WALLET)
   const totalPlayers = customers.length;
@@ -1274,7 +1256,7 @@ export default function CustomerManagementPage() {
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-2xl font-black text-[#021526] font-mono">{totalPlayers}</span>
             <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-              {uniqueStates.length} States
+              Verified
             </span>
           </div>
           <p className="text-[10px] text-slate-400 mt-1 font-medium">100% phone verified players</p>
@@ -1348,66 +1330,7 @@ export default function CustomerManagementPage() {
         </div>
       </div>
 
-      {/* 3. MULTI-STATE FINDER TABS */}
-      <div className="bg-white rounded-2xl border border-[#E5E7EB] p-3 shadow-xs space-y-3">
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-[#F94001]" />
-            <span className="text-xs font-black uppercase tracking-wider text-[#021526]">
-              Filter by State:
-            </span>
-          </div>
-          <span className="text-[11px] font-semibold text-slate-500">
-            {selectedState === 'ALL' ? `All ${uniqueStates.length} states` : `Active State: ${selectedState}`}
-          </span>
-        </div>
-
-        {/* State Pills Bar */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
-          <button
-            type="button"
-            onClick={() => setSelectedState('ALL')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-              selectedState === 'ALL'
-                ? 'bg-[#021526] text-white shadow-sm'
-                : 'bg-[#F8F9FA] text-[#5F6368] hover:bg-slate-200 border border-[#E5E7EB]'
-            }`}
-          >
-            <span>All States</span>
-            <span
-              className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                selectedState === 'ALL' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
-              }`}
-            >
-              {customers.length}
-            </span>
-          </button>
-
-          {uniqueStates.map((st) => (
-            <button
-              key={st}
-              type="button"
-              onClick={() => setSelectedState(st)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-                selectedState === st
-                  ? 'bg-[#F94001] text-white shadow-sm shadow-[#F94001]/30'
-                  : 'bg-[#F8F9FA] text-[#5F6368] hover:bg-slate-200 border border-[#E5E7EB]'
-              }`}
-            >
-              <span>{st}</span>
-              <span
-                className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                  selectedState === st ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
-                }`}
-              >
-                {stateCounts[st]}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* 4. SEARCH, TIER AND SORT CONTROLS */}
+      {/* 3. SEARCH, TIER AND SORT CONTROLS */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-[#E5E7EB] shadow-xs">
         {/* Live Search Input */}
         <div className="relative flex-1 min-w-[280px]">
@@ -1465,12 +1388,11 @@ export default function CustomerManagementPage() {
           </div>
 
           {/* Reset Filters */}
-          {(searchQuery || selectedState !== 'ALL' || tierFilter !== 'ALL') && (
+          {(searchQuery || tierFilter !== 'ALL') && (
             <button
               type="button"
               onClick={() => {
                 setSearchQuery('');
-                setSelectedState('ALL');
                 setTierFilter('ALL');
               }}
               className="px-3 py-2 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 shrink-0"
@@ -1504,7 +1426,7 @@ export default function CustomerManagementPage() {
                   <td colSpan={7} className="py-12 text-center text-slate-400">
                     <p className="font-semibold text-xs text-slate-700">No matching customers found</p>
                     <p className="text-[11px] text-slate-400 mt-0.5">
-                      Try adjusting your search query or state filter
+                      Try adjusting your search query or tier filter
                     </p>
                   </td>
                 </tr>
@@ -1548,31 +1470,20 @@ export default function CustomerManagementPage() {
                         </div>
                       </td>
 
-                      {/* 2. CUSTOMER DETAILS (NAME, PHONE, EMAIL ONLY) */}
-                      <td className="py-3.5 px-4 align-middle">
+                      {/* 2. CUSTOMER DETAILS (NAME & PHONE ONLY - NO EMAIL FOR CLEAN TABLE ALIGNMENT) */}
+                      <td className="py-3.5 px-4 align-middle whitespace-nowrap">
                         <div className="space-y-0.5">
-                          <p className="font-bold text-slate-900 text-xs tracking-tight group-hover:text-[#F94001] transition-colors">
+                          <p className="font-bold text-slate-900 text-xs tracking-tight group-hover:text-[#F94001] transition-colors whitespace-nowrap">
                             {cust.name}
                           </p>
-                          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2.5 text-xs text-slate-500">
-                            <a
-                              href={`tel:${cust.phone.replace(/\s+/g, '')}`}
-                              onClick={(e) => e.stopPropagation()}
-                              className="hover:text-[#F94001] transition-colors flex items-center gap-1 font-mono text-[11px]"
-                            >
-                              <Phone className="h-2.5 w-2.5 text-emerald-600 shrink-0" />
-                              <span>{cust.phone}</span>
-                            </a>
-                            <span className="hidden sm:inline text-slate-300">&bull;</span>
-                            <a
-                              href={`mailto:${cust.email}`}
-                              onClick={(e) => e.stopPropagation()}
-                              className="hover:text-[#F94001] transition-colors flex items-center gap-1 text-[11px] text-slate-600 truncate max-w-[180px]"
-                            >
-                              <Mail className="h-2.5 w-2.5 text-blue-500 shrink-0" />
-                              <span className="truncate">{cust.email}</span>
-                            </a>
-                          </div>
+                          <a
+                            href={`tel:${cust.phone.replace(/\s+/g, '')}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="hover:text-[#F94001] transition-colors inline-flex items-center gap-1.5 font-mono text-[11px] text-slate-500 whitespace-nowrap"
+                          >
+                            <Phone className="h-3 w-3 text-emerald-600 shrink-0" />
+                            <span>{cust.phone}</span>
+                          </a>
                         </div>
                       </td>
 

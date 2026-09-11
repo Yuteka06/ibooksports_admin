@@ -326,7 +326,7 @@ export default function VenuesManagementPage() {
       </div>
 
       {/* 3. BEST STATE & STATUS DROPDOWNS & FILTER TOOLBAR */}
-      <div className="bg-white rounded-xl border border-slate-200/90 p-3.5 shadow-2xs space-y-3">
+      <div className="bg-white rounded-2xl border border-slate-200/90 p-3.5 shadow-2xs space-y-3">
         {/* Row 1: Search & Quick Status Switcher Segmented Pills */}
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
           {/* Live Search Input - fixed icon position with proper padding */}
@@ -334,16 +334,16 @@ export default function VenuesManagementPage() {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
             <input
               type="text"
-              placeholder="Search venue ID, name, city, owner, staff, phone..."
+              placeholder="Search venue ID, name, city, district, owner, phone..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-10 rounded-lg bg-slate-50/70 border border-slate-200 pl-10 pr-9 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-[#F94001] focus:ring-1 focus:ring-[#F94001] transition-all outline-none"
+              className="w-full h-10 rounded-xl bg-slate-50/70 border border-slate-200 pl-10 pr-9 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-[#F94001] focus:ring-1 focus:ring-[#F94001] transition-all outline-none"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
                 title="Clear search"
               >
                 <X className="h-3.5 w-3.5" />
@@ -352,11 +352,11 @@ export default function VenuesManagementPage() {
           </div>
 
           {/* Quick 1-Click Status Segmented Filter Pills */}
-          <div className="flex items-center gap-1 p-1 bg-slate-100/90 rounded-lg border border-slate-200/70 self-start md:self-auto shrink-0 overflow-x-auto max-w-full">
+          <div className="flex items-center gap-1 p-1 bg-slate-100/90 rounded-xl border border-slate-200/70 self-start md:self-auto shrink-0 overflow-x-auto max-w-full">
             <button
               type="button"
               onClick={() => setSelectedStatus('ALL')}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 selectedStatus === 'ALL'
                   ? 'bg-white text-slate-900 shadow-2xs font-bold'
                   : 'text-slate-500 hover:text-slate-900'
@@ -367,7 +367,7 @@ export default function VenuesManagementPage() {
             <button
               type="button"
               onClick={() => setSelectedStatus('ACTIVE')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 selectedStatus === 'ACTIVE'
                   ? 'bg-white text-emerald-700 shadow-2xs font-bold ring-1 ring-emerald-500/20'
                   : 'text-slate-500 hover:text-emerald-700'
@@ -379,7 +379,7 @@ export default function VenuesManagementPage() {
             <button
               type="button"
               onClick={() => setSelectedStatus('INACTIVE')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 selectedStatus === 'INACTIVE'
                   ? 'bg-white text-rose-700 shadow-2xs font-bold ring-1 ring-rose-500/20'
                   : 'text-slate-500 hover:text-rose-700'
@@ -391,7 +391,7 @@ export default function VenuesManagementPage() {
             <button
               type="button"
               onClick={() => setSelectedStatus('MAINTENANCE')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 selectedStatus === 'MAINTENANCE'
                   ? 'bg-white text-amber-700 shadow-2xs font-bold ring-1 ring-amber-500/20'
                   : 'text-slate-500 hover:text-amber-700'
@@ -404,18 +404,19 @@ export default function VenuesManagementPage() {
         </div>
 
         {/* Row 2: BEST CUSTOM DROPDOWNS: State + Status + Sport + Sort */}
-        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100">
-          {/* BEST STATE DROPDOWN */}
-          <div className="relative min-w-[180px]" data-dropdown-container>
-            <button
-              type="button"
-              onClick={() => setOpenDropdown(openDropdown === 'state' ? null : 'state')}
-              className={`w-full h-9.5 px-3 rounded-lg border text-xs font-semibold flex items-center justify-between gap-2 transition-all cursor-pointer shadow-2xs ${
-                selectedState !== 'ALL'
-                  ? 'border-[#F94001] bg-[#FFF8F5] text-[#F94001] ring-1 ring-[#F94001]/20'
-                  : 'border-slate-200 bg-white text-slate-800 hover:border-slate-300'
-              }`}
-            >
+        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-slate-100">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* BEST STATE DROPDOWN */}
+            <div className="relative min-w-[170px]" data-dropdown-container>
+              <button
+                type="button"
+                onClick={() => setOpenDropdown(openDropdown === 'state' ? null : 'state')}
+                className={`w-full h-9.5 px-3 rounded-xl border text-xs font-semibold flex items-center justify-between gap-2 transition-all cursor-pointer shadow-2xs ${
+                  selectedState !== 'ALL'
+                    ? 'border-[#F94001] bg-[#FFF8F5] text-[#F94001] ring-1 ring-[#F94001]/20'
+                    : 'border-slate-200 bg-white text-slate-800 hover:border-slate-300'
+                }`}
+              >
               <div className="flex items-center gap-1.5 truncate">
                 <MapPin className={`h-3.5 w-3.5 shrink-0 ${selectedState !== 'ALL' ? 'text-[#F94001]' : 'text-slate-400'}`} />
                 <span className="truncate">
@@ -475,11 +476,11 @@ export default function VenuesManagementPage() {
           </div>
 
           {/* BEST STATUS DROPDOWN */}
-          <div className="relative min-w-[180px]" data-dropdown-container>
+          <div className="relative min-w-[170px]" data-dropdown-container>
             <button
               type="button"
               onClick={() => setOpenDropdown(openDropdown === 'status' ? null : 'status')}
-              className={`w-full h-9.5 px-3 rounded-lg border text-xs font-semibold flex items-center justify-between gap-2 transition-all cursor-pointer shadow-2xs ${
+              className={`w-full h-9.5 px-3 rounded-xl border text-xs font-semibold flex items-center justify-between gap-2 transition-all cursor-pointer shadow-2xs ${
                 selectedStatus !== 'ALL'
                   ? selectedStatus === 'ACTIVE'
                     ? 'border-emerald-500 bg-emerald-50/70 text-emerald-800 ring-1 ring-emerald-400/30'
@@ -575,11 +576,11 @@ export default function VenuesManagementPage() {
           </div>
 
           {/* SPORT DROPDOWN */}
-          <div className="relative min-w-[160px]" data-dropdown-container>
+          <div className="relative min-w-[150px]" data-dropdown-container>
             <button
               type="button"
               onClick={() => setOpenDropdown(openDropdown === 'sport' ? null : 'sport')}
-              className={`w-full h-9.5 px-3 rounded-lg border text-xs font-semibold flex items-center justify-between gap-2 transition-all cursor-pointer shadow-2xs ${
+              className={`w-full h-9.5 px-3 rounded-xl border text-xs font-semibold flex items-center justify-between gap-2 transition-all cursor-pointer shadow-2xs ${
                 selectedSport !== 'ALL'
                   ? 'border-[#F94001] bg-[#FFF8F5] text-[#F94001] ring-1 ring-[#F94001]/20'
                   : 'border-slate-200 bg-white text-slate-800 hover:border-slate-300'
@@ -625,11 +626,11 @@ export default function VenuesManagementPage() {
           </div>
 
           {/* SORT DROPDOWN */}
-          <div className="relative min-w-[180px]" data-dropdown-container>
+          <div className="relative min-w-[170px]" data-dropdown-container>
             <button
               type="button"
               onClick={() => setOpenDropdown(openDropdown === 'sort' ? null : 'sort')}
-              className="w-full h-9.5 px-3 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-800 hover:border-slate-300 flex items-center justify-between gap-2 transition-all cursor-pointer shadow-2xs"
+              className="w-full h-9.5 px-3 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 hover:border-slate-300 flex items-center justify-between gap-2 transition-all cursor-pointer shadow-2xs"
             >
               <div className="flex items-center gap-1.5 truncate">
                 <ArrowUpDown className="h-3.5 w-3.5 text-slate-400 shrink-0" />
@@ -684,15 +685,16 @@ export default function VenuesManagementPage() {
                 setSelectedStatus('ALL');
                 setSelectedSport('ALL');
               }}
-              className="h-9.5 px-3 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
+              className="h-9.5 px-3 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
               title="Reset all filters"
             >
               <X className="h-3.5 w-3.5" />
               <span>Reset</span>
             </button>
           )}
+          </div>
 
-          <div className="ml-auto text-[11px] font-semibold text-slate-500">
+          <div className="text-[11px] font-semibold text-slate-500 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200/80 shrink-0">
             Showing <strong className="text-slate-900">{filteredVenues.length}</strong> of {venues.length} venues
           </div>
         </div>
@@ -749,20 +751,19 @@ export default function VenuesManagementPage() {
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="border-b border-slate-200/90 bg-slate-50/75 text-slate-500 font-semibold tracking-wider text-[11px] uppercase select-none">
-                <th className="py-2.5 px-3 w-[95px]">Venue ID</th>
-                <th className="py-2.5 px-3 w-[130px]">Status</th>
-                <th className="py-2.5 px-3 min-w-[200px]">Venue Name & Location</th>
-                <th className="py-2.5 px-3 min-w-[140px]">Owner Contact</th>
-                <th className="py-2.5 px-3 min-w-[140px]">Staff / Manager</th>
-                <th className="py-2.5 px-3 min-w-[130px]">Courts & Sports</th>
-                <th className="py-2.5 px-3 min-w-[150px]">Today&apos;s Performance</th>
-                <th className="py-2.5 px-3 text-center w-[60px]">Action</th>
+                <th className="py-3 px-3.5 w-[105px]">Venue ID</th>
+                <th className="py-3 px-3.5 min-w-[220px]">Venue Name & Location</th>
+                <th className="py-3 px-3.5 min-w-[150px]">Owner Contact</th>
+                <th className="py-3 px-3.5 min-w-[140px]">Courts & Sports</th>
+                <th className="py-3 px-3.5 min-w-[160px]">Today&apos;s Performance</th>
+                <th className="py-3 px-3.5 min-w-[125px]">Status</th>
+                <th className="py-3 px-3.5 text-center w-[75px]">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredVenues.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-400">
+                  <td colSpan={7} className="py-12 text-center text-slate-400">
                     <p className="font-semibold text-xs text-slate-700">No matching venues found</p>
                     <p className="text-[11px] text-slate-400 mt-0.5">Try adjusting your search keyword, state, or status filter</p>
                     <button
@@ -785,9 +786,6 @@ export default function VenuesManagementPage() {
                   const isCopied = copiedId === v.id;
                   const ownerPhone = v.owner?.phone || `+91 ${v.mobile_number}`;
                   const ownerName = v.owner?.full_name || v.name;
-                  const staffName = v.staff_name || 'Operations Lead';
-                  const staffPhone = v.staff_contact || `+91 ${Number(v.mobile_number) - 1000}`;
-                  const shortRole = formatShortRole(v.staff_role);
                   const isLiveActive = v.status === 'ACTIVE' || !v.status;
                   const isInactive = v.status === 'INACTIVE';
                   const isMaintenance = v.status === 'MAINTENANCE';
@@ -808,7 +806,7 @@ export default function VenuesManagementPage() {
                       }`}
                     >
                       {/* 1. VENUE ID */}
-                      <td className="py-2.5 px-3 align-middle whitespace-nowrap">
+                      <td className="py-3 px-3.5 align-middle whitespace-nowrap">
                         <div className="inline-flex items-center gap-1">
                           <span className="font-mono text-[11px] font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/80">
                             {displayId}
@@ -824,8 +822,108 @@ export default function VenuesManagementPage() {
                         </div>
                       </td>
 
-                      {/* 2. INTERACTIVE STATUS BADGE & QUICK SWITCHER */}
-                      <td className="py-2.5 px-3 align-middle whitespace-nowrap" data-status-menu-container>
+                      {/* 2. VENUE NAME & LOCATION */}
+                      <td className="py-3 px-3.5 align-middle">
+                        <div className="space-y-0.5">
+                          <Link
+                            href={`/admin/venues/${v.id}`}
+                            className="font-bold text-slate-900 text-xs tracking-tight group-hover:text-[#F94001] transition-colors line-clamp-1 block cursor-pointer"
+                          >
+                            {v.venue_name}
+                          </Link>
+
+                          <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                            <MapPin className="h-3 w-3 text-slate-400 shrink-0" />
+                            <span className="truncate max-w-[140px]">{v.district}</span>
+                            <span className="text-slate-300">&bull;</span>
+                            <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-1.5 py-0.2 rounded border border-slate-200/60">
+                              {v.state}
+                            </span>
+                            {v.venue_location_name && (
+                              <a
+                                href={v.venue_location_name}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-slate-400 hover:text-[#F94001] transition-colors"
+                                title="Open GPS Map"
+                              >
+                                <ExternalLink className="h-2.5 w-2.5" />
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* 3. OWNER CONTACT */}
+                      <td className="py-3 px-3.5 align-middle whitespace-nowrap">
+                        <div className="space-y-0.5">
+                          <p className="font-medium text-slate-900 text-xs truncate max-w-[150px] flex items-center gap-1">
+                            <User className="h-3 w-3 text-slate-400 shrink-0" />
+                            {ownerName}
+                          </p>
+                          <p className="font-mono text-[11px] text-slate-500">
+                            <a
+                              href={`tel:${ownerPhone.replace(/\s+/g, '')}`}
+                              className="hover:text-[#F94001] transition-colors flex items-center gap-1 font-mono"
+                            >
+                              <Phone className="h-2.5 w-2.5 text-emerald-600 shrink-0" />
+                              {ownerPhone}
+                            </a>
+                          </p>
+                        </div>
+                      </td>
+
+                      {/* 4. COURTS & SPORTS */}
+                      <td className="py-3 px-3.5 align-middle">
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-1.5 font-bold text-slate-900 text-xs">
+                            <Trophy className="h-3 w-3 text-slate-400 shrink-0" />
+                            <span>{v.courts} {v.courts === 1 ? 'Court' : 'Courts'}</span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 truncate max-w-[150px]" title={sportsStr}>
+                            {sportsStr}
+                          </p>
+                        </div>
+                      </td>
+
+                      {/* 5. TODAY'S PERFORMANCE */}
+                      <td className="py-3 px-3.5 align-middle whitespace-nowrap">
+                        {isLiveActive ? (
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono font-bold text-xs text-slate-900">
+                                ₹{todayRevenue.toLocaleString('en-IN')}
+                              </span>
+                              <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-1.5 py-0.2 rounded">
+                                {todayCount} bks
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
+                              <div className="w-14 h-1.5 rounded-full bg-slate-100 overflow-hidden shrink-0">
+                                <div
+                                  className="h-full bg-emerald-500 rounded-full"
+                                  style={{ width: `${Math.min(occupancy, 100)}%` }}
+                                />
+                              </div>
+                              <span className="font-mono font-medium">{occupancy}%</span>
+                            </div>
+                          </div>
+                        ) : isInactive ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200/60 text-[10px] font-semibold">
+                            <span className="h-1 w-1 rounded-full bg-rose-500" />
+                            Offline &bull; Inactive
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200/60 text-[10px] font-semibold">
+                            <span className="h-1 w-1 rounded-full bg-amber-500" />
+                            Under Renovation
+                          </span>
+                        )}
+                      </td>
+
+                      {/* 6. STATUS (INTERACTIVE BADGE BEFORE ACTION) */}
+                      <td className="py-3 px-3.5 align-middle whitespace-nowrap" data-status-menu-container>
                         <div className="relative inline-block text-left">
                           <button
                             type="button"
@@ -850,7 +948,7 @@ export default function VenuesManagementPage() {
 
                           {/* Quick Row Status Popover */}
                           {rowStatusMenuVenueId === v.id && (
-                            <div className="absolute left-0 top-full mt-1 w-36 rounded-xl border border-slate-200 bg-white shadow-xl z-40 p-1 text-xs animate-in fade-in slide-in-from-top-1">
+                            <div className="absolute right-0 top-full mt-1 w-36 rounded-xl border border-slate-200 bg-white shadow-xl z-40 p-1 text-xs animate-in fade-in slide-in-from-top-1">
                               <div className="px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-slate-400">Set Status</div>
                               <button
                                 type="button"
@@ -896,135 +994,11 @@ export default function VenuesManagementPage() {
                         </div>
                       </td>
 
-                      {/* 3. VENUE NAME & LOCATION */}
-                      <td className="py-2.5 px-3 align-middle">
-                        <div className="space-y-0.5">
-                          <Link
-                            href={`/admin/venues/${v.id}`}
-                            className="font-bold text-slate-900 text-xs tracking-tight group-hover:text-[#F94001] transition-colors line-clamp-1 block cursor-pointer"
-                          >
-                            {v.venue_name}
-                          </Link>
-
-                          <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
-                            <MapPin className="h-3 w-3 text-slate-400 shrink-0" />
-                            <span className="truncate max-w-[140px]">{v.district}</span>
-                            <span className="text-slate-300">&bull;</span>
-                            <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-1.5 py-0.2 rounded border border-slate-200/60">
-                              {v.state}
-                            </span>
-                            {v.venue_location_name && (
-                              <a
-                                href={v.venue_location_name}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-slate-400 hover:text-[#F94001] transition-colors"
-                                title="Open GPS Map"
-                              >
-                                <ExternalLink className="h-2.5 w-2.5" />
-                              </a>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* 4. OWNER CONTACT */}
-                      <td className="py-2.5 px-3 align-middle">
-                        <div className="space-y-0.5">
-                          <p className="font-medium text-slate-900 text-xs truncate max-w-[140px] flex items-center gap-1">
-                            <User className="h-3 w-3 text-slate-400 shrink-0" />
-                            {ownerName}
-                          </p>
-                          <p className="font-mono text-[11px] text-slate-500">
-                            <a
-                              href={`tel:${ownerPhone.replace(/\s+/g, '')}`}
-                              className="hover:text-[#F94001] transition-colors flex items-center gap-1"
-                            >
-                              <Phone className="h-2.5 w-2.5 text-emerald-600 shrink-0" />
-                              {ownerPhone}
-                            </a>
-                          </p>
-                        </div>
-                      </td>
-
-                      {/* 5. STAFF / MANAGER */}
-                      <td className="py-2.5 px-3 align-middle">
-                        <div className="space-y-0.5">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-medium text-slate-900 text-xs truncate max-w-[100px]">
-                              {staffName}
-                            </span>
-                            <span className="text-[9px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded border border-slate-200/60 shrink-0">
-                              {shortRole}
-                            </span>
-                          </div>
-                          <p className="font-mono text-[11px] text-slate-500">
-                            <a
-                              href={`tel:${staffPhone.replace(/\s+/g, '')}`}
-                              className="hover:text-[#F94001] transition-colors flex items-center gap-1"
-                            >
-                              <Phone className="h-2.5 w-2.5 text-blue-600 shrink-0" />
-                              {staffPhone}
-                            </a>
-                          </p>
-                        </div>
-                      </td>
-
-                      {/* 6. COURTS & SPORTS */}
-                      <td className="py-2.5 px-3 align-middle">
-                        <div className="space-y-0.5">
-                          <div className="flex items-center gap-1.5 font-bold text-slate-900 text-xs">
-                            <Trophy className="h-3 w-3 text-slate-400 shrink-0" />
-                            <span>{v.courts} {v.courts === 1 ? 'Court' : 'Courts'}</span>
-                          </div>
-                          <p className="text-[11px] text-slate-500 truncate max-w-[140px]" title={sportsStr}>
-                            {sportsStr}
-                          </p>
-                        </div>
-                      </td>
-
-                      {/* 7. TODAY'S BOOKINGS & PRICE */}
-                      <td className="py-2.5 px-3 align-middle">
-                        {isLiveActive ? (
-                          <div className="space-y-0.5">
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono font-bold text-xs text-slate-900">
-                                ₹{todayRevenue.toLocaleString('en-IN')}
-                              </span>
-                              <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-1.5 py-0.2 rounded">
-                                {todayCount} bks
-                              </span>
-                            </div>
-
-                            <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
-                              <div className="w-14 h-1.5 rounded-full bg-slate-100 overflow-hidden shrink-0">
-                                <div
-                                  className="h-full bg-emerald-500 rounded-full"
-                                  style={{ width: `${Math.min(occupancy, 100)}%` }}
-                                />
-                              </div>
-                              <span className="font-mono font-medium">{occupancy}%</span>
-                            </div>
-                          </div>
-                        ) : isInactive ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200/60 text-[10px] font-semibold">
-                            <span className="h-1 w-1 rounded-full bg-rose-500" />
-                            Offline &bull; Inactive
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200/60 text-[10px] font-semibold">
-                            <span className="h-1 w-1 rounded-full bg-amber-500" />
-                            Under Renovation
-                          </span>
-                        )}
-                      </td>
-
-                      {/* 8. ACTION (EYE ICON) */}
-                      {/* 8. ACTION (EYE ICON -> DEDICATED MODULAR OVERVIEW SCREEN) */}
-                      <td className="py-2.5 px-3 align-middle text-center">
+                      {/* 7. ACTION (EYE ICON -> DEDICATED MODULAR OVERVIEW SCREEN) */}
+                      <td className="py-3 px-3.5 align-middle text-center whitespace-nowrap">
                         <Link
                           href={`/admin/venues/${v.id}`}
-                          className="h-7 w-7 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-[#F94001] hover:border-[#F94001]/40 hover:bg-[#FFF1EC] transition-all inline-flex items-center justify-center cursor-pointer shadow-2xs"
+                          className="h-7.5 w-7.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-[#F94001] hover:border-[#F94001]/40 hover:bg-[#FFF1EC] transition-all inline-flex items-center justify-center cursor-pointer shadow-2xs"
                           title="Open Dedicated Modular Overview Screen"
                         >
                           <Eye className="h-3.5 w-3.5" />
