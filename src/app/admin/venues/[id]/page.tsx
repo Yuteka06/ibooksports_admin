@@ -65,7 +65,7 @@ import {
   CourtExtensionRequest,
   CourtExtensionHistory,
 } from '@/lib/mockData';
-import { apiClient, onboardingApi } from '@/lib/api';
+import { apiClient, onboardingApi, adminApi } from '@/lib/api';
 
 const REJECTION_REASONS = [
   { value: 'PRICING_OUT_OF_BOUNDS', label: 'Hourly pricing violates regional slot rate caps' },
@@ -330,17 +330,81 @@ export default function VenueModularOverviewPage() {
         console.error('Failed to load live venues from local storage', err);
       }
 
-      try {
-        const storedReqs = localStorage.getItem('ibooksports_court_requests');
-        if (storedReqs) {
-          const parsedReqs = JSON.parse(storedReqs);
-          if (Array.isArray(parsedReqs) && parsedReqs.length > 0) {
-            setCourtRequests(parsedReqs);
+      const loadCourtRequests = async () => {
+        let mergedReqs: CourtExtensionRequest[] = [];
+        try {
+          const backendReqs = await adminApi.getCourtRequests();
+          if (Array.isArray(backendReqs) && backendReqs.length > 0) {
+            mergedReqs = backendReqs.map((r) => ({
+              id: r.id,
+              court_id: r.court_id,
+              venue_id: r.vendor_mobile ? `ven_${r.vendor_mobile.slice(-4)}` : 'APP10235',
+              venue_name: r.venue_name,
+              venue_city: r.venue_city || 'Coimbatore',
+              owner_name: r.vendor_name || 'Venue Partner',
+              owner_phone: r.vendor_mobile ? `+91 ${r.vendor_mobile}` : '+91 9876543210',
+              same_physical_sports: r.same_physical_sports ?? false,
+              parent_court_name: r.parent_court_name,
+              sport: Array.isArray(r.sports) ? r.sports[0] : (r.sports || 'Football'),
+              court_name: r.court_name,
+              display_name: r.display_name || r.court_name,
+              min_booking_duration: r.min_booking_duration || '1 Hour',
+              min_booking_duration_label: r.min_booking_duration || '1 Hour',
+              min_booking_duration_mins: 60,
+              price_per_hour: r.price_per_hour,
+              regular_price: r.price_per_hour,
+              peak_price: r.peak_hours_price || r.price_per_hour,
+              peak_hours_start: r.peak_hours_start || '06:00 PM',
+              peak_hours_end: r.peak_hours_end || '10:00 PM',
+              weekend_price: r.weekend_price || r.price_per_hour,
+              peak_days: r.peak_days || ['Fri', 'Sat', 'Sun'],
+              cancellation_window_hours: r.cancellation_window_hours ?? 12,
+              cancellation_policy_hours: r.cancellation_window_hours ?? 12,
+              refund_percentage: r.refund_percentage ?? 100,
+              status: r.status === 'PENDING' ? 'SUBMITTED' : (r.status as any),
+              submission_count: 1,
+              submission_round: 1,
+              rejection_reason: r.rejection_reason,
+              rejection_note: r.rejection_reason,
+              history: [
+                {
+                  round: 1,
+                  action: (r.status === 'PENDING' ? 'SUBMITTED' : r.status) as any,
+                  timestamp: r.created_at,
+                  note: 'Inbound court extension request.',
+                },
+              ],
+              created_at: r.created_at,
+              submitted_at: r.created_at ? r.created_at.split('T')[0] : '2026-03-09',
+            }));
           }
+        } catch (err) {
+          console.warn('Failed to load court requests from backend API', err);
         }
-      } catch (err) {
-        console.error('Failed to load court requests from localStorage', err);
-      }
+
+        try {
+          const storedReqs = localStorage.getItem('ibooksports_court_requests');
+          if (storedReqs) {
+            const parsedReqs: CourtExtensionRequest[] = JSON.parse(storedReqs);
+            if (Array.isArray(parsedReqs)) {
+              parsedReqs.forEach((localReq) => {
+                const existingIdx = mergedReqs.findIndex((m) => m.id === localReq.id);
+                if (existingIdx === -1) {
+                  mergedReqs.unshift(localReq);
+                } else {
+                  mergedReqs[existingIdx] = { ...mergedReqs[existingIdx], ...localReq };
+                }
+              });
+            }
+          }
+        } catch (err) {
+          console.error('Failed to load court requests from localStorage', err);
+        }
+
+        setCourtRequests(mergedReqs);
+      };
+
+      loadCourtRequests();
     }
   }, [venueId]);
 
@@ -361,7 +425,20 @@ export default function VenueModularOverviewPage() {
   };
 
   const venueCourtRequests = useMemo(() => {
-    return currentVenue ? courtRequests.filter((r) => r.venue_id === currentVenue.id) : [];
+    if (!currentVenue) return [];
+    return courtRequests.filter((r) => {
+      const vid = currentVenue.id?.toLowerCase();
+      const rvid = r.venue_id?.toLowerCase();
+      const vname = currentVenue.venue_name?.toLowerCase();
+      const rvname = r.venue_name?.toLowerCase();
+      const vphone = String(currentVenue.mobile_number || currentVenue.owner?.phone || '').replace(/\D/g, '').slice(-10);
+      const rphone = String(r.owner_phone || '').replace(/\D/g, '').slice(-10);
+      return (
+        rvid === vid ||
+        (vname && rvname && (rvname === vname || rvname.includes(vname) || vname.includes(rvname))) ||
+        (vphone && rphone && vphone === rphone)
+      );
+    });
   }, [courtRequests, currentVenue]);
 
   const pendingRequestsCount = useMemo(() => {
@@ -504,6 +581,30 @@ export default function VenueModularOverviewPage() {
       setCourtsSubTab('requests');
       setStatusNotification(`New court request "${newReq.court_name}" submitted for approval!`);
       setTimeout(() => setStatusNotification(null), 3500);
+
+      // Persist to backend API so it shows everywhere
+      adminApi.createCourtRequest({
+        court_name: reqCourtName,
+        display_name: reqDisplayName,
+        sports: [reqSport],
+        price_per_hour: Number(reqPricePerHour) || 1000,
+        min_booking_duration: reqMinDuration,
+        peak_hours_start: reqPeakStart,
+        peak_hours_end: reqPeakEnd,
+        peak_hours_price: Number(reqPeakPrice) || 1400,
+        peak_days: reqPeakDays,
+        weekend_price: Number(reqWeekendPrice) || 1500,
+        type: 'Outdoor',
+        same_physical_sports: reqSamePhysicalSports,
+        parent_court_name: reqSamePhysicalSports ? (courtsList[0]?.name || 'Turf 1') : undefined,
+        cancellation_window_hours: reqCancellationHours,
+        refund_percentage: reqRefundPercentage,
+        venue_name: currentVenue.venue_name,
+        venue_city: currentVenue.district ? `${currentVenue.district}, ${currentVenue.state}` : currentVenue.state,
+        vendor_mobile: currentVenue.owner?.phone?.replace(/\D/g, '').slice(-10) || String(currentVenue.mobile_number || '6369591821'),
+        vendor_name: currentVenue.owner?.full_name || currentVenue.name,
+        notes: `Physical court sharing: ${reqSamePhysicalSports ? 'YES' : 'NO'}. Submitted from Venue Admin.`,
+      }).catch((err) => console.warn('Could not post court request to backend API', err));
     }
   };
 
@@ -528,6 +629,7 @@ export default function VenueModularOverviewPage() {
       return r;
     });
     saveCourtRequestsToStorage(updated);
+    adminApi.reviewCourtRequest(req.id, { status: 'APPROVED' }).catch((e) => console.warn(e));
 
     // Add to courtsList
     const newCourt: EnhancedCourtItem = {
@@ -586,6 +688,7 @@ export default function VenueModularOverviewPage() {
     });
 
     saveCourtRequestsToStorage(updated);
+    adminApi.reviewCourtRequest(req.id, { status: 'REJECTED', rejection_reason: drawerRejectionNote.trim() }).catch((e) => console.warn(e));
     setIsDrawerRejectOpen(false);
     setDrawerRejectionNote('');
     setDrawerActionError(null);
@@ -609,21 +712,20 @@ export default function VenueModularOverviewPage() {
   useEffect(() => {
     if (currentVenue) {
       // Owner Details from active venue
-      if (currentVenue.owner?.full_name) {
-        setOwnerFullName(currentVenue.owner.full_name);
-        setOwnerPhone(currentVenue.owner.phone || '+91 6369591821');
-        setOwnerEmail(currentVenue.owner.email || 'yutekahema003@gmail.com');
-        setOwnerPan(currentVenue.owner.pan_number || '33ABCDE1234F1Z5');
-        const slug = currentVenue.owner.full_name.toLowerCase().split(' ')[0];
-        setAadhaarDocName(`doc_aadhaar_${slug}`);
-        setProfilePhotoName(`doc_profile_${slug}`);
-      }
-      setVenueNameInput(currentVenue.venue_name || 'skywalk sports');
-      setCityRegionInput(currentVenue.district ? `${currentVenue.district}, ${currentVenue.state}` : 'Coimbatore, Tamil Nadu');
-      setPhysicalAddressInput(currentVenue.address || `${currentVenue.venue_name}, Coimbatore, Tamil Nadu`);
-      setGoogleMapsLinkInput(currentVenue.venue_location_name || 'https://maps.app.goo.gl/uyJgU4DB7ushZsiv6');
+      setOwnerFullName(currentVenue.owner?.full_name || currentVenue.name || '');
+      setOwnerPhone(currentVenue.owner?.phone || (currentVenue.mobile_number ? `+91 ${currentVenue.mobile_number}` : ''));
+      setOwnerEmail(currentVenue.owner?.email || currentVenue.email || '');
+      setOwnerPan(currentVenue.owner?.pan_number || '');
+      const slug = (currentVenue.owner?.full_name || currentVenue.name || 'owner').toLowerCase().split(' ')[0];
+      setAadhaarDocName(`doc_aadhaar_${slug}`);
+      setProfilePhotoName(`doc_profile_${slug}`);
 
-      // Enhanced Courts: Use live court_list if available from onboarding/backend, otherwise fallback
+      setVenueNameInput(currentVenue.venue_name || '');
+      setCityRegionInput(currentVenue.district ? `${currentVenue.district}, ${currentVenue.state}` : currentVenue.state || '');
+      setPhysicalAddressInput(currentVenue.address || '');
+      setGoogleMapsLinkInput(currentVenue.venue_location_name || '');
+
+      // Enhanced Courts: Use live court_list if available from onboarding/backend, otherwise empty list
       if (currentVenue.court_list && currentVenue.court_list.length > 0) {
         const liveCourts: EnhancedCourtItem[] = currentVenue.court_list.map((c, idx) => ({
           id: c.id || `court_${idx + 1}`,
@@ -648,47 +750,7 @@ export default function VenueModularOverviewPage() {
         }));
         setCourtsList(liveCourts);
       } else {
-        const enrichedCourts: EnhancedCourtItem[] = [
-          {
-            id: 'court_1',
-            name: 'Turf 1',
-            display_name: 'Main Arena Court',
-            sport: 'CRICKET',
-            surface: 'FIFA Certified Synthetic Astroturf',
-            environment: 'Outdoor',
-            base_hourly_rate: 1200,
-            regular_price: 1200,
-            peak_price: 1600,
-            peak_hours_label: '06:00 PM–10:00 PM',
-            weekend_price: 1500,
-            peak_days: ['SATURDAY', 'SUNDAY'],
-            min_booking_time_mins: 60,
-            operating_hours: '06:00 AM – 10:00 PM',
-            cancellation_policy_hours: 12,
-            refund_percentage: 100,
-            status: 'ACTIVE',
-          },
-          {
-            id: 'court_2',
-            name: 'Turf 2',
-            display_name: 'Football 7v7 Arena',
-            sport: 'FOOTBALL',
-            surface: 'FIFA Pro 50mm Synthetic Turf',
-            environment: 'Outdoor',
-            base_hourly_rate: 1500,
-            regular_price: 1500,
-            peak_price: 2000,
-            peak_hours_label: '06:00 PM–11:00 PM',
-            weekend_price: 1800,
-            peak_days: ['SATURDAY', 'SUNDAY'],
-            min_booking_time_mins: 60,
-            operating_hours: '06:00 AM – 11:00 PM',
-            cancellation_policy_hours: 12,
-            refund_percentage: 100,
-            status: 'ACTIVE',
-          },
-        ];
-        setCourtsList(enrichedCourts);
+        setCourtsList([]);
       }
 
       // Facility Photos: Map from Onboarding Documents if present
@@ -1203,7 +1265,97 @@ export default function VenueModularOverviewPage() {
                 </div>
               </div>
 
-              {/* 2. Photo Gallery (Compact View) */}
+              {/* 2. Onboarding Configured Playing Courts (Active Courts Overview) */}
+              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/70">
+                  <div className="flex items-center gap-2">
+                    <div className="h-6 w-6 rounded-lg bg-emerald-50 border border-emerald-200/70 flex items-center justify-center">
+                      <Trophy className="h-3 w-3 text-emerald-600" />
+                    </div>
+                    <span className="text-[11px] font-black text-slate-800 tracking-wider uppercase">
+                      Configured Playing Courts ({courtsList.length})
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200/80 flex items-center gap-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      All Courts Active
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('courts')}
+                      className="text-xs font-bold text-[#F94001] hover:underline cursor-pointer"
+                    >
+                      View in Courts Tab &rarr;
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-4 space-y-3">
+                  {courtsList.length === 0 ? (
+                    <div className="text-center py-6 text-slate-400 text-xs">
+                      No courts configured yet.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {courtsList.map((c) => (
+                        <div
+                          key={c.id}
+                          className="bg-slate-50/80 rounded-xl p-3.5 border border-slate-200/80 flex flex-col justify-between hover:bg-white hover:border-[#F94001]/30 transition-all shadow-2xs"
+                        >
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="px-2 py-0.5 rounded-md bg-slate-900 text-white font-mono font-bold text-[10px] uppercase">
+                                {c.sport}
+                              </span>
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
+                                {c.status}
+                              </span>
+                            </div>
+                            <div>
+                              <h4 className="font-extrabold text-slate-900 text-sm">{c.name}</h4>
+                              <p className="text-[11px] text-slate-500 line-clamp-1">{c.display_name}</p>
+                            </div>
+                            <div className="text-[11px] text-slate-600 space-y-0.5 pt-1">
+                              <p><span className="text-slate-400">Surface:</span> <span className="font-medium text-slate-800">{c.surface}</span></p>
+                              <p><span className="text-slate-400">Type:</span> <span className="font-medium text-slate-800">{c.environment}</span></p>
+                              <p><span className="text-slate-400">Min Duration:</span> <span className="font-medium text-slate-800">{c.min_booking_time_mins} mins</span></p>
+                            </div>
+                          </div>
+
+                          <div className="mt-3 pt-2.5 border-t border-slate-200/60 flex items-center justify-between text-xs">
+                            <div>
+                              <span className="text-[10px] text-slate-400 block font-medium">Standard</span>
+                              <span className="font-mono font-bold text-slate-900 text-xs">₹{c.regular_price}/hr</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-[10px] text-[#F94001] block font-medium">Peak Rate</span>
+                              <span className="font-mono font-bold text-[#F94001] text-xs">₹{c.peak_price}/hr</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Summary Footer Strip */}
+                  <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-2 border-t border-slate-100 text-xs text-slate-500">
+                    <span className="font-medium">
+                      Total {courtsList.length} Playing Pitches · 1 Court = 1 Sport strictly configured
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleOpenNewCourtRequestModal}
+                      className="text-xs font-bold text-[#F94001] hover:underline cursor-pointer"
+                    >
+                      + Request Court Extension
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Photo Gallery (Compact View) */}
               <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/70">
                   <div className="flex items-center gap-2">
@@ -1330,28 +1482,47 @@ export default function VenueModularOverviewPage() {
                 </div>
 
                 <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {[
-                    { dayKey: 'Mon', dayName: 'Monday', time: '06:00 AM – 10:00 PM' },
-                    { dayKey: 'Tue', dayName: 'Tuesday', time: '06:00 AM – 10:00 PM' },
-                    { dayKey: 'Wed', dayName: 'Wednesday', time: '06:00 AM – 10:00 PM' },
-                    { dayKey: 'Thu', dayName: 'Thursday', time: '06:00 AM – 10:00 PM' },
-                    { dayKey: 'Fri', dayName: 'Friday', time: '06:00 AM – 10:00 PM' },
-                    { dayKey: 'Sat', dayName: 'Saturday', time: '06:00 AM – 11:00 PM' },
-                    { dayKey: 'Sun', dayName: 'Sunday', time: '06:00 AM – 11:00 PM' },
-                  ].map((day) => (
-                    <div
-                      key={day.dayKey}
-                      className="flex items-center justify-between p-2 rounded-xl bg-slate-50/70 border border-slate-100 text-xs"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="w-8 text-center text-[10px] font-black text-slate-600 uppercase bg-slate-200/70 rounded py-0.5">
-                          {day.dayKey}
+                  {currentVenue?.operating_hours?.day_schedules && currentVenue.operating_hours.day_schedules.length > 0 ? (
+                    currentVenue.operating_hours.day_schedules.map((day) => (
+                      <div
+                        key={day.day}
+                        className="flex items-center justify-between p-2 rounded-xl bg-slate-50/70 border border-slate-100 text-xs"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="w-8 text-center text-[10px] font-black text-slate-600 uppercase bg-slate-200/70 rounded py-0.5">
+                            {day.day.slice(0, 3)}
+                          </span>
+                          <span className="font-bold text-slate-800">{day.label || day.day}</span>
+                        </div>
+                        <span className={`font-mono text-[11px] font-bold ${day.is_open ? 'text-slate-700' : 'text-rose-500'}`}>
+                          {day.is_open ? `${day.open_time} – ${day.close_time}` : 'Closed'}
                         </span>
-                        <span className="font-bold text-slate-800">{day.dayName}</span>
                       </div>
-                      <span className="font-mono text-[11px] font-bold text-slate-700">{day.time}</span>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    [
+                      { dayKey: 'Mon', dayName: 'Monday', time: '06:00 AM – 10:00 PM' },
+                      { dayKey: 'Tue', dayName: 'Tuesday', time: '06:00 AM – 10:00 PM' },
+                      { dayKey: 'Wed', dayName: 'Wednesday', time: '06:00 AM – 10:00 PM' },
+                      { dayKey: 'Thu', dayName: 'Thursday', time: '06:00 AM – 10:00 PM' },
+                      { dayKey: 'Fri', dayName: 'Friday', time: '06:00 AM – 10:00 PM' },
+                      { dayKey: 'Sat', dayName: 'Saturday', time: '06:00 AM – 11:00 PM' },
+                      { dayKey: 'Sun', dayName: 'Sunday', time: '06:00 AM – 11:00 PM' },
+                    ].map((day) => (
+                      <div
+                        key={day.dayKey}
+                        className="flex items-center justify-between p-2 rounded-xl bg-slate-50/70 border border-slate-100 text-xs"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="w-8 text-center text-[10px] font-black text-slate-600 uppercase bg-slate-200/70 rounded py-0.5">
+                            {day.dayKey}
+                          </span>
+                          <span className="font-bold text-slate-800">{day.dayName}</span>
+                        </div>
+                        <span className="font-mono text-[11px] font-bold text-slate-700">{day.time}</span>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 
@@ -1473,11 +1644,15 @@ export default function VenueModularOverviewPage() {
                   <div className="flex items-center justify-between pb-3 border-b border-white/10">
                     <div>
                       <span className="text-slate-400 text-[10px] uppercase font-semibold tracking-wider">Bank Name</span>
-                      <h4 className="text-lg font-black text-white mt-0.5 tracking-tight">SBI BANK</h4>
+                      <h4 className="text-lg font-black text-white mt-0.5 tracking-tight">
+                        {currentVenue?.bank?.bank_name || 'HDFC Bank'}
+                      </h4>
                     </div>
                     <div className="text-right">
                       <span className="text-slate-400 text-[10px] uppercase font-semibold tracking-wider">Account</span>
-                      <p className="text-sm font-mono font-bold text-white mt-0.5 tracking-wider">•••• 6914</p>
+                      <p className="text-sm font-mono font-bold text-white mt-0.5 tracking-wider">
+                        {currentVenue?.bank?.account_number_masked || '•••• 4512'}
+                      </p>
                     </div>
                   </div>
 
@@ -1485,38 +1660,85 @@ export default function VenueModularOverviewPage() {
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div className="bg-white/5 rounded-xl p-2 border border-white/5">
                       <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider block">IFSC Code</span>
-                      <span className="font-mono font-bold text-white text-xs mt-0.5 block">SBIN0018111</span>
+                      <span className="font-mono font-bold text-white text-xs mt-0.5 block">
+                        {currentVenue?.bank?.ifsc_code || 'HDFC0000123'}
+                      </span>
                     </div>
                     <div className="bg-white/5 rounded-xl p-2 border border-white/5">
-                      <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider block">Type</span>
-                      <span className="font-bold text-white text-xs mt-0.5 block truncate">Current Commercial</span>
+                      <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider block">Branch / UPI</span>
+                      <span className="font-bold text-white text-xs mt-0.5 block truncate">
+                        {currentVenue?.bank?.branch_name || currentVenue?.bank?.upi_id || 'Coimbatore Branch'}
+                      </span>
                     </div>
                   </div>
 
                   <div className="bg-white/5 rounded-xl p-2 border border-white/5">
                     <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider block">Account Holder</span>
-                    <span className="font-bold text-white text-xs mt-0.5 block">Dhanush Kumar (TurfTown Arena)</span>
+                    <span className="font-bold text-white text-xs mt-0.5 block">
+                      {currentVenue?.bank?.account_holder_name || ownerFullName || currentVenue?.name}
+                    </span>
                   </div>
 
                   {/* Cheque / Passbook View */}
                   <div className="flex items-center justify-between p-2 rounded-xl bg-white/5 border border-white/5">
                     <div className="flex items-center gap-2">
                       <FileText className="h-3.5 w-3.5 text-emerald-400" />
-                      <span className="text-[11px] font-semibold text-slate-300">Cancelled Cheque Proof</span>
+                      <span className="text-[11px] font-semibold text-slate-300">Bank Verification Status</span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setDocumentPreviewModal({ title: 'Bank Account Proof', name: 'doc_bank_proof_1788778055198', type: 'bank' })}
-                      className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-bold border border-white/10 cursor-pointer transition-colors"
-                    >
-                      View
-                    </button>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold border border-emerald-500/30">
+                      Penny Drop Success
+                    </span>
                   </div>
 
                   {/* Payout note */}
                   <div className="flex items-center gap-1.5 text-emerald-400 text-[11px] font-medium pt-1">
                     <CheckCircle2 className="h-3 w-3 shrink-0" />
                     <span>T+0 Auto IMPS Direct Settlement</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Compliance & Business Registration Card */}
+              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/70">
+                  <div className="flex items-center gap-2">
+                    <div className="h-6 w-6 rounded-lg bg-indigo-50 border border-indigo-200/70 flex items-center justify-center">
+                      <ShieldCheck className="h-3 w-3 text-indigo-600" />
+                    </div>
+                    <span className="text-[11px] font-black text-slate-800 tracking-wider uppercase">Business Compliance</span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[10px] font-bold border border-indigo-200/80">
+                    Application #{currentVenue?.id}
+                  </span>
+                </div>
+
+                <div className="p-4 space-y-2.5 text-xs">
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50/80 border border-slate-100">
+                    <span className="text-slate-400 font-medium text-[11px]">GSTIN Number</span>
+                    <span className="font-mono font-bold text-slate-900">
+                      {currentVenue?.owner?.gstin || 'UNREGISTERED'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50/80 border border-slate-100">
+                    <span className="text-slate-400 font-medium text-[11px]">GST Status</span>
+                    <span className="px-2 py-0.5 rounded-md font-bold text-[10px] bg-emerald-100 text-emerald-800">
+                      {currentVenue?.owner?.gstin_status || 'ACTIVE'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50/80 border border-slate-100">
+                    <span className="text-slate-400 font-medium text-[11px]">Court Extension Requests</span>
+                    <span className="font-bold text-slate-900">
+                      {venueCourtRequests.length} Total ({pendingRequestsCount} Pending)
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Registered Business Address</span>
+                    <p className="text-xs font-medium text-slate-700 leading-snug">
+                      {currentVenue?.owner?.registered_address || physicalAddressInput || 'Coimbatore, Tamil Nadu'}
+                    </p>
                   </div>
                 </div>
               </div>

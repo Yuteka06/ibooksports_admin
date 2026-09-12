@@ -242,11 +242,12 @@ export default function CourtRequestsPage() {
   const loadRequests = async (showToast = false) => {
     try {
       const backendData = await adminApi.getCourtRequests();
+      let mapped: CourtExtensionRequest[] = [];
       if (Array.isArray(backendData) && backendData.length > 0) {
-        const mapped: CourtExtensionRequest[] = backendData.map((r) => ({
+        mapped = backendData.map((r) => ({
           id: r.id,
           court_id: r.court_id,
-          venue_id: r.vendor_mobile ? `ven_${r.vendor_mobile.slice(-4)}` : 'ven_1001',
+          venue_id: r.vendor_mobile ? `ven_${r.vendor_mobile.slice(-4)}` : 'APP10235',
           venue_name: r.venue_name,
           venue_city: r.venue_city || 'Coimbatore, Tamil Nadu',
           owner_name: r.vendor_name || 'Venue Owner',
@@ -282,10 +283,31 @@ export default function CourtRequestsPage() {
           created_at: r.created_at,
           submitted_at: r.created_at ? r.created_at.split('T')[0] : '2026-03-09',
         }));
-        setRequests(mapped);
-      } else {
-        setRequests([]);
       }
+
+      // Merge local storage court requests (e.g. from venue extension modal)
+      if (typeof window !== 'undefined') {
+        try {
+          const stored = localStorage.getItem('ibooksports_court_requests');
+          if (stored) {
+            const localList: CourtExtensionRequest[] = JSON.parse(stored);
+            if (Array.isArray(localList)) {
+              localList.forEach((localReq) => {
+                const existingIdx = mapped.findIndex((m) => m.id === localReq.id);
+                if (existingIdx === -1) {
+                  mapped.unshift(localReq);
+                } else {
+                  mapped[existingIdx] = { ...mapped[existingIdx], ...localReq };
+                }
+              });
+            }
+          }
+        } catch (e) {
+          console.warn('Could not read local court requests', e);
+        }
+      }
+
+      setRequests(mapped);
       if (showToast) {
         setToastMessage({
           type: 'info',
