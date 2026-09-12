@@ -1537,16 +1537,21 @@ export default function PartnerOnboardingAdminTrackerPage() {
                                 )}
                               </div>
 
-                              <div className="flex flex-wrap items-center gap-1.5">
-                                {ct.sports?.slice(0, 1).map((s) => (
-                                  <span
-                                    key={s}
-                                    className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-[#021526] text-white"
-                                  >
-                                    {s}
-                                  </span>
-                                ))}
-                              </div>
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  {ct.sports?.slice(0, 1).map((s) => (
+                                    <span
+                                      key={s}
+                                      className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-[#021526] text-white"
+                                    >
+                                      {s}
+                                    </span>
+                                  ))}
+                                  {ct.use_one_physical_court_for_two_sports && (
+                                    <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                      ⚡ Shared Ground
+                                    </span>
+                                  )}
+                                </div>
                             </div>
 
                             {/* Rates & Policy Grid (Clean text-based with rich, distinct colors) */}

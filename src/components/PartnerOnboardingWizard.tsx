@@ -939,7 +939,8 @@ export default function PartnerOnboardingWizard() {
         peak_hour_price: Number(c.peak_hour_price) || 0,
         weekend_price: Number(c.weekend_price) || 0,
         advance_booking_price: Number(c.advance_booking_price) || 0,
-        use_one_physical_court_for_two_sports: false,
+        use_one_physical_court_for_two_sports: Boolean(c.use_one_physical_court_for_two_sports),
+        shared_with_court_index: c.shared_with_court_index,
         is_same_sport_as_above: false,
         cancellation_window_hours: c.cancellation_window_hours || cancellationWindowHours,
         refund_percentage: c.refund_percentage || refundPercentage,
@@ -2475,6 +2476,125 @@ export default function PartnerOnboardingWizard() {
                           )}
                         </div>
 
+                        {/* Physical Court Sharing Question (Only for Court 2 and beyond) */}
+                        {index > 0 && (
+                          <div className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-4 space-y-3">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                              <div>
+                                <p className="text-xs font-bold text-[#021526]">
+                                  Do you want to use the same physical court/ground for another sport?
+                                </p>
+                                <p className="text-[11px] text-[#5F6368]">
+                                  Select <strong>Yes</strong> if this sport shares the exact same turf pitch with an existing court (e.g., Turf 1 Cricket &amp; Football sharing the same physical ground).
+                                </p>
+                              </div>
+
+                              <div className="inline-flex rounded-xl bg-white p-1 border border-[#CBD5E1] shadow-2xs shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setCourts((prev) =>
+                                      prev.map((item, i) =>
+                                        i === index
+                                          ? {
+                                              ...item,
+                                              use_one_physical_court_for_two_sports: true,
+                                              shared_with_court_index: item.shared_with_court_index ?? 0,
+                                            }
+                                          : item,
+                                      ),
+                                    );
+                                  }}
+                                  className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                                    court.use_one_physical_court_for_two_sports
+                                      ? 'bg-[#F94001] text-white shadow-xs'
+                                      : 'text-[#5F6368] hover:text-[#021526]'
+                                  }`}
+                                >
+                                  Yes
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setCourts((prev) =>
+                                      prev.map((item, i) =>
+                                        i === index
+                                          ? {
+                                              ...item,
+                                              use_one_physical_court_for_two_sports: false,
+                                              shared_with_court_index: undefined,
+                                            }
+                                          : item,
+                                      ),
+                                    );
+                                  }}
+                                  className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                                    !court.use_one_physical_court_for_two_sports
+                                      ? 'bg-[#021526] text-white shadow-xs'
+                                      : 'text-[#5F6368] hover:text-[#021526]'
+                                  }`}
+                                >
+                                  No
+                                </button>
+                              </div>
+                            </div>
+
+                            {court.use_one_physical_court_for_two_sports && (
+                              <div className="pt-2.5 border-t border-indigo-100 space-y-2">
+                                <label className="text-[11px] font-bold text-[#021526] block">
+                                  Select which physical court this shares space with:
+                                </label>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  {courts.slice(0, index).map((upperCourt, uIndex) => {
+                                    const isSelectedParent = (court.shared_with_court_index ?? 0) === uIndex;
+                                    return (
+                                      <button
+                                        key={uIndex}
+                                        type="button"
+                                        onClick={() => {
+                                          setCourts((prev) =>
+                                            prev.map((item, i) =>
+                                              i === index
+                                                ? {
+                                                    ...item,
+                                                    shared_with_court_index: uIndex,
+                                                  }
+                                                : item,
+                                            ),
+                                          );
+                                        }}
+                                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                                          isSelectedParent
+                                            ? 'border-[#F94001] bg-[#FFF1EC]'
+                                            : 'border-[#CBD5E1] bg-white hover:border-slate-400'
+                                        }`}
+                                      >
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-xs font-bold text-[#021526]">
+                                            {upperCourt.court_name || `Court #${uIndex + 1}`}
+                                          </span>
+                                          <span className="px-2 py-0.5 rounded bg-[#021526] text-white text-[10px] font-bold">
+                                            {upperCourt.sports[0]}
+                                          </span>
+                                        </div>
+                                        <p className="text-[10px] text-[#5F6368] truncate mt-0.5">
+                                          {upperCourt.display_name || 'Physical Court Ground'}
+                                        </p>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                                <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 flex items-center gap-2">
+                                  <Trophy className="h-4 w-4 text-amber-600 shrink-0" />
+                                  <span>
+                                    <strong>Anti-Double Booking Active:</strong> This court shares physical space with <strong>{courts[court.shared_with_court_index ?? 0]?.court_name || 'Court 1'}</strong> ({courts[court.shared_with_court_index ?? 0]?.sports[0] || 'Sport'}). Booking one automatically blocks the other during that time slot.
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
                         {/* 1. FIRST: Sport Selection for this Court (1 Court = 1 Sport) */}
                         <div className="rounded-xl border border-[#CBD5E1] bg-white p-4 space-y-2.5">
                           <div className="flex items-center justify-between">
@@ -2499,7 +2619,6 @@ export default function PartnerOnboardingWizard() {
                                           ? {
                                               ...item,
                                               sports: [sport],
-                                              use_one_physical_court_for_two_sports: false,
                                               is_same_sport_as_above: false,
                                             }
                                           : item,
@@ -3603,7 +3722,7 @@ export default function PartnerOnboardingWizard() {
                                   </div>
                                 </div>
 
-                                <div className="flex flex-wrap gap-1">
+                                <div className="flex flex-wrap gap-1 items-center">
                                   {court.sports?.map((sp) => (
                                     <span
                                       key={sp}
@@ -3612,6 +3731,11 @@ export default function PartnerOnboardingWizard() {
                                       {sp}
                                     </span>
                                   ))}
+                                  {court.use_one_physical_court_for_two_sports && (
+                                    <span className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 text-[9px] font-bold">
+                                      ⚡ Shared Ground
+                                    </span>
+                                  )}
                                 </div>
                               </div>
 
