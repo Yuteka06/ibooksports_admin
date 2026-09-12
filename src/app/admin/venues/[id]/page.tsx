@@ -70,6 +70,7 @@ import {
   CourtExtensionRequest,
   CourtExtensionHistory,
 } from '@/lib/mockData';
+import { apiClient, onboardingApi } from '@/lib/api';
 
 const REJECTION_REASONS = [
   { value: 'PRICING_OUT_OF_BOUNDS', label: 'Hourly pricing violates regional slot rate caps' },
@@ -312,8 +313,29 @@ export default function VenueModularOverviewPage() {
   // Support ticket filter
   const [ticketFilter, setTicketFilter] = useState<string>('ALL');
 
-  // Load venues from localStorage
+  // Load live venue data from backend API
   useEffect(() => {
+    const fetchLiveVenue = async () => {
+      try {
+        const res = await apiClient.get<VenueDetail>(`/venues/${venueId}`);
+        if (res.data && res.data.id) {
+          setVenues((prev) => {
+            const exists = prev.some((v) => v.id === res.data.id);
+            if (exists) {
+              return prev.map((v) => (v.id === res.data.id ? res.data : v));
+            }
+            return [res.data, ...prev];
+          });
+        }
+      } catch (err) {
+        console.warn(`Could not load venue ${venueId} from backend, falling back to local data`, err);
+      }
+    };
+
+    if (venueId) {
+      fetchLiveVenue();
+    }
+
     if (typeof window !== 'undefined') {
       try {
         const stored = localStorage.getItem('ibooksports_live_venues');
@@ -321,7 +343,7 @@ export default function VenueModularOverviewPage() {
           const parsed: VenueDetail[] = JSON.parse(stored);
           if (Array.isArray(parsed) && parsed.length > 0) {
             const existingIds = new Set(parsed.map((p) => p.id));
-            setVenues([...parsed, ...INITIAL_VENUES.filter((v) => !existingIds.has(v.id))]);
+            setVenues((prev) => [...parsed, ...prev.filter((v) => !existingIds.has(v.id))]);
           }
         }
       } catch (err) {
@@ -340,7 +362,7 @@ export default function VenueModularOverviewPage() {
         console.error('Failed to load court requests from localStorage', err);
       }
     }
-  }, []);
+  }, [venueId]);
 
   // Find active venue
   const currentVenue = useMemo(() => {
@@ -621,86 +643,84 @@ export default function VenueModularOverviewPage() {
       setPhysicalAddressInput(currentVenue.address || `${currentVenue.venue_name}, Coimbatore, Tamil Nadu`);
       setGoogleMapsLinkInput(currentVenue.venue_location_name || 'https://maps.app.goo.gl/uyJgU4DB7ushZsiv6');
 
-      // Enhanced Courts matching Screenshot 1 format
-      const enrichedCourts: EnhancedCourtItem[] = [
-        {
-          id: 'court_1',
-          name: 'Turf 1',
-          display_name: 'Main Arena Court',
-          sport: 'CRICKET',
-          surface: 'FIFA Certified Synthetic Astroturf',
-          environment: 'Outdoor',
-          base_hourly_rate: 1200,
-          regular_price: 1200,
-          peak_price: 1600,
+      // Enhanced Courts: Use live court_list if available from onboarding/backend, otherwise fallback
+      if (currentVenue.court_list && currentVenue.court_list.length > 0) {
+        const liveCourts: EnhancedCourtItem[] = currentVenue.court_list.map((c, idx) => ({
+          id: c.id || `court_${idx + 1}`,
+          name: c.name || `Court ${idx + 1}`,
+          display_name: c.display_name || c.name || `Court ${idx + 1}`,
+          sport: (c.sport || 'FOOTBALL').toUpperCase(),
+          surface: c.surface || 'FIFA Certified Synthetic Astroturf',
+          environment: (c.court_type === 'INDOOR' ? 'Indoor' : c.court_type === 'COVERED ROOF' ? 'Covered Roof' : 'Outdoor') as 'Outdoor' | 'Indoor' | 'Covered Roof',
+          base_hourly_rate: Number(c.regular_price || c.base_hourly_rate) || 1200,
+          regular_price: Number(c.regular_price || c.base_hourly_rate) || 1200,
+          peak_price: Number(c.peak_price) || 1600,
           peak_hours_label: '06:00 PM–10:00 PM',
-          weekend_price: 1500,
-          peak_days: ['SATURDAY', 'SUNDAY'],
-          min_booking_time_mins: 60,
-          operating_hours: '06:00 AM – 10:00 PM',
-          cancellation_policy_hours: 12,
-          refund_percentage: 100,
+          weekend_price: Number(c.regular_price || c.base_hourly_rate) * 1.2 || 1500,
+          peak_days: c.peak_days || ['SATURDAY', 'SUNDAY'],
+          min_booking_time_mins: Number(c.min_booking_time_mins) || 60,
+          operating_hours: currentVenue.opening_time && currentVenue.closing_time
+            ? `${currentVenue.opening_time} – ${currentVenue.closing_time}`
+            : '06:00 AM – 10:00 PM',
+          cancellation_policy_hours: Number(c.cancellation_policy_hours) || 12,
+          refund_percentage: Number(c.refund_percentage) || 100,
           status: 'ACTIVE',
-        },
-        {
-          id: 'court_2',
-          name: 'Turf 2',
-          display_name: 'Football 7v7 Arena',
-          sport: 'FOOTBALL',
-          surface: 'FIFA Pro 50mm Synthetic Turf',
-          environment: 'Outdoor',
-          base_hourly_rate: 1500,
-          regular_price: 1500,
-          peak_price: 2000,
-          peak_hours_label: '06:00 PM–11:00 PM',
-          weekend_price: 1800,
-          peak_days: ['SATURDAY', 'SUNDAY'],
-          min_booking_time_mins: 60,
-          operating_hours: '06:00 AM – 11:00 PM',
-          cancellation_policy_hours: 12,
-          refund_percentage: 100,
-          status: 'ACTIVE',
-        },
-        {
-          id: 'court_3',
-          name: 'Court 3',
-          display_name: 'BWF Badminton Court 1',
-          sport: 'BADMINTON',
-          surface: 'BWF Certified Synthetic Mat',
-          environment: 'Indoor',
-          base_hourly_rate: 600,
-          regular_price: 600,
-          peak_price: 850,
-          peak_hours_label: '06:00 PM–10:00 PM',
-          weekend_price: 800,
-          peak_days: ['SATURDAY', 'SUNDAY'],
-          min_booking_time_mins: 60,
-          operating_hours: '06:00 AM – 10:00 PM',
-          cancellation_policy_hours: 6,
-          refund_percentage: 100,
-          status: 'ACTIVE',
-        },
-        {
-          id: 'court_4',
-          name: 'Court 4',
-          display_name: 'Cricket Box Pitch B',
-          sport: 'BOX CRICKET',
-          surface: 'High Bounce Astro Turf',
-          environment: 'Covered Roof',
-          base_hourly_rate: 1100,
-          regular_price: 1100,
-          peak_price: 1400,
-          peak_hours_label: '06:00 PM–10:00 PM',
-          weekend_price: 1350,
-          peak_days: ['SATURDAY', 'SUNDAY'],
-          min_booking_time_mins: 60,
-          operating_hours: '06:00 AM – 10:00 PM',
-          cancellation_policy_hours: 12,
-          refund_percentage: 100,
-          status: 'ACTIVE',
-        },
-      ];
-      setCourtsList(enrichedCourts);
+        }));
+        setCourtsList(liveCourts);
+      } else {
+        const enrichedCourts: EnhancedCourtItem[] = [
+          {
+            id: 'court_1',
+            name: 'Turf 1',
+            display_name: 'Main Arena Court',
+            sport: 'CRICKET',
+            surface: 'FIFA Certified Synthetic Astroturf',
+            environment: 'Outdoor',
+            base_hourly_rate: 1200,
+            regular_price: 1200,
+            peak_price: 1600,
+            peak_hours_label: '06:00 PM–10:00 PM',
+            weekend_price: 1500,
+            peak_days: ['SATURDAY', 'SUNDAY'],
+            min_booking_time_mins: 60,
+            operating_hours: '06:00 AM – 10:00 PM',
+            cancellation_policy_hours: 12,
+            refund_percentage: 100,
+            status: 'ACTIVE',
+          },
+          {
+            id: 'court_2',
+            name: 'Turf 2',
+            display_name: 'Football 7v7 Arena',
+            sport: 'FOOTBALL',
+            surface: 'FIFA Pro 50mm Synthetic Turf',
+            environment: 'Outdoor',
+            base_hourly_rate: 1500,
+            regular_price: 1500,
+            peak_price: 2000,
+            peak_hours_label: '06:00 PM–11:00 PM',
+            weekend_price: 1800,
+            peak_days: ['SATURDAY', 'SUNDAY'],
+            min_booking_time_mins: 60,
+            operating_hours: '06:00 AM – 11:00 PM',
+            cancellation_policy_hours: 12,
+            refund_percentage: 100,
+            status: 'ACTIVE',
+          },
+        ];
+        setCourtsList(enrichedCourts);
+      }
+
+      // Facility Photos: Map from Onboarding Documents if present
+      if (Array.isArray((currentVenue as any).court_photos) && (currentVenue as any).court_photos.length > 0) {
+        const photos = (currentVenue as any).court_photos.map((docId: string, idx: number) => ({
+          id: docId,
+          title: `Verified Court Photo ${idx + 1}`,
+          label: `Photo ${idx + 1}`,
+          url: onboardingApi.getDocumentUrl(docId),
+        }));
+        setVenuePhotos(photos);
+      }
 
       // Enhanced Staff matching Screenshot 2 format (clean view-only)
       const defaultStaff: VenueStaffMember[] = [
@@ -754,8 +774,8 @@ export default function VenueModularOverviewPage() {
     }
   };
 
-  // Toggle venue status
-  const handleUpdateVenueStatus = (newStatus: 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE') => {
+  // Toggle venue status with live backend sync
+  const handleUpdateVenueStatus = async (newStatus: 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE') => {
     setVenues((prev) => {
       const updated = prev.map((v) => (v.id === currentVenue.id ? { ...v, status: newStatus } : v));
       if (typeof window !== 'undefined') {
@@ -767,6 +787,12 @@ export default function VenueModularOverviewPage() {
       }
       return updated;
     });
+
+    try {
+      await apiClient.patch(`/venues/${currentVenue.id}/status`, { status: newStatus });
+    } catch (err) {
+      console.warn('Backend status sync failed, local update retained', err);
+    }
 
     const label = newStatus === 'ACTIVE' ? 'Active' : newStatus === 'INACTIVE' ? 'Inactive' : 'Maintenance';
     setStatusNotification(`Venue status successfully changed to "${label}"`);

@@ -31,6 +31,7 @@ import {
   INITIAL_BOOKINGS,
   VenueDetail,
 } from '@/lib/mockData';
+import { apiClient } from '@/lib/api';
 
 export default function VenuesManagementPage() {
   const [mounted, setMounted] = useState(false);
@@ -60,22 +61,36 @@ export default function VenuesManagementPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Load converted live venues from localStorage if available
+  // Fetch live venues directly from backend (including all Onboarding Sessions)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    const fetchVenues = async () => {
       try {
-        const stored = localStorage.getItem('ibooksports_live_venues');
-        if (stored) {
-          const parsed: VenueDetail[] = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            const existingIds = new Set(parsed.map((p) => p.id));
-            setVenues([...parsed, ...INITIAL_VENUES.filter((v) => !existingIds.has(v.id))]);
-          }
+        const res = await apiClient.get<VenueDetail[]>('/venues');
+        if (res.data && Array.isArray(res.data) && res.data.length > 0) {
+          setVenues(res.data);
+          return;
         }
       } catch (err) {
-        console.error('Failed to load live venues from local storage', err);
+        console.warn('Failed to fetch live venues from backend, falling back to cache', err);
       }
-    }
+
+      if (typeof window !== 'undefined') {
+        try {
+          const stored = localStorage.getItem('ibooksports_live_venues');
+          if (stored) {
+            const parsed: VenueDetail[] = JSON.parse(stored);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              const existingIds = new Set(parsed.map((p) => p.id));
+              setVenues([...parsed, ...INITIAL_VENUES.filter((v) => !existingIds.has(v.id))]);
+            }
+          }
+        } catch (err) {
+          console.error('Failed to load live venues from local storage', err);
+        }
+      }
+    };
+
+    fetchVenues();
   }, []);
 
   // Copy helper
@@ -87,8 +102,8 @@ export default function VenuesManagementPage() {
     }
   };
 
-  // Toggle venue status (Active <-> Inactive <-> Maintenance)
-  const handleUpdateVenueStatus = (venueId: string, newStatus: 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE') => {
+  // Toggle venue status (Active <-> Inactive <-> Maintenance) with live Backend Sync
+  const handleUpdateVenueStatus = async (venueId: string, newStatus: 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE') => {
     setVenues((prev) => {
       const updated = prev.map((v) => (v.id === venueId ? { ...v, status: newStatus } : v));
       if (typeof window !== 'undefined') {
@@ -100,6 +115,12 @@ export default function VenuesManagementPage() {
       }
       return updated;
     });
+
+    try {
+      await apiClient.patch(`/venues/${venueId}/status`, { status: newStatus });
+    } catch (err) {
+      console.warn('Backend status sync failed, local update retained', err);
+    }
 
     const label = newStatus === 'ACTIVE' ? 'Active' : newStatus === 'INACTIVE' ? 'Inactive' : 'Maintenance';
     setStatusNotification(`Venue status successfully updated to "${label}"`);
