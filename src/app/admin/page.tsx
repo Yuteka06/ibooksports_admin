@@ -26,6 +26,7 @@ import {
   Receipt,
   Eye,
   AlertTriangle,
+} from 'lucide-react';
 import { BookingItem } from '@/lib/mockData';
 
 type TimeHorizon = 'day' | 'week' | 'month' | 'year';
@@ -1004,7 +1005,7 @@ export default function AdminDashboardPage() {
                       </td>
                     </tr>
                   );
-                })}
+                }))}
               </tbody>
             </table>
           </div>
