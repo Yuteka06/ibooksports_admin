@@ -33,10 +33,10 @@ import {
   Wallet,
   ShieldCheck,
 } from 'lucide-react';
-import { INITIAL_BOOKINGS, BookingItem } from '@/lib/mockData';
+import { BookingItem } from '@/lib/mockData';
 
 export default function BookingManagementPage() {
-  const [bookings, setBookings] = useState<BookingItem[]>(INITIAL_BOOKINGS);
+  const [bookings, setBookings] = useState<BookingItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [sportFilter, setSportFilter] = useState('ALL');

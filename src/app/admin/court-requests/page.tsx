@@ -29,11 +29,7 @@ import {
   Activity,
   AlertTriangle,
 } from 'lucide-react';
-import {
-  INITIAL_COURT_REQUESTS,
-  INITIAL_VENUES,
-  CourtExtensionRequest,
-} from '@/lib/mockData';
+import { CourtExtensionRequest } from '@/lib/mockData';
 import { adminApi } from '@/lib/api';
 
 const REJECTION_REASONS = [
@@ -48,17 +44,16 @@ const REJECTION_REASONS = [
 const SPORT_ICONS: Record<string, string> = {
   Football: '⚽',
   Cricket: '🏏',
-  'Box Cricket': '🏏',
   Badminton: '🏸',
-  Pickleball: '🏓',
   Tennis: '🎾',
+  Pickleball: '🏓',
   Basketball: '🏀',
   Volleyball: '🏐',
 };
 
 export default function CourtRequestsPage() {
   const [mounted, setMounted] = useState(false);
-  const [requests, setRequests] = useState<CourtExtensionRequest[]>(INITIAL_COURT_REQUESTS);
+  const [requests, setRequests] = useState<CourtExtensionRequest[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [selectedState, setSelectedState] = useState<string>('ALL');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('ALL');
@@ -97,8 +92,6 @@ export default function CourtRequestsPage() {
 
   // Helper to resolve State
   const getRequestState = (req: CourtExtensionRequest): string => {
-    const venue = INITIAL_VENUES.find((v) => v.id === req.venue_id);
-    if (venue && venue.state) return venue.state;
     if (req.venue_city && req.venue_city.includes(',')) {
       return req.venue_city.split(',')[1].trim();
     }
@@ -107,8 +100,6 @@ export default function CourtRequestsPage() {
 
   // Helper to resolve District
   const getRequestDistrict = (req: CourtExtensionRequest): string => {
-    const venue = INITIAL_VENUES.find((v) => v.id === req.venue_id);
-    if (venue && venue.district) return venue.district;
     if (req.venue_city) {
       return req.venue_city.split(',')[0].trim();
     }
@@ -291,9 +282,9 @@ export default function CourtRequestsPage() {
           created_at: r.created_at,
           submitted_at: r.created_at ? r.created_at.split('T')[0] : '2026-03-09',
         }));
-        const existingIds = new Set(mapped.map((m) => m.id));
-        const merged = [...mapped, ...INITIAL_COURT_REQUESTS.filter((m) => !existingIds.has(m.id))];
-        setRequests(merged);
+        setRequests(mapped);
+      } else {
+        setRequests([]);
       }
       if (showToast) {
         setToastMessage({
@@ -304,7 +295,8 @@ export default function CourtRequestsPage() {
         setTimeout(() => setToastMessage(null), 3000);
       }
     } catch (e) {
-      console.warn('Could not fetch backend court requests, keeping current requests:', e);
+      console.warn('Could not fetch backend court requests:', e);
+      setRequests([]);
       if (showToast) {
         setToastMessage({
           type: 'info',

@@ -26,8 +26,7 @@ import {
   Receipt,
   Eye,
   AlertTriangle,
-} from 'lucide-react';
-import { INITIAL_BOOKINGS, INITIAL_PAYMENTS, INITIAL_VENUES } from '@/lib/mockData';
+import { BookingItem } from '@/lib/mockData';
 
 type TimeHorizon = 'day' | 'week' | 'month' | 'year';
 
@@ -52,6 +51,7 @@ interface HorizonDataset {
 export default function AdminDashboardPage() {
   const [horizon, setHorizon] = useState<TimeHorizon>('week');
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [recentBookings, setRecentBookings] = useState<BookingItem[]>([]);
 
   // Dynamic telemetry datasets for Day, Week, Month, Year
   const datasets: Record<TimeHorizon, HorizonDataset> = useMemo(
@@ -929,7 +929,18 @@ export default function AdminDashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-sans">
-                {INITIAL_BOOKINGS.slice(0, 5).map((b) => {
+                {recentBookings.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center text-slate-400 text-xs">
+                      <div className="flex flex-col items-center justify-center gap-1.5 py-4">
+                        <Activity className="h-6 w-6 text-slate-300" />
+                        <p className="font-bold text-slate-600">No live bookings yet</p>
+                        <p className="text-[11px] text-slate-400">Real-time court bookings from venue arenas will be logged here</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  recentBookings.slice(0, 5).map((b) => {
                   const isPartial = b.payment_status === 'PARTIAL_PAID' || b.booking_code === 'IBS-2603-9002' || b.booking_code === 'IBS-2603-9004';
                   const cleanPayment = b.payment_method?.toLowerCase().includes('card')
                     ? 'Card'

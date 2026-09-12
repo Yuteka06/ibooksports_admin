@@ -30,9 +30,6 @@ import {
   Sparkles,
 } from 'lucide-react';
 import {
-  INITIAL_CUSTOMERS,
-  INITIAL_BOOKINGS,
-  INITIAL_PAYMENTS,
   CustomerItem,
   BookingItem,
   PaymentTransactionItem,
@@ -47,9 +44,9 @@ type DrawerItem =
 
 export default function CustomerManagementPage() {
   const [mounted, setMounted] = useState(false);
-  const [customers, setCustomers] = useState<CustomerItem[]>(INITIAL_CUSTOMERS);
-  const [allBookings, setAllBookings] = useState<BookingItem[]>(INITIAL_BOOKINGS);
-  const [allPayments, setAllPayments] = useState<PaymentTransactionItem[]>(INITIAL_PAYMENTS);
+  const [customers, setCustomers] = useState<CustomerItem[]>([]);
+  const [allBookings, setAllBookings] = useState<BookingItem[]>([]);
+  const [allPayments, setAllPayments] = useState<PaymentTransactionItem[]>([]);
 
   // Filter state for main customers list
   const [searchQuery, setSearchQuery] = useState('');

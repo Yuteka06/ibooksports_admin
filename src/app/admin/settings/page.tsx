@@ -53,6 +53,7 @@ import {
   Key,
   EyeOff,
   Save,
+  History,
 } from 'lucide-react';
 import {
   staffApi,
@@ -64,7 +65,17 @@ import {
   SportItem,
   AmenityItem,
 } from '@/lib/api';
-import { INITIAL_AUDIT_LOGS } from '@/lib/mockData';
+
+export interface AuditLogItem {
+  id: string;
+  timestamp: string;
+  admin_user: string;
+  action: string;
+  module: string;
+  ip_address: string;
+  details: string;
+  status: string;
+}
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Trophy,
@@ -193,7 +204,7 @@ export default function AdminSettingsPage() {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   // Audit Logs State
-  const [auditLogs] = useState(INITIAL_AUDIT_LOGS);
+  const [auditLogs] = useState<AuditLogItem[]>([]);
 
   // Sports & Amenities State
   const [sportsList, setSportsList] = useState<SportItem[]>([]);
@@ -1255,7 +1266,18 @@ export default function AdminSettingsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E5E7EB]">
-                {auditLogs.map((log) => (
+                {auditLogs.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center text-slate-400 text-xs">
+                      <div className="flex flex-col items-center justify-center gap-1.5 py-4">
+                        <History className="h-6 w-6 text-slate-300" />
+                        <p className="font-bold text-slate-600">No audit logs recorded</p>
+                        <p className="text-[11px] text-slate-400">Administrative actions, role updates, and system events will appear here</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  auditLogs.map((log) => (
                   <tr key={log.id} className="hover:bg-[#F8F9FA]">
                     <td className="py-2.5 px-3 font-mono text-[11px] text-slate-600">{log.timestamp}</td>
                     <td className="py-2.5 px-3 font-semibold text-slate-800">{log.admin_user}</td>
@@ -1269,7 +1291,8 @@ export default function AdminSettingsPage() {
                       </span>
                     </td>
                   </tr>
-                ))}
+                  ))
+                )}
               </tbody>
             </table>
           </div>

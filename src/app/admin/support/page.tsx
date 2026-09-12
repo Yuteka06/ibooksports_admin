@@ -31,11 +31,13 @@ import {
   ChevronRight,
   ChevronDown,
 } from 'lucide-react';
-import { INITIAL_SUPPORT_TICKETS, INITIAL_VENUES, SupportTicketItem } from '@/lib/mockData';
+import { SupportTicketItem, VenueDetail } from '@/lib/mockData';
+import { apiClient } from '@/lib/api';
 
 export default function SupportHelpdeskPage() {
   const [mounted, setMounted] = useState(false);
-  const [tickets, setTickets] = useState<SupportTicketItem[]>(INITIAL_SUPPORT_TICKETS);
+  const [tickets, setTickets] = useState<SupportTicketItem[]>([]);
+  const [venues, setVenues] = useState<VenueDetail[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
@@ -53,11 +55,29 @@ export default function SupportHelpdeskPage() {
 
   // Modal State for Raising New Ticket (Simulating Venue Side or Admin Entry)
   const [isRaiseModalOpen, setIsRaiseModalOpen] = useState(false);
-  const [newTicketVenueId, setNewTicketVenueId] = useState(INITIAL_VENUES[0]?.id || 'ven_1001');
+  const [newTicketVenueId, setNewTicketVenueId] = useState('');
   const [newTicketPersonName, setNewTicketPersonName] = useState('');
   const [newTicketContact, setNewTicketContact] = useState('');
   const [newTicketCategory, setNewTicketCategory] = useState<SupportTicketItem['category']>('PAYMENT');
   const [newTicketPriority, setNewTicketPriority] = useState<SupportTicketItem['priority']>('HIGH');
+
+  // Fetch live venues for filter dropdowns
+  useEffect(() => {
+    const fetchVenues = async () => {
+      try {
+        const res = await apiClient.get<VenueDetail[]>('/venues');
+        if (res.data && Array.isArray(res.data)) {
+          setVenues(res.data);
+          if (res.data.length > 0) {
+            setNewTicketVenueId(res.data[0].id);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to fetch live venues for support helpdesk', err);
+      }
+    };
+    fetchVenues();
+  }, []);
   const [newTicketSubject, setNewTicketSubject] = useState('');
   const [newTicketDescription, setNewTicketDescription] = useState('');
   const [newTicketBookingId, setNewTicketBookingId] = useState('');
@@ -249,14 +269,14 @@ export default function SupportHelpdeskPage() {
       return;
     }
 
-    const matchedVenue = INITIAL_VENUES.find((v) => v.id === newTicketVenueId) || INITIAL_VENUES[0];
+    const matchedVenue = venues.find((v) => v.id === newTicketVenueId) || venues[0];
     const newSupportId = `SUP-2026-${100 + tickets.length + 1}`;
 
     const newTicket: SupportTicketItem = {
       id: `tkt_${Date.now()}`,
       ticket_number: newSupportId,
-      venue_id: matchedVenue?.id || 'ven_1001',
-      venue_name: matchedVenue?.venue_name || 'Sky Sports Arena',
+      venue_id: matchedVenue?.id || 'NO_VENUE',
+      venue_name: matchedVenue?.venue_name || 'General Support',
       created_person_name: newTicketPersonName.trim(),
       contact_number: newTicketContact.startsWith('+91') ? newTicketContact.trim() : `+91 ${newTicketContact.trim()}`,
       category: newTicketCategory,
@@ -764,7 +784,7 @@ export default function SupportHelpdeskPage() {
               }`}
             >
               <option value="ALL" className="bg-white text-[#021526]">All Venues</option>
-              {INITIAL_VENUES.map((v) => (
+              {venues.map((v) => (
                 <option key={v.id} value={v.id} className="bg-white text-[#021526]">
                   {v.venue_name}
                 </option>
@@ -952,7 +972,7 @@ export default function SupportHelpdeskPage() {
                     onChange={(e) => setNewTicketVenueId(e.target.value)}
                     className="w-full rounded-xl border border-slate-200 p-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
                   >
-                    {INITIAL_VENUES.map((v) => (
+                    {venues.map((v) => (
                       <option key={v.id} value={v.id}>
                         {v.venue_name} ({v.id}) — {v.district}, {v.state}
                       </option>

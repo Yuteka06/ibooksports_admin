@@ -58,11 +58,6 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import {
-  INITIAL_VENUES,
-  INITIAL_BOOKINGS,
-  INITIAL_SETTLEMENTS,
-  INITIAL_SUPPORT_TICKETS,
-  INITIAL_COURT_REQUESTS,
   VenueDetail,
   BookingItem,
   SettlementBatchItem,
@@ -139,9 +134,9 @@ interface CourtSlotItem {
 export default function VenueModularOverviewPage() {
   const params = useParams();
   const router = useRouter();
-  const venueId = (params?.id as string) || 'ven_1001';
+  const venueId = (params?.id as string) || '';
 
-  const [venues, setVenues] = useState<VenueDetail[]>(INITIAL_VENUES);
+  const [venues, setVenues] = useState<VenueDetail[]>([]);
   const [activeTab, setActiveTab] = useState<VenueModularTab>('overview');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [statusNotification, setStatusNotification] = useState<string | null>(null);
@@ -157,7 +152,7 @@ export default function VenueModularOverviewPage() {
 
   // Courts Extension Requests & Sub-Tab State
   const [courtsSubTab, setCourtsSubTab] = useState<'live' | 'requests'>('live');
-  const [courtRequests, setCourtRequests] = useState<CourtExtensionRequest[]>(INITIAL_COURT_REQUESTS);
+  const [courtRequests, setCourtRequests] = useState<CourtExtensionRequest[]>([]);
   const [selectedCourtRequestForDrawer, setSelectedCourtRequestForDrawer] = useState<CourtExtensionRequest | null>(null);
 
   // Add / Edit Court Request Modal State (3-Screenshot Replica)
@@ -186,36 +181,21 @@ export default function VenueModularOverviewPage() {
   const [drawerActionError, setDrawerActionError] = useState<string | null>(null);
   const [deleteConfirmReqId, setDeleteConfirmReqId] = useState<string | null>(null);
 
-  // Overview Form Fields State (Screenshots 3, 4, 5)
-  const [ownerFullName, setOwnerFullName] = useState('Shruthi jayamadhu');
-  const [ownerPhone, setOwnerPhone] = useState('+91 6369591821');
-  const [ownerEmail, setOwnerEmail] = useState('yutekahema003@gmail.com');
-  const [ownerPan, setOwnerPan] = useState('33ABCDE1234F1Z5');
-  const [aadhaarDocName, setAadhaarDocName] = useState('doc_aadhaar_shruthi');
-  const [profilePhotoName, setProfilePhotoName] = useState('doc_profile_shruthi');
+  // Overview Form Fields State
+  const [ownerFullName, setOwnerFullName] = useState('');
+  const [ownerPhone, setOwnerPhone] = useState('');
+  const [ownerEmail, setOwnerEmail] = useState('');
+  const [ownerPan, setOwnerPan] = useState('');
+  const [aadhaarDocName, setAadhaarDocName] = useState('');
+  const [profilePhotoName, setProfilePhotoName] = useState('');
 
-  const [venueNameInput, setVenueNameInput] = useState('skywalk sports');
-  const [cityRegionInput, setCityRegionInput] = useState('Coimbatore, Tamil Nadu');
-  const [physicalAddressInput, setPhysicalAddressInput] = useState('skywalk sports, Coimbatore, Tamil Nadu');
-  const [googleMapsLinkInput, setGoogleMapsLinkInput] = useState('https://maps.app.goo.gl/uyJgU4DB7ushZsiv6');
-  const [publicBioInput, setPublicBioInput] = useState(
-    'Premier FIFA-grade synthetic turf and BWF-standard badminton courts with locker rooms, LED floodlights, and player lounge.'
-  );
+  const [venueNameInput, setVenueNameInput] = useState('');
+  const [cityRegionInput, setCityRegionInput] = useState('');
+  const [physicalAddressInput, setPhysicalAddressInput] = useState('');
+  const [googleMapsLinkInput, setGoogleMapsLinkInput] = useState('');
+  const [publicBioInput, setPublicBioInput] = useState('');
 
-  const [venuePhotos, setVenuePhotos] = useState<{ id: string; title: string; label: string; url: string }[]>([
-    {
-      id: 'photo_1',
-      title: 'Verified Court Photo 1',
-      label: 'Photo 1',
-      url: 'https://images.unsplash.com/photo-1529900245584-888ac05513e3?w=500&auto=format&fit=crop&q=60',
-    },
-    {
-      id: 'photo_2',
-      title: 'Verified Court Photo 2',
-      label: 'Photo 2',
-      url: 'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?w=500&auto=format&fit=crop&q=60',
-    },
-  ]);
+  const [venuePhotos, setVenuePhotos] = useState<{ id: string; title: string; label: string; url: string }[]>([]);
   const [documentPreviewModal, setDocumentPreviewModal] = useState<{ title: string; name: string; type: 'aadhaar' | 'profile' | 'bank' } | null>(null);
 
   // Overview Amenities Filter & State
@@ -366,7 +346,7 @@ export default function VenueModularOverviewPage() {
 
   // Find active venue
   const currentVenue = useMemo(() => {
-    return venues.find((v) => v.id === venueId) || venues[0] || INITIAL_VENUES[0];
+    return venues.find((v) => v.id === venueId) || venues[0] || null;
   }, [venues, venueId]);
 
   const saveCourtRequestsToStorage = (updatedList: CourtExtensionRequest[]) => {
@@ -381,8 +361,8 @@ export default function VenueModularOverviewPage() {
   };
 
   const venueCourtRequests = useMemo(() => {
-    return courtRequests.filter((r) => r.venue_id === currentVenue.id);
-  }, [courtRequests, currentVenue.id]);
+    return currentVenue ? courtRequests.filter((r) => r.venue_id === currentVenue.id) : [];
+  }, [courtRequests, currentVenue]);
 
   const pendingRequestsCount = useMemo(() => {
     return venueCourtRequests.filter((r) => r.status === 'SUBMITTED' || r.status === 'RESUBMITTED').length;
@@ -799,17 +779,13 @@ export default function VenueModularOverviewPage() {
     setTimeout(() => setStatusNotification(null), 3500);
   };
 
-  // Filtered Bookings for this venue
+  // Filtered Bookings for this venue (Real data only)
   const venueBookings = useMemo(() => {
-    return INITIAL_BOOKINGS.filter(
-      (b) =>
-        b.venue_id === currentVenue.id ||
-        currentVenue.venue_name.toLowerCase().includes(b.venue_name.split(' ')[0].toLowerCase())
-    );
+    return [];
   }, [currentVenue]);
 
   const filteredBookings = useMemo(() => {
-    return venueBookings.filter((b) => {
+    return venueBookings.filter((b: BookingItem) => {
       const matchesStatus = bookingStatusFilter === 'ALL' || b.booking_status === bookingStatusFilter;
       const q = bookingSearchQuery.toLowerCase().trim();
       const matchesQuery =
@@ -824,50 +800,17 @@ export default function VenueModularOverviewPage() {
 
   // Filtered Cancellations
   const venueCancellations = useMemo(() => {
-    return venueBookings.filter((b) => b.booking_status === 'CANCELLED' || (b.refund_amount && b.refund_amount > 0));
+    return venueBookings.filter((b: BookingItem) => b.booking_status === 'CANCELLED' || (b.refund_amount && b.refund_amount > 0));
   }, [venueBookings]);
 
   // Filtered Settlements
   const venueSettlements = useMemo(() => {
-    const list = INITIAL_SETTLEMENTS.filter(
-      (s: SettlementBatchItem) =>
-        s.venue_id === currentVenue.id ||
-        currentVenue.venue_name.toLowerCase().includes(s.venue_name.split(' ')[0].toLowerCase())
-    );
-    if (list.length === 0) {
-      return [
-        {
-          id: `stl_${currentVenue.id.replace('ven_', '')}_01`,
-          batch_number: `STL-202603-${currentVenue.id.replace('ven_', '')}`,
-          venue_id: currentVenue.id,
-          venue_name: currentVenue.venue_name,
-          owner_name: currentVenue.owner?.full_name || currentVenue.name,
-          bank_name: currentVenue.bank?.bank_name || 'HDFC Bank Ltd',
-          account_number_masked: currentVenue.bank?.account_number_masked || '•••• •••• 9012',
-          ifsc_code: currentVenue.bank?.ifsc_code || 'HDFC0001248',
-          period_start: '2026-03-01',
-          period_end: '2026-03-07',
-          bookings_count: 54,
-          gross_booking_amount: 86400,
-          platform_commission_deducted: 8640,
-          tds_deducted: 864,
-          net_payable: 76896,
-          status: 'SETTLED',
-          utr_number: 'HDFCR20260308912401',
-          settled_at: '2026-03-08 11:30 AM',
-        } as SettlementBatchItem,
-      ];
-    }
-    return list;
+    return [];
   }, [currentVenue]);
 
   // Filtered Support Tickets
   const venueSupportTickets = useMemo(() => {
-    return INITIAL_SUPPORT_TICKETS.filter(
-      (t) =>
-        t.venue_id === currentVenue.id ||
-        currentVenue.venue_name.toLowerCase().includes(t.venue_name.split(' ')[0].toLowerCase())
-    );
+    return [];
   }, [currentVenue]);
 
   // Helper for formatted venue ID
@@ -923,6 +866,15 @@ export default function VenueModularOverviewPage() {
     setStatusNotification(`Slot at ${timelineHours[hourIndex]} ${label}`);
     setTimeout(() => setStatusNotification(null), 2500);
   };
+
+  if (!currentVenue) {
+    return (
+      <div className="min-h-[400px] flex flex-col items-center justify-center space-y-3 p-8 text-center">
+        <div className="h-8 w-8 rounded-full border-2 border-[#F94001] border-t-transparent animate-spin" />
+        <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">Loading Venue Profile...</p>
+      </div>
+    );
+  }
 
   const isLiveActive = currentVenue.status === 'ACTIVE' || !currentVenue.status;
   const isInactive = currentVenue.status === 'INACTIVE';

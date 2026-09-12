@@ -35,13 +35,12 @@ import {
   Sparkles,
 } from 'lucide-react';
 import {
-  INITIAL_SETTLEMENTS,
   SettlementBatchItem,
   SettlementBookingItem,
 } from '@/lib/mockData';
 
 export default function SettlementManagementPage() {
-  const [settlements, setSettlements] = useState<SettlementBatchItem[]>(INITIAL_SETTLEMENTS);
+  const [settlements, setSettlements] = useState<SettlementBatchItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   

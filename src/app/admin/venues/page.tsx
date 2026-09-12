@@ -26,16 +26,12 @@ import {
   Wrench,
   ChevronDown,
 } from 'lucide-react';
-import {
-  INITIAL_VENUES,
-  INITIAL_BOOKINGS,
-  VenueDetail,
-} from '@/lib/mockData';
+import { VenueDetail } from '@/lib/mockData';
 import { apiClient } from '@/lib/api';
 
 export default function VenuesManagementPage() {
   const [mounted, setMounted] = useState(false);
-  const [venues, setVenues] = useState<VenueDetail[]>(INITIAL_VENUES);
+  const [venues, setVenues] = useState<VenueDetail[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedState, setSelectedState] = useState('ALL');
   const [selectedStatus, setSelectedStatus] = useState('ALL');
@@ -66,7 +62,7 @@ export default function VenuesManagementPage() {
     const fetchVenues = async () => {
       try {
         const res = await apiClient.get<VenueDetail[]>('/venues');
-        if (res.data && Array.isArray(res.data) && res.data.length > 0) {
+        if (res.data && Array.isArray(res.data)) {
           setVenues(res.data);
           return;
         }
@@ -80,8 +76,7 @@ export default function VenuesManagementPage() {
           if (stored) {
             const parsed: VenueDetail[] = JSON.parse(stored);
             if (Array.isArray(parsed) && parsed.length > 0) {
-              const existingIds = new Set(parsed.map((p) => p.id));
-              setVenues([...parsed, ...INITIAL_VENUES.filter((v) => !existingIds.has(v.id))]);
+              setVenues(parsed);
             }
           }
         } catch (err) {
