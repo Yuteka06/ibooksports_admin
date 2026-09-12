@@ -445,6 +445,10 @@ export default function PartnerOnboardingWizard() {
 
   // Load Onboarding Session
   useEffect(() => {
+    const safetyTimer = setTimeout(() => {
+      setInitializing(false);
+    }, 2000);
+
     const activeToken =
       urlToken ||
       (typeof window !== 'undefined'
@@ -454,14 +458,19 @@ export default function PartnerOnboardingWizard() {
 
     if (activeToken) {
       setToken(activeToken);
-      loadSession(activeToken);
+      loadSession(activeToken).finally(() => {
+        clearTimeout(safetyTimer);
+        setInitializing(false);
+      });
     } else {
-      router.push('/onboarding/login');
+      clearTimeout(safetyTimer);
+      setInitializing(false);
     }
+
+    return () => clearTimeout(safetyTimer);
   }, [urlToken]);
 
   const loadSession = async (sessionToken: string) => {
-    setInitializing(true);
     try {
       const data = await onboardingApi.getSession(sessionToken);
       if (data) {
@@ -606,8 +615,11 @@ export default function PartnerOnboardingWizard() {
           }
         }
       }
-    } catch {
-      // Fallback
+    } catch (err) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('ibooksports_onboarding_token');
+      }
+      setCurrentStep(1);
     } finally {
       setInitializing(false);
     }
