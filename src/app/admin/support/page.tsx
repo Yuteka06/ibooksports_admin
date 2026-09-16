@@ -31,12 +31,12 @@ import {
   ChevronRight,
   ChevronDown,
 } from 'lucide-react';
-import { SupportTicketItem, VenueDetail, INITIAL_SUPPORT_TICKETS } from '@/lib/mockData';
+import { SupportTicketItem, VenueDetail } from '@/lib/mockData';
 import { apiClient } from '@/lib/api';
 
 export default function SupportHelpdeskPage() {
   const [mounted, setMounted] = useState(false);
-  const [tickets, setTickets] = useState<SupportTicketItem[]>(INITIAL_SUPPORT_TICKETS);
+  const [tickets, setTickets] = useState<SupportTicketItem[]>([]);
   const [venues, setVenues] = useState<VenueDetail[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
@@ -94,15 +94,15 @@ export default function SupportHelpdeskPage() {
   // Live Backend Sync
   const fetchLiveTickets = async () => {
     try {
-      const res = await fetch('http://localhost:4000/api/v1/support');
-      if (res.ok) {
-        const liveData = await res.json();
-        if (Array.isArray(liveData) && liveData.length > 0) {
-          setTickets(liveData);
-        }
+      const res = await apiClient.get('/support');
+      if (res.data && Array.isArray(res.data)) {
+        setTickets(res.data);
+      } else {
+        setTickets([]);
       }
     } catch (e) {
-      // Fallback to local state
+      // Clean empty state
+      setTickets([]);
     }
   };
 

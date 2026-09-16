@@ -41,11 +41,10 @@ import {
   PaymentTransactionItem,
   PaymentStatusType,
   PaymentMethodCategory,
-  INITIAL_PAYMENTS,
 } from '@/lib/mockData';
 
 export default function PaymentManagementPage() {
-  const [payments, setPayments] = useState<PaymentTransactionItem[]>(INITIAL_PAYMENTS);
+  const [payments, setPayments] = useState<PaymentTransactionItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | PaymentStatusType>('ALL');
   const [methodFilter, setMethodFilter] = useState<'ALL' | string>('ALL');

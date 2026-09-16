@@ -29,7 +29,7 @@ import {
   Activity,
   AlertTriangle,
 } from 'lucide-react';
-import { CourtExtensionRequest, INITIAL_COURT_REQUESTS } from '@/lib/mockData';
+import { CourtExtensionRequest } from '@/lib/mockData';
 import { adminApi } from '@/lib/api';
 
 const REJECTION_REASONS = [
@@ -53,7 +53,7 @@ const SPORT_ICONS: Record<string, string> = {
 
 export default function CourtRequestsPage() {
   const [mounted, setMounted] = useState(false);
-  const [requests, setRequests] = useState<CourtExtensionRequest[]>(INITIAL_COURT_REQUESTS);
+  const [requests, setRequests] = useState<CourtExtensionRequest[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [selectedState, setSelectedState] = useState<string>('ALL');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('ALL');
@@ -281,10 +281,10 @@ export default function CourtRequestsPage() {
             },
           ],
           created_at: r.created_at,
-          submitted_at: r.created_at ? r.created_at.split('T')[0] : '2026-03-09',
+          submitted_at: r.created_at ? r.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
         }));
       } else {
-        mapped = [...INITIAL_COURT_REQUESTS];
+        mapped = [];
       }
 
       // Merge local storage court requests (e.g. from venue extension modal)
