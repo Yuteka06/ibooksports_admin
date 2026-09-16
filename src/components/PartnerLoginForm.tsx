@@ -141,7 +141,7 @@ export default function PartnerLoginForm() {
               width={360}
               height={40}
               priority
-              style={{ height: '40px', width: 'auto' }}
+              style={{ width: 'auto', height: 'auto' }}
               className="h-10 w-auto object-contain object-left -ml-1"
             />
           </div>

@@ -1122,7 +1122,7 @@ export default function PartnerOnboardingWizard() {
                   width={151}
                   height={16}
                   priority
-                  style={{ height: '16px', width: 'auto' }}
+                  style={{ width: 'auto', height: 'auto' }}
                   className="h-4 w-auto object-contain object-left"
                 />
                 <span className="hidden sm:inline text-[10px] text-slate-400 font-medium tracking-wide mt-1">

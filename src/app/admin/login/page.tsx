@@ -246,7 +246,7 @@ export default function AdminLoginPage() {
               width={150}
               height={18}
               priority
-              style={{ height: '18px', width: 'auto' }}
+              style={{ width: 'auto', height: 'auto' }}
               className="h-4.5 w-auto object-contain object-left"
             />
             <span className="text-[10px] text-slate-400 font-mono tracking-wider font-semibold uppercase mt-0.5">
