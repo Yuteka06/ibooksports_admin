@@ -11,16 +11,59 @@ export const apiClient = axios.create({
   timeout: 30000,
 });
 
+// Rule 11 & Rule 8: Request Interceptor for Auth & Debug Logging
+apiClient.interceptors.request.use(
+  (config) => {
+    if (typeof window !== 'undefined') {
+      const token =
+        localStorage.getItem('ibooksports_token') ||
+        localStorage.getItem('token') ||
+        localStorage.getItem('onboarding_token');
+      if (token && config.headers) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+    // Rule 19: Log API calls during development
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[API ${config.method?.toUpperCase()}]`, config.url);
+    }
+    return config;
+  },
+  (error) => Promise.reject(error),
+);
+
+// Rule 11, 12, 6: Response Interceptor handling status codes & meaningful errors
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    return response;
+  },
   (error) => {
-    const errorMsg =
-      error.response?.data?.message ||
-      error.message ||
-      'An unexpected network error occurred';
-    const messageStr = Array.isArray(errorMsg)
-      ? errorMsg.join(', ')
-      : String(errorMsg);
+    const status = error.response?.status;
+    let customErrorMsg = '';
+
+    if (status === 400) {
+      customErrorMsg = error.response?.data?.message || 'Bad Request: Please verify submitted information.';
+    } else if (status === 401) {
+      customErrorMsg = 'Unauthorized: Session expired or invalid credentials.';
+    } else if (status === 403) {
+      customErrorMsg = 'Forbidden: You do not have permission to access this resource.';
+    } else if (status === 404) {
+      customErrorMsg = error.response?.data?.message || 'Requested resource not found.';
+    } else if (status === 409) {
+      customErrorMsg = error.response?.data?.message || 'Conflict: Slot or resource is already locked or booked.';
+    } else if (status >= 500) {
+      customErrorMsg = 'Internal Server Error: Backend service is experiencing temporary issues. Please retry.';
+    } else {
+      customErrorMsg =
+        error.response?.data?.message ||
+        error.message ||
+        'An unexpected network error occurred. Please check your connection.';
+    }
+
+    const messageStr = Array.isArray(customErrorMsg)
+      ? customErrorMsg.join(', ')
+      : String(customErrorMsg);
+
     return Promise.reject(new Error(messageStr));
   },
 );

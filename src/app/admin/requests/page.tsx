@@ -791,6 +791,7 @@ export default function PartnerRequestsPage() {
           {/* Sports Selector */}
           <div className="relative min-w-[130px]">
             <select
+              suppressHydrationWarning={true}
               value={selectedSport}
               onChange={(e) => setSelectedSport(e.target.value)}
               className="w-full appearance-none pl-8 pr-7 py-2 rounded-xl border border-[#E5E7EB] bg-slate-50 text-xs font-bold text-[#021526] focus:outline-none focus:border-[#F94001] focus:ring-1 focus:ring-[#F94001] transition-colors cursor-pointer"
@@ -808,6 +809,7 @@ export default function PartnerRequestsPage() {
           {/* Region / District Selector */}
           <div className="relative min-w-[140px]">
             <select
+              suppressHydrationWarning={true}
               value={selectedCity}
               onChange={(e) => setSelectedCity(e.target.value)}
               className="w-full appearance-none pl-8 pr-7 py-2 rounded-xl border border-[#E5E7EB] bg-slate-50 text-xs font-bold text-[#021526] focus:outline-none focus:border-[#F94001] focus:ring-1 focus:ring-[#F94001] transition-colors cursor-pointer"
@@ -1445,6 +1447,7 @@ export default function PartnerRequestsPage() {
                           Reason Category <span className="text-rose-600">*</span>
                         </label>
                         <select
+                          suppressHydrationWarning={true}
                           id={reasonSelectId}
                           value={rejectionReason}
                           onChange={(e) => setRejectionReason(e.target.value)}

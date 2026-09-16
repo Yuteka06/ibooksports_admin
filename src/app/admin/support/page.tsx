@@ -31,12 +31,12 @@ import {
   ChevronRight,
   ChevronDown,
 } from 'lucide-react';
-import { SupportTicketItem, VenueDetail } from '@/lib/mockData';
+import { SupportTicketItem, VenueDetail, INITIAL_SUPPORT_TICKETS } from '@/lib/mockData';
 import { apiClient } from '@/lib/api';
 
 export default function SupportHelpdeskPage() {
   const [mounted, setMounted] = useState(false);
-  const [tickets, setTickets] = useState<SupportTicketItem[]>([]);
+  const [tickets, setTickets] = useState<SupportTicketItem[]>(INITIAL_SUPPORT_TICKETS);
   const [venues, setVenues] = useState<VenueDetail[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');

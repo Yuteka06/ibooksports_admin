@@ -21,6 +21,18 @@ export interface VenueDetail {
   opening_time: string;
   closing_time: string;
   created_at?: string;
+  operating_hours?: {
+    working_days?: string[];
+    operating_time?: string;
+    closing_time?: string;
+    day_schedules?: {
+      day: string;
+      label?: string;
+      is_open: boolean;
+      open_time: string;
+      close_time: string;
+    }[];
+  };
   
   // Staff & Management Contact Details
   staff_name?: string;
@@ -39,8 +51,11 @@ export interface VenueDetail {
     email: string;
     pan_number: string;
     pan_status: 'VERIFIED' | 'PENDING';
+    pan_document_id?: string;
     aadhaar_masked: string;
     aadhaar_status: 'VERIFIED' | 'PENDING';
+    aadhaar_document_id?: string;
+    profile_photo_document_id?: string;
     gstin: string;
     gstin_status: 'ACTIVE' | 'UNREGISTERED';
     registered_address: string;
@@ -54,11 +69,15 @@ export interface VenueDetail {
     account_number_masked: string;
     ifsc_code: string;
     branch_name: string;
+    branch_proof_document_id?: string;
     upi_id: string;
     verification_status: 'VERIFIED' | 'PENDING';
     penny_drop_status: 'SUCCESS' | 'FAILED';
     last_payout_date: string;
   };
+
+  gst_document_id?: string;
+  court_photos?: string[];
 
   // Courts
   court_list: {
@@ -166,11 +185,14 @@ export interface BookingItem {
   total_amount: number;
   platform_fee: number;
   venue_share: number;
-  payment_status: 'PAID' | 'PARTIAL_PAID' | 'ADVANCE_PAID' | 'REFUNDED' | 'FAILED';
-  booking_status: 'CONFIRMED' | 'IN_PLAY' | 'COMPLETED' | 'CANCELLED';
-  payment_method: 'UPI' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'NET_BANKING' | 'WALLET' | string;
+  payment_status: 'PAID' | 'PARTIAL_PAID' | 'ADVANCE_PAID' | 'PENDING' | 'REFUNDED' | 'FAILED';
+  booking_status: 'PENDING_PAYMENT' | 'CONFIRMED' | 'IN_PLAY' | 'COMPLETED' | 'CANCELLED' | 'EXPIRED';
+  payment_method: 'UPI' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'NET_BANKING' | 'WALLET' | 'ONLINE_LINK' | 'CASH' | string;
   transaction_id: string;
   created_at: string;
+  hold_started_at?: string;
+  hold_expires_at?: string;
+  expired_at?: string;
   cancellation_reason?: string;
   cancelled_at?: string;
   refund_amount?: number;
@@ -181,7 +203,7 @@ export interface BookingItem {
   due_mode?: 'CASH' | 'ONLINE';
 }
 
-export type PaymentStatusType = 'FULLY_PAID' | 'ADVANCE_PAID' | 'REFUNDED' | 'FAILED';
+export type PaymentStatusType = 'FULLY_PAID' | 'ADVANCE_PAID' | 'PENDING' | 'REFUNDED' | 'FAILED';
 export type PaymentMethodCategory = 'UPI' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'NET_BANKING' | 'CASH';
 
 export interface PaymentTransactionItem {
@@ -1604,6 +1626,61 @@ export const INITIAL_CUSTOMERS: CustomerItem[] = [
 ];
 
 export const INITIAL_BOOKINGS: BookingItem[] = [
+  {
+    id: 'bkg_9000',
+    booking_code: 'IBS-2609-1001',
+    customer_id: 'cust_500',
+    customer_name: 'Vignesh Sundaram',
+    customer_phone: '+91 98402 11223',
+    venue_id: 'ven_1001',
+    venue_name: 'Sky Sports Arena & Box Turf',
+    court_id: 'crt_101',
+    court_name: 'Turf A (Camp Nou 7v7)',
+    sport: 'Football',
+    booking_date: new Date().toISOString().split('T')[0],
+    time_slot: '06:00 PM - 07:00 PM',
+    duration_minutes: 60,
+    total_amount: 1500,
+    platform_fee: 150,
+    venue_share: 1350,
+    advance_amount: 750,
+    balance_amount: 750,
+    payment_status: 'PENDING',
+    booking_status: 'PENDING_PAYMENT',
+    payment_method: 'Online Link (Razorpay UPI)',
+    transaction_id: 'pay_init_98124991',
+    created_at: new Date(Date.now() - 3 * 60000).toISOString(),
+    hold_started_at: new Date(Date.now() - 3 * 60000).toISOString(),
+    hold_expires_at: new Date(Date.now() + 12 * 60000).toISOString(), // 12 mins remaining
+  },
+  {
+    id: 'bkg_9000b',
+    booking_code: 'IBS-2609-1002',
+    customer_id: 'cust_512',
+    customer_name: 'Karthik Raja',
+    customer_phone: '+91 97901 44556',
+    venue_id: 'ven_1002',
+    venue_name: 'Green Field Sports Park',
+    court_id: 'crt_201',
+    court_name: 'Badminton Court 1',
+    sport: 'Badminton',
+    booking_date: new Date().toISOString().split('T')[0],
+    time_slot: '05:00 PM - 06:00 PM',
+    duration_minutes: 60,
+    total_amount: 500,
+    platform_fee: 50,
+    venue_share: 450,
+    advance_amount: 0,
+    balance_amount: 500,
+    payment_status: 'FAILED',
+    booking_status: 'EXPIRED',
+    payment_method: 'Online Link',
+    transaction_id: 'pay_exp_98124110',
+    created_at: new Date(Date.now() - 45 * 60000).toISOString(),
+    hold_started_at: new Date(Date.now() - 45 * 60000).toISOString(),
+    hold_expires_at: new Date(Date.now() - 30 * 60000).toISOString(),
+    expired_at: new Date(Date.now() - 30 * 60000).toISOString(),
+  },
   {
     id: 'bkg_9001',
     booking_code: 'IBS-2603-9001',

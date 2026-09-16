@@ -37,10 +37,11 @@ import {
 import {
   SettlementBatchItem,
   SettlementBookingItem,
+  INITIAL_SETTLEMENTS,
 } from '@/lib/mockData';
 
 export default function SettlementManagementPage() {
-  const [settlements, setSettlements] = useState<SettlementBatchItem[]>([]);
+  const [settlements, setSettlements] = useState<SettlementBatchItem[]>(INITIAL_SETTLEMENTS);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   
@@ -150,6 +151,155 @@ export default function SettlementManagementPage() {
     if (typeof window !== 'undefined') {
       window.print();
     }
+  };
+
+  // Razorpay Payout Disbursal Handler (T+2)
+  const handleInitiatePayout = (batchId: string) => {
+    const batch = settlements.find((s) => s.id === batchId);
+    if (!batch) return;
+    if (batch.status === 'SETTLED') {
+      showToast('info', 'Already Settled', `Batch ${batch.batch_number} has already been settled via UTR ${batch.utr_number}.`);
+      return;
+    }
+
+    const now = new Date();
+    const formattedDate = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const formattedTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    const generatedUtr = `RZPR${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${Math.floor(100000 + Math.random() * 900000)}`;
+
+    const updatedSettlements = settlements.map((s) => {
+      if (s.id === batchId) {
+        return {
+          ...s,
+          status: 'SETTLED' as const,
+          utr_number: generatedUtr,
+          settled_at: `${formattedDate} ${formattedTime}`,
+        };
+      }
+      return s;
+    });
+
+    setSettlements(updatedSettlements);
+    if (selectedBatch && selectedBatch.id === batchId) {
+      setSelectedBatch({
+        ...selectedBatch,
+        status: 'SETTLED',
+        utr_number: generatedUtr,
+        settled_at: `${formattedDate} ${formattedTime}`,
+      });
+    }
+
+    showToast(
+      'success',
+      'Razorpay Payout Initiated',
+      `₹${batch.net_payable.toLocaleString('en-IN')} disbursed to ${batch.bank_name} (${batch.account_number_masked}) · UTR: ${generatedUtr}`
+    );
+  };
+
+  // Automated T+2 Settlement Batch Creation for Day T Confirmed Matches
+  const handleGenerateTPlus2Batch = () => {
+    const today = new Date();
+    const dayT = new Date();
+    dayT.setDate(today.getDate() - 2); // T-2 days (match day)
+    const dayTStr = dayT.toISOString().split('T')[0];
+    const todayStr = today.toISOString().split('T')[0];
+    const cycleMonth = todayStr.substring(0, 7);
+
+    const batchNum = `STL-${todayStr.replace(/-/g, '').substring(0, 6)}-${String(settlements.length + 1).padStart(3, '0')}`;
+    
+    // Standard T+2 model:
+    // Actual Court Gross = ₹42,000 (30 slots)
+    // 50% Online Advance Held = ₹21,000 (Razorpay)
+    // 50% Cash Collected at Counter = ₹21,000 (kept by vendor)
+    // 10% Platform Commission = ₹4,200
+    // 18% GST on Commission = ₹756
+    // 1% TDS (Sec 194-O) = ₹420
+    // Net Payable from online advance = ₹21,000 - ₹4,200 - ₹756 - ₹420 = ₹15,624
+    const actualCourtTotal = 42000;
+    const onlineAdvanceHeld = 21000;
+    const cashCollected = 21000;
+    const commission = 4200;
+    const commissionGst = 756;
+    const tds = 420;
+    const netPayable = onlineAdvanceHeld - commission - commissionGst - tds;
+
+    const newBatch: SettlementBatchItem = {
+      id: `stl_${Date.now()}`,
+      batch_number: batchNum,
+      venue_id: 'ven_1001',
+      venue_name: 'Sky Sports Arena & Box Turf',
+      owner_name: 'Karthik Rajan',
+      bank_name: 'HDFC Bank Ltd',
+      account_number_masked: '•••• •••• 9012',
+      ifsc_code: 'HDFC0001248',
+      period_start: dayTStr,
+      period_end: dayTStr,
+      settlement_date: todayStr,
+      cycle_month: cycleMonth,
+      cycle_year: today.getFullYear(),
+      t_plus_days: 2,
+      bookings_count: 30,
+      actual_court_price_total: actualCourtTotal,
+      gross_booking_amount: actualCourtTotal,
+      online_advance_held: onlineAdvanceHeld,
+      cash_collected_at_venue: cashCollected,
+      platform_commission_deducted: commission,
+      platform_fee_gst: commissionGst,
+      tds_deducted: tds,
+      net_payable: Math.round(netPayable * 10) / 10,
+      status: 'PENDING_APPROVAL',
+      itemized_bookings: [
+        {
+          booking_code: `IBS-${todayStr.replace(/-/g, '').substring(2, 6)}-8801`,
+          slot_date: dayTStr,
+          slot_time: '06:00 PM - 07:00 PM',
+          court_name: 'Main Football Turf A',
+          sport: 'Football',
+          actual_court_price: 1400,
+          online_advance_paid: 700,
+          cash_collected_at_venue: 700,
+          payment_mode: 'ONLINE_ADVANCE_PLUS_CASH',
+          platform_fee: 140,
+          platform_fee_gst: 25.2,
+          net_venue_share: 534.8,
+        },
+        {
+          booking_code: `IBS-${todayStr.replace(/-/g, '').substring(2, 6)}-8802`,
+          slot_date: dayTStr,
+          slot_time: '07:00 PM - 08:00 PM',
+          court_name: 'Box Cricket Pitch 1',
+          sport: 'Cricket',
+          actual_court_price: 1600,
+          online_advance_paid: 800,
+          cash_collected_at_venue: 800,
+          payment_mode: 'ONLINE_ADVANCE_PLUS_CASH',
+          platform_fee: 160,
+          platform_fee_gst: 28.8,
+          net_venue_share: 611.2,
+        },
+        {
+          booking_code: `IBS-${todayStr.replace(/-/g, '').substring(2, 6)}-8803`,
+          slot_date: dayTStr,
+          slot_time: '08:00 PM - 09:00 PM',
+          court_name: 'Synthetic Badminton Court 1',
+          sport: 'Badminton',
+          actual_court_price: 1000,
+          online_advance_paid: 500,
+          cash_collected_at_venue: 500,
+          payment_mode: 'ONLINE_ADVANCE_PLUS_CASH',
+          platform_fee: 100,
+          platform_fee_gst: 18.0,
+          net_venue_share: 382.0,
+        },
+      ],
+    };
+
+    setSettlements([newBatch, ...settlements]);
+    showToast(
+      'success',
+      'T+2 Settlement Batch Generated',
+      `Created ${batchNum} for Day T (${dayTStr}) matches. Net Bank Payable: ₹${newBatch.net_payable.toLocaleString('en-IN')}`
+    );
   };
 
   return (
@@ -318,6 +468,17 @@ export default function SettlementManagementPage() {
           >
             <Download className="h-3.5 w-3.5 text-slate-500" />
             <span>Export Disbursal CSV</span>
+          </button>
+
+          {/* Run T+2 Settlement Button */}
+          <button
+            type="button"
+            onClick={handleGenerateTPlus2Batch}
+            className="inline-flex items-center gap-2 rounded-xl bg-[#021526] hover:bg-[#F94001] text-white px-3.5 py-2 text-xs font-bold shadow-xs transition-all cursor-pointer h-[42px]"
+            title="Generate automated T+2 settlement batches for Day T matches"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+            <span>Run T+2 Settlement</span>
           </button>
         </div>
       </div>
@@ -665,17 +826,30 @@ export default function SettlementManagementPage() {
 
                       {/* 8. ACTION (LEFT ALIGNED & COMPACT) */}
                       <td className="py-3 px-3 align-middle text-left whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            setSelectedBatch(s);
-                            setDrawerTab('summary');
-                          }}
-                          className="px-2.5 py-1 rounded-full border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-[#F94001] hover:border-[#F94001]/40 text-xs font-semibold inline-flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
-                        >
-                          <Eye className="h-3 w-3 text-slate-500" />
-                          <span>Details &gt;</span>
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              setSelectedBatch(s);
+                              setDrawerTab('summary');
+                            }}
+                            className="px-2.5 py-1 rounded-full border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-[#F94001] hover:border-[#F94001]/40 text-xs font-semibold inline-flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
+                          >
+                            <Eye className="h-3 w-3 text-slate-500" />
+                            <span>Details &gt;</span>
+                          </button>
+                          {s.status !== 'SETTLED' && (
+                            <button
+                              type="button"
+                              onClick={() => handleInitiatePayout(s.id)}
+                              className="px-2.5 py-1 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold inline-flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
+                              title="Initiate Razorpay Payout (T+2)"
+                            >
+                              <CreditCard className="h-3 w-3" />
+                              <span>Disburse</span>
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -1143,13 +1317,25 @@ export default function SettlementManagementPage() {
                 <span className="text-xs text-slate-500 font-medium">
                   {selectedBatch.status === 'SETTLED' ? 'Completed Disbursal' : 'Processing Settlement'}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setSelectedBatch(null)}
-                  className="px-4 py-2 rounded-xl bg-[#021526] hover:bg-[#F94001] text-white text-xs font-bold transition-colors cursor-pointer"
-                >
-                  Close Dossier
-                </button>
+                <div className="flex items-center gap-2">
+                  {selectedBatch.status !== 'SETTLED' && (
+                    <button
+                      type="button"
+                      onClick={() => handleInitiatePayout(selectedBatch.id)}
+                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
+                    >
+                      <CreditCard className="h-4 w-4" />
+                      <span>Disburse via Razorpay (₹{selectedBatch.net_payable.toLocaleString('en-IN')})</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedBatch(null)}
+                    className="px-4 py-2 rounded-xl bg-[#021526] hover:bg-[#F94001] text-white text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    Close Dossier
+                  </button>
+                </div>
               </div>
             </div>
           </div>

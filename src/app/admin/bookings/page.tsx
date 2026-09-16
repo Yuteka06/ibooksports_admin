@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   CalendarCheck,
   Search,
@@ -32,11 +32,13 @@ import {
   AlertTriangle,
   Wallet,
   ShieldCheck,
+  Timer,
+  PlusCircle,
 } from 'lucide-react';
-import { BookingItem } from '@/lib/mockData';
+import { BookingItem, INITIAL_BOOKINGS } from '@/lib/mockData';
 
 export default function BookingManagementPage() {
-  const [bookings, setBookings] = useState<BookingItem[]>([]);
+  const [bookings, setBookings] = useState<BookingItem[]>(INITIAL_BOOKINGS);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [sportFilter, setSportFilter] = useState('ALL');
@@ -52,6 +54,20 @@ export default function BookingManagementPage() {
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false);
   const [rescheduleSlotTime, setRescheduleSlotTime] = useState('');
+
+  // New Booking / 15-Minute Hold Creation Modal State
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [createVenue, setCreateVenue] = useState('Sky Sports Arena & Box Turf');
+  const [createSport, setCreateSport] = useState('Football');
+  const [createCourt, setCreateCourt] = useState('Turf A (Camp Nou 7v7)');
+  const [createDate, setCreateDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [createSlot, setCreateSlot] = useState('06:00 PM - 07:00 PM');
+  const [createCustomerName, setCreateCustomerName] = useState('');
+  const [createCustomerPhone, setCreateCustomerPhone] = useState('');
+  const [createPaymentMode, setCreatePaymentMode] = useState<'ONLINE_HOLD' | 'FULL_CONFIRMED'>('ONLINE_HOLD');
+  
+  // Current time ticker for active 15-minute slot hold countdowns
+  const [nowTimestamp, setNowTimestamp] = useState<number>(Date.now());
   
   // Interactive copy feedback
   const [copiedText, setCopiedText] = useState<string | null>(null);
@@ -66,6 +82,62 @@ export default function BookingManagementPage() {
   const showToast = (type: 'success' | 'info' | 'error', title: string, description: string) => {
     setToastMessage({ type, title, description });
     setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  // 15-MINUTE SLOT HOLD TICKER: Auto-updates countdowns & expires holds when time runs out
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      setNowTimestamp(now);
+
+      setBookings((prev) => {
+        let changed = false;
+        const updated = prev.map((b) => {
+          if (
+            b.booking_status === 'PENDING_PAYMENT' &&
+            b.hold_expires_at &&
+            now >= new Date(b.hold_expires_at).getTime()
+          ) {
+            changed = true;
+            return {
+              ...b,
+              booking_status: 'EXPIRED' as const,
+              payment_status: 'FAILED' as const,
+              expired_at: new Date(now).toISOString(),
+            };
+          }
+          return b;
+        });
+
+        if (changed) {
+          showToast(
+            'error',
+            '15-Minute Hold Expired',
+            'Payment window expired. Slot reservation hold released back to AVAILABLE.'
+          );
+        }
+
+        return changed ? updated : prev;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Helper to compute seconds left on a 15-minute slot hold
+  const getRemainingHoldSeconds = (expiresAt?: string) => {
+    if (!expiresAt) return 0;
+    const diff = Math.floor((new Date(expiresAt).getTime() - nowTimestamp) / 1000);
+    return Math.max(0, diff);
+  };
+
+  // Helper to format countdown: "MM:SS"
+  const formatHoldCountdown = (expiresAt?: string) => {
+    const sec = getRemainingHoldSeconds(expiresAt);
+    if (sec <= 0) return 'Expired';
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
   const handleCopy = (text: string, id: string) => {
@@ -131,12 +203,23 @@ export default function BookingManagementPage() {
     );
   };
 
-  // Cancel Booking Action
+  // Cancel Booking Action (Releases 15-min hold or cancels confirmed booking)
   const handleCancelBooking = (bookingId: string) => {
+    const target = bookings.find((b) => b.id === bookingId);
+    const isHold = target?.booking_status === 'PENDING_PAYMENT';
+
     setBookings((prev) =>
       prev.map((b) =>
         b.id === bookingId
-          ? { ...b, booking_status: 'CANCELLED', payment_status: 'REFUNDED' }
+          ? {
+              ...b,
+              booking_status: 'CANCELLED',
+              payment_status: isHold ? 'FAILED' : 'REFUNDED',
+              cancelled_at: new Date().toISOString(),
+              cancellation_reason: isHold
+                ? 'Hold cancelled / slot released'
+                : 'Customer cancelled booking / admin override',
+            }
           : b
       )
     );
@@ -144,14 +227,160 @@ export default function BookingManagementPage() {
       setSelectedBooking({
         ...selectedBooking,
         booking_status: 'CANCELLED',
-        payment_status: 'REFUNDED',
+        payment_status: isHold ? 'FAILED' : 'REFUNDED',
+        cancelled_at: new Date().toISOString(),
+        cancellation_reason: isHold
+          ? 'Hold cancelled / slot released'
+          : 'Customer cancelled booking / admin override',
       });
     }
     setCancelModalOpen(false);
     showToast(
       'error',
-      'Booking Cancelled',
-      `Reservation cancelled and full refund of ₹${selectedBooking?.total_amount} initiated.`
+      isHold ? 'Slot Hold Released' : 'Booking Cancelled',
+      isHold
+        ? `15-minute slot hold for ${target?.court_name} (${target?.time_slot}) released back to AVAILABLE.`
+        : `Reservation cancelled and full refund of ₹${selectedBooking?.total_amount} initiated.`
+    );
+  };
+
+  // Verify & Confirm Payment (Converts 15-minute hold to Confirmed)
+  const handleConfirmPendingPayment = (bookingId: string) => {
+    setBookings((prev) =>
+      prev.map((b) => {
+        if (b.id === bookingId) {
+          const updated: BookingItem = {
+            ...b,
+            booking_status: 'CONFIRMED',
+            payment_status: 'PAID',
+            advance_amount: b.total_amount,
+            balance_amount: 0,
+            transaction_id: `pay_conf_${Date.now()}`,
+            payment_method: 'UPI (Gateway Verified)',
+          };
+          if (selectedBooking && selectedBooking.id === bookingId) {
+            setSelectedBooking(updated);
+          }
+          return updated;
+        }
+        return b;
+      })
+    );
+    showToast(
+      'success',
+      'Payment Verified',
+      'Payment confirmed! 15-minute hold converted to permanent CONFIRMED booking.'
+    );
+  };
+
+  // Immediate Slot Hold Release
+  const handleReleaseHold = (bookingId: string) => {
+    handleCancelBooking(bookingId);
+  };
+
+  // Create Booking with Strict Double-Booking & 15-Minute Slot Hold Validation
+  const handleCreateBookingSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!createCustomerName.trim()) {
+      showToast('error', 'Validation Error', 'Please enter customer name.');
+      return;
+    }
+    if (!createCustomerPhone.trim() || createCustomerPhone.replace(/\D/g, '').length < 10) {
+      showToast('error', 'Validation Error', 'Please enter a valid 10-digit mobile number.');
+      return;
+    }
+
+    // Server-side amount determination by sport
+    const sportPriceMap: Record<string, number> = {
+      Football: 1600,
+      'Box Cricket': 1400,
+      Badminton: 500,
+      Pickleball: 650,
+    };
+    const totalAmount = sportPriceMap[createSport] || 1200;
+    const platformFee = Math.round(totalAmount * 0.1);
+    const venueShare = totalAmount - platformFee;
+
+    // 1. CONCURRENCY & DOUBLE BOOKING PREVENTION CHECK
+    const conflict = bookings.find(
+      (b) =>
+        b.court_name.toLowerCase() === createCourt.toLowerCase() &&
+        b.booking_date === createDate &&
+        b.time_slot === createSlot &&
+        (
+          b.booking_status === 'CONFIRMED' ||
+          b.booking_status === 'IN_PLAY' ||
+          (b.booking_status === 'PENDING_PAYMENT' && getRemainingHoldSeconds(b.hold_expires_at) > 0)
+        )
+    );
+
+    if (conflict) {
+      if (conflict.booking_status === 'CONFIRMED' || conflict.booking_status === 'IN_PLAY') {
+        showToast(
+          'error',
+          'SLOT_ALREADY_BOOKED',
+          `Double-Booking Prevented! ${createCourt} is already confirmed booked for ${createSlot} by ${conflict.customer_name}.`
+        );
+      } else {
+        const remaining = formatHoldCountdown(conflict.hold_expires_at);
+        showToast(
+          'error',
+          'SLOT_HELD',
+          `Double-Booking Prevented! ${createCourt} is currently held for ${conflict.customer_name} (${remaining} remaining).`
+        );
+      }
+      return;
+    }
+
+    // 2. CREATE NEW 15-MINUTE HOLD OR CONFIRMED BOOKING
+    const isHoldMode = createPaymentMode === 'ONLINE_HOLD';
+    const newBookingId = `bkg_${Date.now().toString().slice(-4)}`;
+    const newBookingCode = `IBS-2609-${Math.floor(1000 + Math.random() * 9000)}`;
+    const now = new Date();
+
+    const newBooking: BookingItem = {
+      id: newBookingId,
+      booking_code: newBookingCode,
+      customer_id: `cust_${Date.now().toString().slice(-3)}`,
+      customer_name: createCustomerName.trim(),
+      customer_phone: createCustomerPhone.startsWith('+91')
+        ? createCustomerPhone.trim()
+        : `+91 ${createCustomerPhone.trim()}`,
+      venue_id: 'ven_1001',
+      venue_name: createVenue,
+      court_id: `crt_${Math.floor(100 + Math.random() * 900)}`,
+      court_name: createCourt,
+      sport: createSport,
+      booking_date: createDate,
+      time_slot: createSlot,
+      duration_minutes: 60,
+      total_amount: totalAmount,
+      platform_fee: platformFee,
+      venue_share: venueShare,
+      advance_amount: isHoldMode ? Math.round(totalAmount * 0.5) : totalAmount,
+      balance_amount: isHoldMode ? totalAmount - Math.round(totalAmount * 0.5) : 0,
+      payment_status: isHoldMode ? 'PENDING' : 'PAID',
+      booking_status: isHoldMode ? 'PENDING_PAYMENT' : 'CONFIRMED',
+      payment_method: isHoldMode ? 'Online Payment Link' : 'Cash Counter',
+      due_mode: isHoldMode ? 'ONLINE' : 'CASH',
+      transaction_id: `txn_${Date.now()}`,
+      created_at: now.toISOString(),
+      hold_started_at: isHoldMode ? now.toISOString() : undefined,
+      hold_expires_at: isHoldMode ? new Date(now.getTime() + 15 * 60 * 1000).toISOString() : undefined,
+    };
+
+    setBookings((prev) => [newBooking, ...prev]);
+    setCreateModalOpen(false);
+    setCreateCustomerName('');
+    setCreateCustomerPhone('');
+
+    showToast(
+      'success',
+      isHoldMode ? '15-Minute Slot Hold Active' : 'Booking Confirmed',
+      isHoldMode
+        ? `Slot reserved for ${newBooking.customer_name}. 15-minute countdown started (expires in 15:00).`
+        : `Booking for ${newBooking.customer_name} marked as Confirmed and Paid.`
     );
   };
 
@@ -196,14 +425,14 @@ export default function BookingManagementPage() {
   );
   const totalOnlineCollected = useMemo(() => {
     return dateFilteredBookings.reduce((acc, b) => {
-      if (b.payment_status === 'REFUNDED') return acc;
+      if (b.payment_status === 'REFUNDED' || b.payment_status === 'FAILED') return acc;
       const { advance } = getAdvanceAndBalance(b);
       return acc + advance;
     }, 0);
   }, [dateFilteredBookings]);
   const totalPendingDue = useMemo(() => {
     return dateFilteredBookings.reduce((acc, b) => {
-      if (b.payment_status === 'REFUNDED') return acc;
+      if (b.payment_status === 'REFUNDED' || b.payment_status === 'FAILED') return acc;
       const { balance } = getAdvanceAndBalance(b);
       return acc + balance;
     }, 0);
@@ -214,6 +443,14 @@ export default function BookingManagementPage() {
   );
   const confirmedCount = useMemo(
     () => dateFilteredBookings.filter((b) => b.booking_status === 'CONFIRMED').length,
+    [dateFilteredBookings]
+  );
+  const pendingHoldCount = useMemo(
+    () => dateFilteredBookings.filter((b) => b.booking_status === 'PENDING_PAYMENT').length,
+    [dateFilteredBookings]
+  );
+  const expiredHoldCount = useMemo(
+    () => dateFilteredBookings.filter((b) => b.booking_status === 'EXPIRED').length,
     [dateFilteredBookings]
   );
 
@@ -330,6 +567,15 @@ export default function BookingManagementPage() {
             <Download className="h-3.5 w-3.5 text-slate-500" />
             <span>Export CSV</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => setCreateModalOpen(true)}
+            className="inline-flex items-center gap-2 rounded-xl bg-[#021526] hover:bg-[#F94001] text-white px-3.5 py-2 text-xs font-bold shadow-xs transition-all cursor-pointer h-[42px] whitespace-nowrap"
+          >
+            <PlusCircle className="h-3.5 w-3.5" />
+            <span>New Booking (Hold Slot)</span>
+          </button>
         </div>
       </div>
 
@@ -436,10 +682,12 @@ export default function BookingManagementPage() {
         <div className="flex items-center gap-1.5 flex-wrap">
           {[
             { id: 'ALL', label: 'All Bookings', count: dateFilteredBookings.length },
+            { id: 'PENDING_PAYMENT', label: '15m Holds', count: pendingHoldCount },
             { id: 'CONFIRMED', label: 'Confirmed', count: confirmedCount },
             { id: 'IN_PLAY', label: 'In Play', count: inPlayCount },
             { id: 'COMPLETED', label: 'Completed', count: dateFilteredBookings.filter((b) => b.booking_status === 'COMPLETED').length },
             { id: 'CANCELLED', label: 'Cancelled', count: dateFilteredBookings.filter((b) => b.booking_status === 'CANCELLED').length },
+            { id: 'EXPIRED', label: 'Expired Holds', count: expiredHoldCount },
           ].map((tab) => {
             const isActive = statusFilter === tab.id;
             return (
@@ -492,6 +740,7 @@ export default function BookingManagementPage() {
           {/* Sport Selector */}
           <div className="relative min-w-[130px]">
             <select
+              suppressHydrationWarning={true}
               value={sportFilter}
               onChange={(e) => setSportFilter(e.target.value)}
               className="w-full appearance-none pl-8 pr-7 py-2 rounded-xl border border-[#E5E7EB] bg-slate-50 text-xs font-bold text-[#021526] focus:outline-none focus:border-[#F94001] transition-colors cursor-pointer"
@@ -639,12 +888,40 @@ export default function BookingManagementPage() {
                             <Clock className="h-3 w-3 text-slate-400 shrink-0" />
                             <span>{b.time_slot}</span>
                           </p>
+                          {b.booking_status === 'PENDING_PAYMENT' && (
+                            <div className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 font-sans mt-0.5">
+                              <Timer className="h-3 w-3 text-amber-600 animate-pulse" />
+                              <span>Hold: {formatHoldCountdown(b.hold_expires_at)}</span>
+                            </div>
+                          )}
+                          {b.booking_status === 'EXPIRED' && (
+                            <div className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 font-sans mt-0.5">
+                              <Clock className="h-3 w-3 text-slate-400" />
+                              <span>Hold Expired</span>
+                            </div>
+                          )}
                         </div>
                       </td>
 
                       {/* 5. PAYMENT SPLIT & AMOUNT COLLECT TYPE */}
                       <td className="py-3.5 px-4 align-middle whitespace-nowrap font-mono">
                         <div className="space-y-0.5">
+                          {b.payment_status === 'PENDING' && (
+                            <>
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-black text-xs text-amber-700">
+                                  ₹{b.total_amount.toLocaleString('en-IN')}
+                                </span>
+                                <span className="text-[10px] font-sans font-bold text-amber-800 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
+                                  Payment Due
+                                </span>
+                              </div>
+                              <p className="text-[10px] font-sans text-slate-400">
+                                Slot reserved for 15 mins
+                              </p>
+                            </>
+                          )}
+
                           {isPaid && (
                             <>
                               <div className="flex items-center gap-1.5">
@@ -711,6 +988,12 @@ export default function BookingManagementPage() {
                         <div className="space-y-1.5">
                           {/* Payment Status Badge */}
                           <div>
+                            {b.payment_status === 'PENDING' && (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+                                <Clock className="h-3 w-3 text-amber-600 animate-pulse" />
+                                <span>Pending</span>
+                              </span>
+                            )}
                             {isPaid && (
                               <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
                                 <CheckCircle2 className="h-3 w-3 text-emerald-600" />
@@ -731,7 +1014,7 @@ export default function BookingManagementPage() {
                             )}
                           </div>
 
-                          {/* Payment Channel: UPI, Card, Net Banking (pure text, no icon, no '(Online)') */}
+                          {/* Payment Channel: UPI, Card, Net Banking */}
                           <div className="text-[11px] font-bold text-slate-700">
                             {cleanPaymentType}
                           </div>
@@ -742,7 +1025,11 @@ export default function BookingManagementPage() {
                       <td className="py-3.5 px-4 align-middle whitespace-nowrap">
                         <span
                           className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wide inline-flex items-center gap-1 ${
-                            b.booking_status === 'COMPLETED'
+                            b.booking_status === 'PENDING_PAYMENT'
+                              ? 'bg-amber-50 text-amber-700 border border-amber-300 animate-pulse'
+                              : b.booking_status === 'EXPIRED'
+                              ? 'bg-slate-100 text-slate-600 border border-slate-300'
+                              : b.booking_status === 'COMPLETED'
                               ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
                               : b.booking_status === 'IN_PLAY'
                               ? 'bg-blue-50 text-blue-700 border border-blue-200 animate-pulse'
@@ -751,24 +1038,54 @@ export default function BookingManagementPage() {
                               : 'bg-rose-50 text-rose-700 border border-rose-200'
                           }`}
                         >
-                          {b.booking_status}
+                          {b.booking_status === 'PENDING_PAYMENT' ? '15M HOLD' : b.booking_status}
                         </span>
                       </td>
 
                       {/* 8. ACTIONS */}
                       <td className="py-3.5 px-4 align-middle text-left whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedBooking(b);
-                            setDrawerTab('summary');
-                          }}
-                          className="px-2.5 py-1 rounded-full border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-[#F94001] hover:border-[#F94001]/40 text-xs font-semibold inline-flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
-                        >
-                          <Eye className="h-3 w-3 text-slate-500" />
-                          <span>Details &gt;</span>
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          {b.booking_status === 'PENDING_PAYMENT' && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleConfirmPendingPayment(b.id);
+                                }}
+                                className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold inline-flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
+                                title="Confirm Payment"
+                              >
+                                <Check className="h-3 w-3" />
+                                <span>Confirm</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleReleaseHold(b.id);
+                                }}
+                                className="px-2 py-1 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-[11px] font-bold inline-flex items-center gap-1 transition-all cursor-pointer"
+                                title="Release Slot"
+                              >
+                                <X className="h-3 w-3" />
+                                <span>Release</span>
+                              </button>
+                            </>
+                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedBooking(b);
+                              setDrawerTab('summary');
+                            }}
+                            className="px-2.5 py-1 rounded-full border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-[#F94001] hover:border-[#F94001]/40 text-xs font-semibold inline-flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
+                          >
+                            <Eye className="h-3 w-3 text-slate-500" />
+                            <span>Details &gt;</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -830,7 +1147,11 @@ export default function BookingManagementPage() {
                   <div className="flex items-center gap-2">
                     <span
                       className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${
-                        selectedBooking.booking_status === 'COMPLETED'
+                        selectedBooking.booking_status === 'PENDING_PAYMENT'
+                          ? 'bg-amber-50 text-amber-700 border border-amber-300 animate-pulse'
+                          : selectedBooking.booking_status === 'EXPIRED'
+                          ? 'bg-slate-100 text-slate-600 border border-slate-300'
+                          : selectedBooking.booking_status === 'COMPLETED'
                           ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
                           : selectedBooking.booking_status === 'IN_PLAY'
                           ? 'bg-blue-50 text-blue-700 border border-blue-200 animate-pulse'
@@ -839,7 +1160,7 @@ export default function BookingManagementPage() {
                           : 'bg-rose-50 text-rose-700 border border-rose-200'
                       }`}
                     >
-                      {selectedBooking.booking_status}
+                      {selectedBooking.booking_status === 'PENDING_PAYMENT' ? '15M HOLD' : selectedBooking.booking_status}
                     </span>
                   </div>
                 </div>
@@ -877,6 +1198,56 @@ export default function BookingManagementPage() {
                 {/* TAB 1: BOOKING SUMMARY */}
                 {drawerTab === 'summary' && (
                   <div className="space-y-4">
+                    {/* Active 15-Minute Slot Hold Alert Card */}
+                    {selectedBooking.booking_status === 'PENDING_PAYMENT' && (
+                      <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-amber-900 text-xs flex items-center gap-1.5">
+                            <Timer className="h-4 w-4 text-amber-600 animate-pulse" />
+                            <span>15-Minute Slot Hold Active</span>
+                          </span>
+                          <span className="font-mono text-xs font-black text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300">
+                            {formatHoldCountdown(selectedBooking.hold_expires_at)} remaining
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-amber-800 leading-relaxed">
+                          This court slot is temporarily locked against double bookings while customer completes payment.
+                          If unpaid when the countdown reaches 00:00, the slot is automatically released to AVAILABLE.
+                        </p>
+                        <div className="flex items-center gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => handleConfirmPendingPayment(selectedBooking.id)}
+                            className="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            <span>Verify &amp; Confirm Payment</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleReleaseHold(selectedBooking.id)}
+                            className="py-2 px-3 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                          >
+                            <X className="h-3.5 w-3.5 text-rose-600" />
+                            <span>Release Slot</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Expired Slot Alert Card */}
+                    {selectedBooking.booking_status === 'EXPIRED' && (
+                      <div className="p-4 rounded-2xl bg-slate-100 border border-slate-200 space-y-1">
+                        <div className="flex items-center gap-1.5 text-slate-800 font-bold text-xs">
+                          <Clock className="h-4 w-4 text-slate-500" />
+                          <span>Hold Window Expired &bull; Slot Released</span>
+                        </div>
+                        <p className="text-[11px] text-slate-500">
+                          Payment was not completed within the 15-minute hold window. This slot has been released back to AVAILABLE.
+                        </p>
+                      </div>
+                    )}
+
                     {/* Court Playtime Schedule */}
                     <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
                       <div className="flex items-center justify-between border-b border-slate-200/70 pb-2">
@@ -1170,14 +1541,27 @@ export default function BookingManagementPage() {
       {/* CANCEL BOOKING MODAL */}
       {cancelModalOpen && selectedBooking && (
         <div className="fixed inset-0 z-[99999] bg-black/70 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl">
-            <div className="h-12 w-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
-              <AlertCircle className="h-6 w-6" />
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl border border-slate-200">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-rose-600" />
+                <h4 className="font-black text-base text-[#021526]">
+                  {selectedBooking.booking_status === 'PENDING_PAYMENT' ? 'Release Slot Hold' : 'Cancel Booking'}
+                </h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCancelModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
-            <div>
-              <h4 className="text-base font-black text-[#021526]">Cancel Reservation?</h4>
-              <p className="text-xs text-slate-500 mt-1">
-                Are you sure you want to cancel booking <span className="font-mono font-bold text-slate-800">{selectedBooking.booking_code}</span>? An instant refund of ₹{selectedBooking.total_amount} will be processed.
+            <div className="space-y-2">
+              <p className="text-xs text-slate-500">
+                {selectedBooking.booking_status === 'PENDING_PAYMENT'
+                  ? `Are you sure you want to release the active 15-minute hold for booking ${selectedBooking.booking_code}? The slot on ${selectedBooking.court_name} (${selectedBooking.time_slot}) will immediately become AVAILABLE for other customers.`
+                  : `Are you sure you want to cancel booking ${selectedBooking.booking_code}? An instant refund of ₹{selectedBooking.total_amount} will be processed.`}
               </p>
             </div>
             <div className="flex items-center gap-2 pt-2">
@@ -1193,7 +1577,7 @@ export default function BookingManagementPage() {
                 onClick={() => handleCancelBooking(selectedBooking.id)}
                 className="flex-1 py-2.5 rounded-xl bg-rose-600 text-white font-bold text-xs hover:bg-rose-700 cursor-pointer"
               >
-                Confirm Cancel
+                {selectedBooking.booking_status === 'PENDING_PAYMENT' ? 'Release Hold' : 'Confirm Cancel'}
               </button>
             </div>
           </div>
@@ -1261,6 +1645,219 @@ export default function BookingManagementPage() {
                 Update Slot
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* CREATE BOOKING / 15-MINUTE SLOT HOLD MODAL */}
+      {createModalOpen && (
+        <div className="fixed inset-0 z-[99999] bg-black/70 flex items-center justify-center p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-slate-200">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-xl bg-[#FFF1EC] text-[#F94001] flex items-center justify-center">
+                  <Timer className="h-4 w-4" />
+                </div>
+                <div>
+                  <h4 className="font-black text-base text-[#021526]">New Booking &bull; 15-Minute Slot Hold</h4>
+                  <p className="text-[11px] text-slate-500">Atomically reserves court with double-booking collision prevention</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCreateModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateBookingSubmit} className="space-y-3.5 text-xs">
+              {/* Customer Name & Phone */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-700 block">Player Full Name</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Vignesh Sundaram"
+                    value={createCustomerName}
+                    onChange={(e) => setCreateCustomerName(e.target.value)}
+                    className="w-full bg-[#F8F9FA] border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 outline-none focus:border-[#F94001]"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-700 block">Mobile Number</label>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="e.g. 98401 23456"
+                    value={createCustomerPhone}
+                    onChange={(e) => setCreateCustomerPhone(e.target.value)}
+                    className="w-full bg-[#F8F9FA] border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 outline-none focus:border-[#F94001]"
+                  />
+                </div>
+              </div>
+
+              {/* Sport & Venue */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-700 block">Sport</label>
+                  <select
+                    value={createSport}
+                    onChange={(e) => {
+                      const sp = e.target.value;
+                      setCreateSport(sp);
+                      if (sp === 'Badminton') setCreateCourt('Badminton Court 1');
+                      else if (sp === 'Box Cricket') setCreateCourt('Pitch C (Thunder Box Cricket)');
+                      else if (sp === 'Pickleball') setCreateCourt('Pickleball Pro Court A');
+                      else setCreateCourt('Turf A (Camp Nou 7v7)');
+                    }}
+                    className="w-full bg-[#F8F9FA] border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#F94001]"
+                  >
+                    <option value="Football">Football (₹1,600/hr)</option>
+                    <option value="Box Cricket">Box Cricket (₹1,400/hr)</option>
+                    <option value="Badminton">Badminton (₹500/hr)</option>
+                    <option value="Pickleball">Pickleball (₹650/hr)</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-700 block">Venue Arena</label>
+                  <select
+                    value={createVenue}
+                    onChange={(e) => setCreateVenue(e.target.value)}
+                    className="w-full bg-[#F8F9FA] border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#F94001]"
+                  >
+                    <option value="Sky Sports Arena & Box Turf">Sky Sports Arena &amp; Box Turf</option>
+                    <option value="Green Field Sports Park">Green Field Sports Park</option>
+                    <option value="Apex Arena & Sports Club">Apex Arena &amp; Sports Club</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Court Selection */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-700 block">Court / Pitch</label>
+                <select
+                  value={createCourt}
+                  onChange={(e) => setCreateCourt(e.target.value)}
+                  className="w-full bg-[#F8F9FA] border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#F94001]"
+                >
+                  {createSport === 'Football' && (
+                    <>
+                      <option value="Turf A (Camp Nou 7v7)">Turf A (Camp Nou 7v7)</option>
+                      <option value="Turf B (Bernabeu 5v5)">Turf B (Bernabeu 5v5)</option>
+                      <option value="OMR Grand Turf 7v7">OMR Grand Turf 7v7</option>
+                    </>
+                  )}
+                  {createSport === 'Box Cricket' && (
+                    <>
+                      <option value="Pitch C (Thunder Box Cricket)">Pitch C (Thunder Box Cricket)</option>
+                      <option value="Pitch 1 (Rooftop Box Cricket Arena)">Pitch 1 (Rooftop Box Cricket Arena)</option>
+                    </>
+                  )}
+                  {createSport === 'Badminton' && (
+                    <>
+                      <option value="Badminton Court 1">Badminton Court 1</option>
+                      <option value="Synthetic Badminton Court 2">Synthetic Badminton Court 2</option>
+                    </>
+                  )}
+                  {createSport === 'Pickleball' && (
+                    <option value="Pickleball Pro Court A">Pickleball Pro Court A</option>
+                  )}
+                </select>
+              </div>
+
+              {/* Date & Slot */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-700 block">Date</label>
+                  <input
+                    type="date"
+                    required
+                    value={createDate}
+                    onChange={(e) => setCreateDate(e.target.value)}
+                    className="w-full bg-[#F8F9FA] border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#F94001]"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-700 block">Slot Time</label>
+                  <select
+                    value={createSlot}
+                    onChange={(e) => setCreateSlot(e.target.value)}
+                    className="w-full bg-[#F8F9FA] border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#F94001]"
+                  >
+                    <option value="06:00 AM - 07:00 AM">06:00 AM - 07:00 AM</option>
+                    <option value="07:00 AM - 08:00 AM">07:00 AM - 08:00 AM</option>
+                    <option value="05:00 PM - 06:00 PM">05:00 PM - 06:00 PM</option>
+                    <option value="06:00 PM - 07:00 PM">06:00 PM - 07:00 PM</option>
+                    <option value="07:00 PM - 08:00 PM">07:00 PM - 08:00 PM</option>
+                    <option value="08:00 PM - 09:00 PM">08:00 PM - 09:00 PM</option>
+                    <option value="09:00 PM - 10:00 PM">09:00 PM - 10:00 PM</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Booking Mode: 15-Minute Online Hold vs Full Confirmed */}
+              <div className="space-y-1 pt-1">
+                <label className="text-[11px] font-bold text-slate-700 block">Booking Type &amp; Hold Mode</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCreatePaymentMode('ONLINE_HOLD')}
+                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                      createPaymentMode === 'ONLINE_HOLD'
+                        ? 'border-[#F94001] bg-[#FFF1EC] text-[#021526]'
+                        : 'border-slate-200 bg-slate-50 text-slate-600'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 font-bold text-xs">
+                      <Timer className="h-3.5 w-3.5 text-[#F94001]" />
+                      <span>15-Minute Slot Hold</span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Status: PENDING_PAYMENT. Prevents double-booking while customer pays. Auto-expires in 15m.
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setCreatePaymentMode('FULL_CONFIRMED')}
+                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                      createPaymentMode === 'FULL_CONFIRMED'
+                        ? 'border-emerald-600 bg-emerald-50 text-emerald-950'
+                        : 'border-slate-200 bg-slate-50 text-slate-600'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 font-bold text-xs">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                      <span>Instant Confirmed</span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Status: CONFIRMED. Player paid in cash or counter. Permanent lock.
+                    </p>
+                  </button>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setCreateModalOpen(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-[#021526] hover:bg-[#F94001] text-white font-bold text-xs transition-colors cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
+                >
+                  <PlusCircle className="h-3.5 w-3.5" />
+                  <span>Initiate Booking</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

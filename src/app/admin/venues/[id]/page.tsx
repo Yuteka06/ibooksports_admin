@@ -56,6 +56,7 @@ import {
   RotateCcw,
   History,
   AlertTriangle,
+  Download,
 } from 'lucide-react';
 import {
   VenueDetail,
@@ -196,7 +197,15 @@ export default function VenueModularOverviewPage() {
   const [publicBioInput, setPublicBioInput] = useState('');
 
   const [venuePhotos, setVenuePhotos] = useState<{ id: string; title: string; label: string; url: string }[]>([]);
-  const [documentPreviewModal, setDocumentPreviewModal] = useState<{ title: string; name: string; type: 'aadhaar' | 'profile' | 'bank' } | null>(null);
+  const [documentPreviewModal, setDocumentPreviewModal] = useState<{
+    title: string;
+    docId?: string;
+    name?: string;
+    url: string;
+    isPdf: boolean;
+    type?: string;
+    applicantName?: string;
+  } | null>(null);
 
   // Overview Amenities Filter & State
   const [amenityFilter, setAmenityFilter] = useState<string>('ALL');
@@ -716,9 +725,8 @@ export default function VenueModularOverviewPage() {
       setOwnerPhone(currentVenue.owner?.phone || (currentVenue.mobile_number ? `+91 ${currentVenue.mobile_number}` : ''));
       setOwnerEmail(currentVenue.owner?.email || currentVenue.email || '');
       setOwnerPan(currentVenue.owner?.pan_number || '');
-      const slug = (currentVenue.owner?.full_name || currentVenue.name || 'owner').toLowerCase().split(' ')[0];
-      setAadhaarDocName(`doc_aadhaar_${slug}`);
-      setProfilePhotoName(`doc_profile_${slug}`);
+      setAadhaarDocName(currentVenue.owner?.aadhaar_document_id || '');
+      setProfilePhotoName(currentVenue.owner?.profile_photo_document_id || '');
 
       setVenueNameInput(currentVenue.venue_name || '');
       setCityRegionInput(currentVenue.district ? `${currentVenue.district}, ${currentVenue.state}` : currentVenue.state || '');
@@ -842,11 +850,11 @@ export default function VenueModularOverviewPage() {
   };
 
   // Filtered Bookings for this venue (Real data only)
-  const venueBookings = useMemo(() => {
+  const venueBookings = useMemo<BookingItem[]>(() => {
     return [];
   }, [currentVenue]);
 
-  const filteredBookings = useMemo(() => {
+  const filteredBookings = useMemo<BookingItem[]>(() => {
     return venueBookings.filter((b: BookingItem) => {
       const matchesStatus = bookingStatusFilter === 'ALL' || b.booking_status === bookingStatusFilter;
       const q = bookingSearchQuery.toLowerCase().trim();
@@ -861,17 +869,17 @@ export default function VenueModularOverviewPage() {
   }, [venueBookings, bookingStatusFilter, bookingSearchQuery]);
 
   // Filtered Cancellations
-  const venueCancellations = useMemo(() => {
+  const venueCancellations = useMemo<BookingItem[]>(() => {
     return venueBookings.filter((b: BookingItem) => b.booking_status === 'CANCELLED' || (b.refund_amount && b.refund_amount > 0));
   }, [venueBookings]);
 
   // Filtered Settlements
-  const venueSettlements = useMemo(() => {
+  const venueSettlements = useMemo<SettlementBatchItem[]>(() => {
     return [];
   }, [currentVenue]);
 
   // Filtered Support Tickets
-  const venueSupportTickets = useMemo(() => {
+  const venueSupportTickets = useMemo<SupportTicketItem[]>(() => {
     return [];
   }, [currentVenue]);
 
@@ -1377,8 +1385,11 @@ export default function VenueModularOverviewPage() {
                         onClick={() =>
                           setDocumentPreviewModal({
                             title: photo.title || `Venue Photo ${idx + 1}`,
+                            docId: photo.id,
                             name: `photo_${idx + 1}.jpg`,
-                            type: 'profile',
+                            url: photo.url,
+                            isPdf: false,
+                            type: 'image',
                           })
                         }
                         className="relative aspect-4/3 rounded-xl overflow-hidden border border-slate-100 group bg-slate-100 cursor-pointer shadow-2xs hover:shadow-md transition-all"
@@ -1483,7 +1494,7 @@ export default function VenueModularOverviewPage() {
 
                 <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {currentVenue?.operating_hours?.day_schedules && currentVenue.operating_hours.day_schedules.length > 0 ? (
-                    currentVenue.operating_hours.day_schedules.map((day) => (
+                    currentVenue.operating_hours.day_schedules.map((day: { day: string; label?: string; is_open: boolean; open_time: string; close_time: string }) => (
                       <div
                         key={day.day}
                         className="flex items-center justify-between p-2 rounded-xl bg-slate-50/70 border border-slate-100 text-xs"
@@ -1574,53 +1585,195 @@ export default function VenueModularOverviewPage() {
                     </div>
                   </div>
 
-                  {/* Documents Verification Badges */}
+                  {/* Documents Verification Badges - Only Dynamically Uploaded Documents */}
                   <div className="pt-1 space-y-2">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Compliance Documents</span>
 
-                    {/* Aadhaar */}
-                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-xs">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="h-7 w-7 rounded-lg bg-emerald-50 border border-emerald-200/70 flex items-center justify-center shrink-0">
-                          <FileText className="h-3.5 w-3.5 text-emerald-600" />
+                    {/* Aadhaar Card - Dynamically Rendered if Uploaded */}
+                    {currentVenue?.owner?.aadhaar_document_id && (
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-xs">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="h-7 w-7 rounded-lg bg-emerald-50 border border-emerald-200/70 flex items-center justify-center shrink-0">
+                            <FileText className="h-3.5 w-3.5 text-emerald-600" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-slate-900 text-xs truncate">Aadhaar Card</p>
+                            <p className="text-[10px] font-mono text-slate-500 truncate">{currentVenue.owner.aadhaar_document_id}</p>
+                            <p className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
+                              <Check className="h-2.5 w-2.5" /> Uploaded &amp; Verified
+                            </p>
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <p className="font-bold text-slate-900 text-xs truncate">Aadhaar Card</p>
-                          <p className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
-                            <Check className="h-2.5 w-2.5" /> Verified
-                          </p>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setDocumentPreviewModal({
+                              title: 'Aadhaar Card Document',
+                              docId: currentVenue.owner.aadhaar_document_id,
+                              name: `${currentVenue.owner.aadhaar_document_id}.pdf`,
+                              url: onboardingApi.getDocumentUrl(currentVenue.owner.aadhaar_document_id),
+                              isPdf: true,
+                              type: 'aadhaar',
+                              applicantName: ownerFullName,
+                            })
+                          }
+                          className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs shrink-0"
+                        >
+                          <Eye className="h-3 w-3" /> View
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setDocumentPreviewModal({ title: 'Aadhaar Card', name: aadhaarDocName, type: 'aadhaar' })}
-                        className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs shrink-0"
-                      >
-                        <Eye className="h-3 w-3" /> View
-                      </button>
-                    </div>
+                    )}
 
-                    {/* Profile Photo */}
-                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-xs">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="h-7 w-7 rounded-lg bg-blue-50 border border-blue-200/70 flex items-center justify-center shrink-0">
-                          <User className="h-3.5 w-3.5 text-blue-600" />
+                    {/* Profile Photo - Dynamically Rendered if Uploaded */}
+                    {currentVenue?.owner?.profile_photo_document_id && (
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-xs">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="h-7 w-7 rounded-lg bg-blue-50 border border-blue-200/70 flex items-center justify-center shrink-0">
+                            <User className="h-3.5 w-3.5 text-blue-600" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-slate-900 text-xs truncate">Profile Photo ID</p>
+                            <p className="text-[10px] font-mono text-slate-500 truncate">{currentVenue.owner.profile_photo_document_id}</p>
+                            <p className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
+                              <Check className="h-2.5 w-2.5" /> Uploaded &amp; Verified
+                            </p>
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <p className="font-bold text-slate-900 text-xs truncate">Profile Photo ID</p>
-                          <p className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
-                            <Check className="h-2.5 w-2.5" /> Verified
-                          </p>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setDocumentPreviewModal({
+                              title: 'Partner Profile Photograph',
+                              docId: currentVenue.owner.profile_photo_document_id,
+                              name: `${currentVenue.owner.profile_photo_document_id}.png`,
+                              url: onboardingApi.getDocumentUrl(currentVenue.owner.profile_photo_document_id),
+                              isPdf: false,
+                              type: 'profile',
+                              applicantName: ownerFullName,
+                            })
+                          }
+                          className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs shrink-0"
+                        >
+                          <Eye className="h-3 w-3" /> View
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setDocumentPreviewModal({ title: 'Profile Photo ID', name: profilePhotoName, type: 'profile' })}
-                        className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs shrink-0"
-                      >
-                        <Eye className="h-3 w-3" /> View
-                      </button>
-                    </div>
+                    )}
+
+                    {/* PAN Card - Dynamically Rendered if Uploaded */}
+                    {currentVenue?.owner?.pan_document_id && (
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-xs">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="h-7 w-7 rounded-lg bg-amber-50 border border-amber-200/70 flex items-center justify-center shrink-0">
+                            <FileText className="h-3.5 w-3.5 text-amber-600" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-slate-900 text-xs truncate">PAN Card Document</p>
+                            <p className="text-[10px] font-mono text-slate-500 truncate">{currentVenue.owner.pan_document_id}</p>
+                            <p className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
+                              <Check className="h-2.5 w-2.5" /> Uploaded &amp; Verified
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setDocumentPreviewModal({
+                              title: 'PAN Card Document',
+                              docId: currentVenue.owner.pan_document_id,
+                              name: `${currentVenue.owner.pan_document_id}.pdf`,
+                              url: onboardingApi.getDocumentUrl(currentVenue.owner.pan_document_id),
+                              isPdf: true,
+                              type: 'pan',
+                              applicantName: ownerFullName,
+                            })
+                          }
+                          className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs shrink-0"
+                        >
+                          <Eye className="h-3 w-3" /> View
+                        </button>
+                      </div>
+                    )}
+
+                    {/* GST Registration Certificate - Dynamically Rendered if Uploaded */}
+                    {currentVenue?.gst_document_id && (
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-xs">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="h-7 w-7 rounded-lg bg-indigo-50 border border-indigo-200/70 flex items-center justify-center shrink-0">
+                            <FileText className="h-3.5 w-3.5 text-indigo-600" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-slate-900 text-xs truncate">GST Registration Certificate</p>
+                            <p className="text-[10px] font-mono text-slate-500 truncate">{currentVenue.gst_document_id}</p>
+                            <p className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
+                              <Check className="h-2.5 w-2.5" /> Uploaded &amp; Verified
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setDocumentPreviewModal({
+                              title: 'GST Registration Certificate',
+                              docId: currentVenue.gst_document_id,
+                              name: `${currentVenue.gst_document_id}.pdf`,
+                              url: onboardingApi.getDocumentUrl(currentVenue.gst_document_id),
+                              isPdf: true,
+                              type: 'gst',
+                              applicantName: ownerFullName,
+                            })
+                          }
+                          className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs shrink-0"
+                        >
+                          <Eye className="h-3 w-3" /> View
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Bank Proof - Dynamically Rendered if Uploaded */}
+                    {currentVenue?.bank?.branch_proof_document_id && (
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-xs">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="h-7 w-7 rounded-lg bg-teal-50 border border-teal-200/70 flex items-center justify-center shrink-0">
+                            <Landmark className="h-3.5 w-3.5 text-teal-600" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-slate-900 text-xs truncate">Bank Account Proof</p>
+                            <p className="text-[10px] font-mono text-slate-500 truncate">{currentVenue.bank.branch_proof_document_id}</p>
+                            <p className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
+                              <Check className="h-2.5 w-2.5" /> Uploaded &amp; Verified
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setDocumentPreviewModal({
+                              title: 'Bank Account Proof Document',
+                              docId: currentVenue.bank.branch_proof_document_id,
+                              name: `${currentVenue.bank.branch_proof_document_id}.pdf`,
+                              url: onboardingApi.getDocumentUrl(currentVenue.bank.branch_proof_document_id),
+                              isPdf: true,
+                              type: 'bank',
+                              applicantName: ownerFullName,
+                            })
+                          }
+                          className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs shrink-0"
+                        >
+                          <Eye className="h-3 w-3" /> View
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Empty State if No Compliance Documents Uploaded */}
+                    {!currentVenue?.owner?.aadhaar_document_id &&
+                      !currentVenue?.owner?.profile_photo_document_id &&
+                      !currentVenue?.owner?.pan_document_id &&
+                      !currentVenue?.gst_document_id &&
+                      !currentVenue?.bank?.branch_proof_document_id && (
+                        <div className="p-3 text-center text-xs text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                          No compliance documents uploaded for this venue.
+                        </div>
+                      )}
                   </div>
                 </div>
               </div>
@@ -2969,109 +3122,113 @@ export default function VenueModularOverviewPage() {
       )}
 
       {/* ========================================================
-          DOCUMENT PREVIEW MODAL
+          DOCUMENT PREVIEW MODAL - REAL DYNAMIC UPLOADED DOCUMENT
       ======================================================== */}
       {documentPreviewModal && (
         <div
-          className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-150"
           onClick={() => setDocumentPreviewModal(null)}
         >
           <div
-            className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-200 animate-in zoom-in-95 duration-150"
+            className="bg-white rounded-3xl max-w-4xl w-full p-5 sm:p-6 shadow-2xl space-y-4 border border-slate-200 flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-150"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-start justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200/80 flex items-center justify-center">
-                  {documentPreviewModal.type === 'aadhaar' ? (
-                    <FileText className="h-5 w-5" />
-                  ) : documentPreviewModal.type === 'bank' ? (
-                    <Building2 className="h-5 w-5" />
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="h-10 w-10 rounded-xl bg-slate-100 text-slate-700 border border-slate-200 flex items-center justify-center shrink-0">
+                  {documentPreviewModal.isPdf ? (
+                    <FileText className="h-5 w-5 text-emerald-600" />
                   ) : (
-                    <User className="h-5 w-5" />
+                    <ImageIcon className="h-5 w-5 text-blue-600" />
                   )}
                 </div>
-                <div>
-                  <h3 className="font-extrabold text-sm text-slate-900">{documentPreviewModal.title}</h3>
-                  <p className="font-mono text-xs text-slate-500">{documentPreviewModal.name}</p>
+                <div className="min-w-0">
+                  <h3 className="font-extrabold text-sm sm:text-base text-slate-900 truncate">
+                    {documentPreviewModal.title}
+                  </h3>
+                  <p className="font-mono text-xs text-slate-500 truncate">
+                    {documentPreviewModal.docId || documentPreviewModal.name || 'Uploaded Document'}
+                  </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setDocumentPreviewModal(null)}
-                className="h-8 w-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center cursor-pointer transition-colors"
-              >
-                <X className="h-4 w-4" />
-              </button>
+
+              <div className="flex items-center gap-2 shrink-0">
+                {documentPreviewModal.url && (
+                  <a
+                    href={documentPreviewModal.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-colors shadow-2xs"
+                    title="Open original file in new tab"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+                    <span className="hidden sm:inline">Open in New Tab</span>
+                  </a>
+                )}
+                {documentPreviewModal.url && (
+                  <a
+                    href={documentPreviewModal.url}
+                    download={documentPreviewModal.name || `${documentPreviewModal.docId || 'document'}`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#021526] hover:bg-[#06243f] text-white text-xs font-bold transition-colors shadow-xs"
+                    title="Download original file"
+                  >
+                    <Download className="h-3.5 w-3.5 text-[#F94001]" />
+                    <span className="hidden sm:inline">Download</span>
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setDocumentPreviewModal(null)}
+                  className="h-8 w-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center cursor-pointer transition-colors ml-1"
+                  aria-label="Close modal"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
 
-            {/* Document Mock View */}
-            <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 text-center space-y-3">
-              {documentPreviewModal.type === 'aadhaar' ? (
-                <div className="bg-white rounded-xl p-4 border border-dashed border-slate-300 shadow-2xs space-y-2 text-left">
-                  <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
-                    <span>GOVT OF INDIA / UIDAI</span>
-                    <span className="text-emerald-600 font-bold">DIGITALLY VERIFIED ✓</span>
+            {/* Dynamic Document Display - Real Uploaded File */}
+            <div className="flex-1 overflow-hidden bg-slate-100 rounded-2xl border border-slate-200 flex items-center justify-center min-h-[400px] max-h-[70vh]">
+              {documentPreviewModal.url ? (
+                documentPreviewModal.isPdf ? (
+                  <iframe
+                    src={documentPreviewModal.url}
+                    title={documentPreviewModal.title}
+                    className="w-full h-[68vh] bg-white border-0 rounded-2xl"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center p-4 bg-slate-950/95 overflow-auto rounded-2xl">
+                    <img
+                      src={documentPreviewModal.url}
+                      alt={documentPreviewModal.title}
+                      className="max-h-[64vh] max-w-full object-contain rounded-lg shadow-xl"
+                    />
                   </div>
-                  <div className="py-3 text-center">
-                    <p className="font-mono font-black text-slate-800 tracking-wider text-base">•••• •••• 8912</p>
-                    <p className="font-bold text-xs text-slate-700 mt-1">{ownerFullName}</p>
-                  </div>
-                  <div className="text-[9px] text-slate-400 border-t border-slate-100 pt-2 flex justify-between">
-                    <span>PAN: {ownerPan}</span>
-                    <span>DOB: 14/08/1992</span>
-                  </div>
-                </div>
-              ) : documentPreviewModal.type === 'bank' ? (
-                <div className="bg-white rounded-xl p-4 border border-dashed border-slate-300 shadow-2xs space-y-2 text-left">
-                  <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
-                    <span>STATE BANK OF INDIA</span>
-                    <span className="text-emerald-600 font-bold">PENNY DROP VERIFIED ✓</span>
-                  </div>
-                  <div className="py-3 text-center">
-                    <p className="font-mono font-black text-slate-800 tracking-wider text-base">•••• •••• •••• 6914</p>
-                    <p className="font-bold text-xs text-slate-700 mt-1">Dhanush Kumar (TurfTown Arena)</p>
-                  </div>
-                  <div className="text-[9px] text-slate-400 border-t border-slate-100 pt-2 flex justify-between font-mono">
-                    <span>IFSC: SBIN0018111</span>
-                    <span>TYPE: Current Commercial</span>
-                  </div>
-                </div>
+                )
               ) : (
-                <div className="bg-white rounded-xl p-4 border border-dashed border-slate-300 shadow-2xs space-y-2 text-center">
-                  <div className="w-20 h-20 rounded-full bg-slate-100 border-2 border-emerald-500 mx-auto flex items-center justify-center text-slate-400">
-                    <User className="h-10 w-10 text-slate-600" />
-                  </div>
-                  <p className="font-black text-xs text-slate-900">{ownerFullName}</p>
-                  <p className="text-[10px] text-slate-500 font-mono">{ownerPhone}</p>
-                  <span className="inline-block px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold text-[10px] border border-emerald-200">
-                    Facial Biometrics Matched 99.4%
-                  </span>
+                <div className="p-8 text-center space-y-2">
+                  <AlertCircle className="h-8 w-8 text-slate-400 mx-auto" />
+                  <p className="text-xs font-bold text-slate-800">No Document File Available</p>
+                  <p className="text-[11px] text-slate-500">The file has not been uploaded to the vault yet.</p>
                 </div>
               )}
-              <p className="text-[11px] text-slate-500">
-                Encrypted on compliance vault with SHA-256 integrity hash. Verified by Antigravity KYC Agent.
-              </p>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setStatusNotification(`Document "${documentPreviewModal.name}" downloaded`);
-                  setTimeout(() => setStatusNotification(null), 2500);
-                  setDocumentPreviewModal(null);
-                }}
-                className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-colors cursor-pointer"
-              >
-                Download Document
-              </button>
+            {/* Footer */}
+            <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-100">
+              <span className="flex items-center gap-1.5 font-mono">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                <span className="truncate">
+                  Dynamic Onboarding File Vault: {documentPreviewModal.docId || 'Verified Record'}
+                </span>
+              </span>
               <button
                 type="button"
                 onClick={() => setDocumentPreviewModal(null)}
-                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors cursor-pointer"
+                className="px-4 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors cursor-pointer shrink-0"
               >
-                Close
+                Close Preview
               </button>
             </div>
           </div>

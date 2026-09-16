@@ -29,7 +29,7 @@ import {
   Activity,
   AlertTriangle,
 } from 'lucide-react';
-import { CourtExtensionRequest } from '@/lib/mockData';
+import { CourtExtensionRequest, INITIAL_COURT_REQUESTS } from '@/lib/mockData';
 import { adminApi } from '@/lib/api';
 
 const REJECTION_REASONS = [
@@ -53,7 +53,7 @@ const SPORT_ICONS: Record<string, string> = {
 
 export default function CourtRequestsPage() {
   const [mounted, setMounted] = useState(false);
-  const [requests, setRequests] = useState<CourtExtensionRequest[]>([]);
+  const [requests, setRequests] = useState<CourtExtensionRequest[]>(INITIAL_COURT_REQUESTS);
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [selectedState, setSelectedState] = useState<string>('ALL');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('ALL');
@@ -283,6 +283,8 @@ export default function CourtRequestsPage() {
           created_at: r.created_at,
           submitted_at: r.created_at ? r.created_at.split('T')[0] : '2026-03-09',
         }));
+      } else {
+        mapped = [...INITIAL_COURT_REQUESTS];
       }
 
       // Merge local storage court requests (e.g. from venue extension modal)
@@ -714,6 +716,7 @@ export default function CourtRequestsPage() {
           {/* Sports Selector */}
           <div className="relative min-w-[130px]">
             <select
+              suppressHydrationWarning={true}
               value={selectedSport}
               onChange={(e) => setSelectedSport(e.target.value)}
               className="w-full appearance-none pl-8 pr-7 py-2 rounded-xl border border-[#E5E7EB] bg-slate-50 text-xs font-bold text-[#021526] focus:outline-none focus:border-[#F94001] focus:ring-1 focus:ring-[#F94001] transition-colors cursor-pointer"
@@ -731,6 +734,7 @@ export default function CourtRequestsPage() {
           {/* District Selector */}
           <div className="relative min-w-[140px]">
             <select
+              suppressHydrationWarning={true}
               value={selectedDistrict}
               onChange={(e) => setSelectedDistrict(e.target.value)}
               className="w-full appearance-none pl-8 pr-7 py-2 rounded-xl border border-[#E5E7EB] bg-slate-50 text-xs font-bold text-[#021526] focus:outline-none focus:border-[#F94001] focus:ring-1 focus:ring-[#F94001] transition-colors cursor-pointer"

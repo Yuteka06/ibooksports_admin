@@ -41,10 +41,11 @@ import {
   PaymentTransactionItem,
   PaymentStatusType,
   PaymentMethodCategory,
+  INITIAL_PAYMENTS,
 } from '@/lib/mockData';
 
 export default function PaymentManagementPage() {
-  const [payments, setPayments] = useState<PaymentTransactionItem[]>([]);
+  const [payments, setPayments] = useState<PaymentTransactionItem[]>(INITIAL_PAYMENTS);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | PaymentStatusType>('ALL');
   const [methodFilter, setMethodFilter] = useState<'ALL' | string>('ALL');
@@ -464,6 +465,7 @@ export default function PaymentManagementPage() {
           {/* Sport Selector */}
           <div className="relative min-w-[130px]">
             <select
+              suppressHydrationWarning={true}
               value={selectedSport}
               onChange={(e) => setSelectedSport(e.target.value)}
               className="w-full appearance-none pl-8 pr-7 py-2 rounded-xl border border-[#E5E7EB] bg-slate-50 text-xs font-bold text-[#021526] focus:outline-none focus:border-[#F94001] focus:ring-1 focus:ring-[#F94001] transition-colors cursor-pointer"
@@ -481,6 +483,7 @@ export default function PaymentManagementPage() {
           {/* Payment Type Filter: ONLY 'UPI' | 'Card' | 'Net Banking' */}
           <div className="relative min-w-[140px]">
             <select
+              suppressHydrationWarning={true}
               value={methodFilter}
               onChange={(e) => setMethodFilter(e.target.value)}
               className="w-full appearance-none pl-8 pr-7 py-2 rounded-xl border border-[#E5E7EB] bg-slate-50 text-xs font-bold text-[#021526] focus:outline-none focus:border-[#F94001] focus:ring-1 focus:ring-[#F94001] transition-colors cursor-pointer"
