@@ -251,10 +251,10 @@ export default function AdminLoginPage() {
             <Image
               src="/brand/light.svg"
               alt="iBookSports"
-              width={150}
+              width={140}
               height={18}
               priority
-              style={{ width: 'auto', height: 'auto' }}
+              style={{ height: '18px', width: 'auto' }}
               className="h-4.5 w-auto object-contain object-left"
             />
             <span className="text-[10px] text-slate-400 font-mono tracking-wider font-semibold uppercase mt-0.5">

@@ -305,10 +305,10 @@ export default function AdminLayout({
                 <Image
                   src="/brand/light.svg"
                   alt="iBookSports"
-                  width={151}
+                  width={140}
                   height={16}
                   priority
-                  style={{ width: 'auto', height: 'auto' }}
+                  style={{ height: '16px', width: 'auto' }}
                   className="h-4 w-auto object-contain object-left"
                 />
                 <span className="hidden sm:inline text-[10px] text-slate-400 font-medium tracking-wide mt-1">
