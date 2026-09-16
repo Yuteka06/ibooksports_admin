@@ -397,7 +397,7 @@ export default function AdminLoginPage() {
                 <form onSubmit={handleSendOtp} suppressHydrationWarning className="space-y-4">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                      <label htmlFor="admin-phone-input" className="text-xs font-bold uppercase tracking-wider text-slate-300 cursor-pointer">
                         Admin Mobile Number
                       </label>
                       <button
@@ -415,6 +415,9 @@ export default function AdminLoginPage() {
                         <span>+91</span>
                       </div>
                       <input
+                        id="admin-phone-input"
+                        name="admin_mobile_number"
+                        autoComplete="tel"
                         type="tel"
                         maxLength={10}
                         value={phoneNumber}
@@ -454,13 +457,17 @@ export default function AdminLoginPage() {
                 /* STEP 2: 6-DIGIT REAL OTP VERIFICATION (NO SANDBOX BANNER) */
                 <div className="space-y-5">
                   <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-slate-300 block">
+                    <label htmlFor="admin-otp-0" className="text-xs font-bold uppercase tracking-wider text-slate-300 block">
                       Enter 6-Digit SMS Code
                     </label>
                     <div className="flex items-center justify-between gap-2">
                       {otp.map((digit, idx) => (
                         <input
                           key={idx}
+                          id={`admin-otp-${idx}`}
+                          name={`admin_otp_${idx}`}
+                          aria-label={`OTP Digit ${idx + 1}`}
+                          autoComplete={idx === 0 ? 'one-time-code' : 'off'}
                           ref={(el) => {
                             otpInputsRef.current[idx] = el;
                           }}

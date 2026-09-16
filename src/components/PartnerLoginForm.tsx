@@ -234,7 +234,7 @@ export default function PartnerLoginForm() {
           {!otpSent ? (
             <form onSubmit={handleSendOtp} className="space-y-5" suppressHydrationWarning>
               <div className="space-y-2">
-                <label className="text-xs font-bold text-[#021526] flex items-center justify-between">
+                <label htmlFor="partner-phone-input" className="text-xs font-bold text-[#021526] flex items-center justify-between cursor-pointer">
                   <span>Registered Mobile Number</span>
                   <span className="text-[11px] text-[#5F6368] font-normal">India (+91)</span>
                 </label>
@@ -243,6 +243,9 @@ export default function PartnerLoginForm() {
                     +91
                   </div>
                   <input
+                    id="partner-phone-input"
+                    name="partner_mobile_number"
+                    autoComplete="tel"
                     type="tel"
                     required
                     maxLength={10}
@@ -280,7 +283,7 @@ export default function PartnerLoginForm() {
             <form onSubmit={handleVerifyAndLogin} className="space-y-5" suppressHydrationWarning>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-[#021526]">
+                  <label htmlFor="partner-otp-input" className="text-xs font-bold text-[#021526] cursor-pointer">
                     6-Digit Verification Code
                   </label>
                   <button
@@ -297,6 +300,9 @@ export default function PartnerLoginForm() {
                 </div>
                 <div>
                   <input
+                    id="partner-otp-input"
+                    name="partner_otp"
+                    autoComplete="one-time-code"
                     type="text"
                     required
                     maxLength={6}
