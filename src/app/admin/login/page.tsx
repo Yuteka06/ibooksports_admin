@@ -182,8 +182,12 @@ export default function AdminLoginPage() {
         }
         setSuccessMsg('SMS passcode verified! Directing to Super Admin Console...');
         setTimeout(() => {
-          router.push('/admin');
-        }, 600);
+          if (typeof window !== 'undefined') {
+            window.location.href = '/admin';
+          } else {
+            router.push('/admin');
+          }
+        }, 300);
       } else {
         setError(res.data?.message || 'Incorrect SMS OTP code. Please check your phone.');
         setIsLoading(false);
@@ -206,8 +210,12 @@ export default function AdminLoginPage() {
         }
         setSuccessMsg('Passcode verified! Directing to Super Admin Console...');
         setTimeout(() => {
-          router.push('/admin');
-        }, 600);
+          if (typeof window !== 'undefined') {
+            window.location.href = '/admin';
+          } else {
+            router.push('/admin');
+          }
+        }, 300);
         return;
       }
 
