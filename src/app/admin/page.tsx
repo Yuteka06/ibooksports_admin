@@ -464,11 +464,10 @@ export default function AdminDashboardPage() {
                     setHorizon(tab);
                     setHoveredIndex(null);
                   }}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
-                    isActive
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${isActive
                       ? 'bg-white text-[#F94001] shadow-xs border border-slate-200'
                       : 'text-slate-600 hover:text-slate-900'
-                  }`}
+                    }`}
                 >
                   {tab === 'day' && 'Day'}
                   {tab === 'week' && 'Week'}
@@ -942,70 +941,69 @@ export default function AdminDashboardPage() {
                   </tr>
                 ) : (
                   recentBookings.slice(0, 5).map((b) => {
-                  const isPartial = b.payment_status === 'PARTIAL_PAID' || b.booking_code === 'IBS-2603-9002' || b.booking_code === 'IBS-2603-9004';
-                  const cleanPayment = b.payment_method?.toLowerCase().includes('card')
-                    ? 'Card'
-                    : b.payment_method?.toLowerCase().includes('net') || b.payment_method?.toLowerCase().includes('banking')
-                    ? 'Net Banking'
-                    : 'UPI';
+                    const isPartial = b.payment_status === 'PARTIAL_PAID' || b.booking_code === 'IBS-2603-9002' || b.booking_code === 'IBS-2603-9004';
+                    const cleanPayment = b.payment_method?.toLowerCase().includes('card')
+                      ? 'Card'
+                      : b.payment_method?.toLowerCase().includes('net') || b.payment_method?.toLowerCase().includes('banking')
+                        ? 'Net Banking'
+                        : 'UPI';
 
-                  return (
-                    <tr key={b.id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="py-3 pr-3 font-mono font-bold text-[#F94001]">
-                        {b.booking_code}
-                      </td>
-                      <td className="py-3 pr-3">
-                        <p className="font-bold text-slate-900">{b.customer_name}</p>
-                        <p className="text-[11px] text-slate-500 font-mono">{b.customer_phone}</p>
-                      </td>
-                      <td className="py-3 pr-3">
-                        <p className="font-medium text-slate-800 truncate max-w-[170px]">{b.venue_name}</p>
-                        <p className="text-[10px] font-bold text-[#F94001]">{b.sport}</p>
-                      </td>
-                      <td className="py-3 pr-3 font-mono text-[11px] text-slate-600">
-                        {b.booking_date} &bull; {b.time_slot.split(' - ')[0]}
-                      </td>
-                      <td className="py-3 pr-3 font-mono">
-                        {isPartial ? (
-                          <div className="space-y-0.5">
-                            <span className="font-bold text-emerald-700">₹{b.total_amount * 0.5}</span>
-                            <div>
-                              {b.due_mode === 'ONLINE' ? (
-                                <span className="text-[9px] font-bold text-sky-800 bg-sky-50 border border-sky-200 px-1 py-0.2 rounded">
-                                  Due: Online
-                                </span>
-                              ) : (
-                                <span className="text-[9px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-1 py-0.2 rounded">
-                                  Due: Cash
-                                </span>
-                              )}
+                    return (
+                      <tr key={b.id} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="py-3 pr-3 font-mono font-bold text-[#F94001]">
+                          {b.booking_code}
+                        </td>
+                        <td className="py-3 pr-3">
+                          <p className="font-bold text-slate-900">{b.customer_name}</p>
+                          <p className="text-[11px] text-slate-500 font-mono">{b.customer_phone}</p>
+                        </td>
+                        <td className="py-3 pr-3">
+                          <p className="font-medium text-slate-800 truncate max-w-[170px]">{b.venue_name}</p>
+                          <p className="text-[10px] font-bold text-[#F94001]">{b.sport}</p>
+                        </td>
+                        <td className="py-3 pr-3 font-mono text-[11px] text-slate-600">
+                          {b.booking_date} &bull; {b.time_slot.split(' - ')[0]}
+                        </td>
+                        <td className="py-3 pr-3 font-mono">
+                          {isPartial ? (
+                            <div className="space-y-0.5">
+                              <span className="font-bold text-emerald-700">₹{b.total_amount * 0.5}</span>
+                              <div>
+                                {b.due_mode === 'ONLINE' ? (
+                                  <span className="text-[9px] font-bold text-sky-800 bg-sky-50 border border-sky-200 px-1 py-0.2 rounded">
+                                    Due: Online
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-1 py-0.2 rounded">
+                                    Due: Cash
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        ) : (
-                          <span className="font-bold text-emerald-700">₹{b.total_amount} Paid</span>
-                        )}
-                      </td>
-                      <td className="py-3 pr-3 font-bold text-slate-800 text-[11px]">
-                        {cleanPayment}
-                      </td>
-                      <td className="py-3 text-right">
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
-                            b.booking_status === 'COMPLETED'
-                              ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-                              : b.booking_status === 'IN_PLAY'
-                              ? 'bg-blue-50 text-blue-700 border border-blue-200 animate-pulse'
-                              : b.booking_status === 'CONFIRMED'
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : 'bg-rose-50 text-rose-700 border border-rose-200'
-                          }`}
-                        >
-                          {b.booking_status}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                }))}
+                          ) : (
+                            <span className="font-bold text-emerald-700">₹{b.total_amount} Paid</span>
+                          )}
+                        </td>
+                        <td className="py-3 pr-3 font-bold text-slate-800 text-[11px]">
+                          {cleanPayment}
+                        </td>
+                        <td className="py-3 text-right">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${b.booking_status === 'COMPLETED'
+                                ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                                : b.booking_status === 'IN_PLAY'
+                                  ? 'bg-blue-50 text-blue-700 border border-blue-200 animate-pulse'
+                                  : b.booking_status === 'CONFIRMED'
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                    : 'bg-rose-50 text-rose-700 border border-rose-200'
+                              }`}
+                          >
+                            {b.booking_status}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  }))}
               </tbody>
             </table>
           </div>

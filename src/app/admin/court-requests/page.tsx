@@ -469,13 +469,12 @@ export default function CourtRequestsPage() {
       {/* TOAST NOTIFICATION */}
       {toastMessage && (
         <div
-          className={`p-4 rounded-2xl border text-xs font-bold flex items-center justify-between animate-in fade-in ${
-            toastMessage.type === 'success'
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-              : toastMessage.type === 'error'
+          className={`p-4 rounded-2xl border text-xs font-bold flex items-center justify-between animate-in fade-in ${toastMessage.type === 'success'
+            ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+            : toastMessage.type === 'error'
               ? 'bg-rose-50 border-rose-200 text-rose-800'
               : 'bg-blue-50 border-blue-200 text-blue-800'
-          }`}
+            }`}
         >
           <div className="flex items-center gap-2.5">
             {toastMessage.type === 'success' ? (
@@ -615,17 +614,15 @@ export default function CourtRequestsPage() {
           <button
             type="button"
             onClick={() => setSelectedState('ALL')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-              selectedState === 'ALL'
-                ? 'bg-[#021526] text-white shadow-sm'
-                : 'bg-[#F8F9FA] text-[#5F6368] hover:bg-slate-200 border border-[#E5E7EB]'
-            }`}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${selectedState === 'ALL'
+              ? 'bg-[#021526] text-white shadow-sm'
+              : 'bg-[#F8F9FA] text-[#5F6368] hover:bg-slate-200 border border-[#E5E7EB]'
+              }`}
           >
             <span>All States</span>
             <span
-              className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                selectedState === 'ALL' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
-              }`}
+              className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${selectedState === 'ALL' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                }`}
             >
               {requests.length}
             </span>
@@ -636,17 +633,15 @@ export default function CourtRequestsPage() {
               key={st}
               type="button"
               onClick={() => setSelectedState(st)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-                selectedState === st
-                  ? 'bg-[#F94001] text-white shadow-sm shadow-[#F94001]/30'
-                  : 'bg-[#F8F9FA] text-[#5F6368] hover:bg-slate-200 border border-[#E5E7EB]'
-              }`}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${selectedState === st
+                ? 'bg-[#F94001] text-white shadow-sm shadow-[#F94001]/30'
+                : 'bg-[#F8F9FA] text-[#5F6368] hover:bg-slate-200 border border-[#E5E7EB]'
+                }`}
             >
               <span>{st}</span>
               <span
-                className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                  selectedState === st ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
-                }`}
+                className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${selectedState === st ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                  }`}
               >
                 {stateCounts[st]}
               </span>
@@ -671,17 +666,15 @@ export default function CourtRequestsPage() {
                 key={tab.id}
                 type="button"
                 onClick={() => setSelectedStatus(tab.id)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                  isActive
-                    ? 'bg-[#021526] text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${isActive
+                  ? 'bg-[#021526] text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
               >
                 <span>{tab.label}</span>
                 <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded-md font-mono ${
-                    isActive ? 'bg-white/20 text-white' : 'bg-white text-slate-700'
-                  }`}
+                  className={`text-[10px] px-1.5 py-0.2 rounded-md font-mono ${isActive ? 'bg-white/20 text-white' : 'bg-white text-slate-700'
+                    }`}
                 >
                   {tab.count}
                 </span>
@@ -755,22 +748,22 @@ export default function CourtRequestsPage() {
             selectedDistrict !== 'ALL' ||
             selectedSport !== 'ALL' ||
             selectedStatus !== 'ALL') && (
-            <button
-              type="button"
-              onClick={() => {
-                setSearchQuery('');
-                setSelectedState('ALL');
-                setSelectedDistrict('ALL');
-                setSelectedSport('ALL');
-                setSelectedStatus('ALL');
-              }}
-              className="px-3 py-2 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 shrink-0"
-              title="Reset all filters"
-            >
-              <X className="h-3.5 w-3.5" />
-              <span>Reset</span>
-            </button>
-          )}
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  setSelectedState('ALL');
+                  setSelectedDistrict('ALL');
+                  setSelectedSport('ALL');
+                  setSelectedStatus('ALL');
+                }}
+                className="px-3 py-2 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 shrink-0"
+                title="Reset all filters"
+              >
+                <X className="h-3.5 w-3.5" />
+                <span>Reset</span>
+              </button>
+            )}
         </div>
       </div>
 
@@ -1032,13 +1025,12 @@ export default function CourtRequestsPage() {
                     </span>
                   </div>
                   <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                      normStatus(selectedRequestForDrawer.status) === 'APPROVED'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : normStatus(selectedRequestForDrawer.status) === 'REJECTED'
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-black ${normStatus(selectedRequestForDrawer.status) === 'APPROVED'
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : normStatus(selectedRequestForDrawer.status) === 'REJECTED'
                         ? 'bg-rose-100 text-rose-800'
                         : 'bg-amber-100 text-amber-800'
-                    }`}
+                      }`}
                   >
                     {selectedRequestForDrawer.status}
                   </span>

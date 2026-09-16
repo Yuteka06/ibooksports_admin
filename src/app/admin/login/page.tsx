@@ -220,7 +220,7 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#021526] text-white flex flex-col justify-between relative overflow-hidden font-sans select-none">
+    <div suppressHydrationWarning className="min-h-screen w-full bg-[#021526] text-white flex flex-col justify-between relative overflow-hidden font-sans select-none">
       {/* Dynamic Background Ambient Gradients */}
       <div className="absolute top-0 right-1/4 w-[700px] h-[700px] bg-gradient-to-br from-[#F94001]/15 to-transparent rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 left-10 w-[600px] h-[600px] bg-gradient-to-tr from-[#005580]/20 to-transparent rounded-full blur-3xl pointer-events-none" />
@@ -394,7 +394,7 @@ export default function AdminLoginPage() {
 
               {/* STEP 1: MOBILE INPUT FORM */}
               {step === 'MOBILE' ? (
-                <form onSubmit={handleSendOtp} className="space-y-4">
+                <form onSubmit={handleSendOtp} suppressHydrationWarning className="space-y-4">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-bold uppercase tracking-wider text-slate-300">
@@ -402,6 +402,7 @@ export default function AdminLoginPage() {
                       </label>
                       <button
                         type="button"
+                        suppressHydrationWarning
                         onClick={() => setPhoneNumber('6369591821')}
                         className="text-[11px] font-bold text-[#F94001] hover:underline cursor-pointer"
                       >
@@ -417,6 +418,7 @@ export default function AdminLoginPage() {
                         type="tel"
                         maxLength={10}
                         value={phoneNumber}
+                        suppressHydrationWarning
                         onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
                         placeholder="6369591821"
                         required
@@ -432,6 +434,7 @@ export default function AdminLoginPage() {
                   <button
                     type="submit"
                     disabled={isLoading}
+                    suppressHydrationWarning
                     className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-[#F94001] to-[#e03a00] hover:brightness-110 active:scale-[0.99] font-bold text-sm text-white shadow-lg shadow-[#F94001]/30 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50 mt-2"
                   >
                     {isLoading ? (
@@ -465,6 +468,7 @@ export default function AdminLoginPage() {
                           inputMode="numeric"
                           maxLength={1}
                           value={digit}
+                          suppressHydrationWarning
                           onChange={(e) => handleOtpChange(idx, e.target.value)}
                           onKeyDown={(e) => handleKeyDown(idx, e)}
                           onPaste={idx === 0 ? handlePaste : undefined}
@@ -486,6 +490,7 @@ export default function AdminLoginPage() {
                     {canResend ? (
                       <button
                         type="button"
+                        suppressHydrationWarning
                         onClick={() => handleSendOtp()}
                         className="text-[#F94001] hover:underline font-bold transition-colors cursor-pointer"
                       >
@@ -502,6 +507,7 @@ export default function AdminLoginPage() {
                       type="button"
                       onClick={() => verifyCode()}
                       disabled={isLoading || otp.join('').length < 6}
+                      suppressHydrationWarning
                       className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-[#F94001] to-[#e03a00] hover:brightness-110 active:scale-[0.99] font-bold text-sm text-white shadow-lg shadow-[#F94001]/30 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isLoading ? (

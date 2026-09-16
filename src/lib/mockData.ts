@@ -33,7 +33,7 @@ export interface VenueDetail {
       close_time: string;
     }[];
   };
-  
+
   // Staff & Management Contact Details
   staff_name?: string;
   staff_contact?: string;
@@ -218,7 +218,7 @@ export interface PaymentTransactionItem {
   sport?: string;
   customer_name: string;
   customer_phone: string;
-  
+
   // Amounts & Advance Breakdown (iBookSports 50% Advance Policy)
   total_booking_amount: number; // Full booking amount e.g. 2800
   gross_amount: number; // Received payment amount e.g. 1400 (50% advance) or 2800 (100% full)
@@ -226,20 +226,20 @@ export interface PaymentTransactionItem {
   balance_amount: number; // Remaining due amount e.g. 1400 or 0
   advance_percentage?: number; // 50 or 100
   payment_status: PaymentStatusType; // 'FULLY_PAID' | 'ADVANCE_PAID' | 'REFUNDED' | 'FAILED'
-  
+
   // Financial Splits
   gateway_fee: number;
   platform_commission: number;
   tax_gst: number;
   net_venue_payout: number;
-  
+
   // Method & Gateway
   payment_type: PaymentMethodCategory;
   payment_method: string;
   gateway: 'RAZORPAY' | 'PHONEPE' | 'CASHFREE' | 'DIRECT_VENUE';
   status: 'SUCCESS' | 'REFUNDED' | 'FAILED' | 'PROCESSING'; // Gateway status
   timestamp: string;
-  
+
   // Invoice & Payment Link Details
   invoice_number?: string;
   payment_link?: string;
@@ -280,7 +280,7 @@ export interface SettlementBatchItem {
   cycle_year: number; // e.g. 2026
   t_plus_days: number; // 2
   bookings_count: number;
-  
+
   // Amounts
   actual_court_price_total: number; // Total actual court slot price
   gross_booking_amount: number; // Synonym
@@ -290,11 +290,11 @@ export interface SettlementBatchItem {
   platform_fee_gst: number; // 18% GST on platform fee
   tds_deducted: number; // 1% TDS Sec 194O
   net_payable: number; // Final net amount transferred to owner's bank
-  
+
   status: 'SETTLED' | 'PROCESSING' | 'PENDING_APPROVAL';
   utr_number?: string;
   settled_at?: string;
-  
+
   // Itemized bookings in this batch
   itemized_bookings?: SettlementBookingItem[];
 }
@@ -2850,125 +2850,5 @@ export const INITIAL_COURT_REQUESTS: CourtExtensionRequest[] = [
     ],
     created_at: '2026-03-06 14:20:00',
     updated_at: '2026-03-08 11:30:00',
-  },
-  {
-    id: 'CRQ-2603-102',
-    venue_id: 'ven_1002',
-    venue_name: 'Green Field Sports Park',
-    venue_city: 'Kochi, Kerala',
-    owner_name: 'Rahul Varma',
-    owner_phone: '+91 98470 12345',
-    same_physical_sports: true,
-    parent_court_name: 'Main Football Turf',
-    sport: 'Box Cricket',
-    court_name: 'Pitch B (Cricket Box)',
-    display_name: 'Floodlit Box Cricket Pitch 2',
-    min_booking_duration: '1 Hour',
-    price_per_hour: 1200,
-    peak_hours_start: '06:00 PM',
-    peak_hours_end: '10:00 PM',
-    peak_price: 1600,
-    weekend_price: 1800,
-    peak_days: ['Sat', 'Sun'],
-    cancellation_window_hours: 12,
-    refund_percentage: 100,
-    status: 'NEW_REQUEST',
-    submission_count: 1,
-    history: [
-      {
-        round: 1,
-        action: 'NEW_REQUEST',
-        timestamp: '2026-03-09 09:15:00',
-        notes: 'New physical shared pitch request for weekend box cricket.',
-      },
-    ],
-    created_at: '2026-03-09 09:15:00',
-    updated_at: '2026-03-09 09:15:00',
-  },
-  {
-    id: 'CRQ-2603-103',
-    venue_id: 'ven_1003',
-    venue_name: 'Metro Arena',
-    venue_city: 'Bengaluru, Karnataka',
-    owner_name: 'Anand Kumar',
-    owner_phone: '+91 94432 99881',
-    same_physical_sports: false,
-    sport: 'Badminton',
-    court_name: 'Court 3 (BWF Synthetic)',
-    display_name: 'BWF Wooden Floor Court 3',
-    min_booking_duration: '30 Mins',
-    price_per_hour: 700,
-    peak_hours_start: '05:00 PM',
-    peak_hours_end: '09:00 PM',
-    peak_price: 950,
-    weekend_price: 900,
-    peak_days: ['Sat', 'Sun'],
-    cancellation_window_hours: 4,
-    refund_percentage: 75,
-    status: 'REJECTED',
-    submission_count: 1,
-    rejection_reason: 'SURFACE_VERIFICATION_NEEDED',
-    rejection_notes:
-      'BWF mat thickness certification and clear floodlight lux test report missing. Please re-upload verified technical specs.',
-    history: [
-      {
-        round: 1,
-        action: 'SUBMITTED',
-        timestamp: '2026-03-05 16:40:00',
-        notes: 'Indoor badminton expansion.',
-      },
-      {
-        round: 1,
-        action: 'REJECTED',
-        timestamp: '2026-03-06 12:10:00',
-        reviewer: 'Admin Compliance',
-        notes:
-          'BWF mat thickness certification and clear floodlight lux test report missing. Please re-upload verified technical specs.',
-      },
-    ],
-    created_at: '2026-03-05 16:40:00',
-    updated_at: '2026-03-06 12:10:00',
-  },
-  {
-    id: 'CRQ-2603-104',
-    venue_id: 'ven_1001',
-    venue_name: 'skywalk sports',
-    venue_city: 'Coimbatore, Tamil Nadu',
-    owner_name: 'Shruthi jayamadhu',
-    owner_phone: '+91 6369591821',
-    same_physical_sports: false,
-    sport: 'Pickleball',
-    court_name: 'Pickleball Pro Court 1',
-    display_name: 'Tournament Grade Pickleball Court A',
-    min_booking_duration: '1 Hour',
-    price_per_hour: 800,
-    peak_hours_start: '06:00 PM',
-    peak_hours_end: '10:00 PM',
-    peak_price: 1100,
-    weekend_price: 1000,
-    peak_days: ['Sat', 'Sun'],
-    cancellation_window_hours: 12,
-    refund_percentage: 100,
-    status: 'APPROVED',
-    submission_count: 1,
-    reviewed_by: 'Super Admin',
-    reviewed_at: '2026-03-08 10:15:30',
-    history: [
-      {
-        round: 1,
-        action: 'SUBMITTED',
-        timestamp: '2026-03-07 14:00:00',
-        notes: 'Dedicated pickleball court.',
-      },
-      {
-        round: 1,
-        action: 'APPROVED',
-        timestamp: '2026-03-08 10:15:30',
-        reviewer: 'Super Admin',
-        notes: 'Specs verified against tournament standards. Activated.',
-      },
-    ],
-    created_at: '2026-03-07 14:00:00',
-    updated_at: '2026-03-08 10:15:30',
-  },
+  }
 ];
