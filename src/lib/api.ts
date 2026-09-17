@@ -1086,3 +1086,48 @@ export const staffApi = {
   },
 };
 
+export const customerApi = {
+  getCustomers: async (params?: { query?: string; tier?: string; sortBy?: string }) => {
+    const response = await apiClient.get('/customers', { params });
+    return response.data || [];
+  },
+
+  getCustomerStats: async () => {
+    const response = await apiClient.get('/customers/stats/overview');
+    return response.data;
+  },
+
+  getCustomerById: async (id: string) => {
+    const response = await apiClient.get(`/customers/${id}`);
+    return response.data;
+  },
+
+  getAllBookings: async () => {
+    const response = await apiClient.get('/customers/bookings/all');
+    return response.data || [];
+  },
+
+  getAllPayments: async () => {
+    const response = await apiClient.get('/customers/payments/all');
+    return response.data || [];
+  },
+
+  cancelAndRefundBooking: async (bookingId: string, reason?: string) => {
+    const response = await apiClient.post(`/customers/bookings/${bookingId}/cancel-refund`, {
+      reason,
+    });
+    return response.data;
+  },
+
+  createCustomer: async (data: any) => {
+    const response = await apiClient.post('/customers', data);
+    return response.data;
+  },
+
+  updateCustomer: async (id: string, data: any) => {
+    const response = await apiClient.patch(`/customers/${id}`, data);
+    return response.data;
+  },
+};
+
+

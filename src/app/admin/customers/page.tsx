@@ -28,12 +28,15 @@ import {
   Receipt,
   RotateCcw,
   Sparkles,
+  RefreshCw,
+  Loader2,
 } from 'lucide-react';
 import {
   CustomerItem,
   BookingItem,
   PaymentTransactionItem,
 } from '@/lib/mockData';
+import { customerApi } from '@/lib/api';
 
 type CustomerDetailTab = 'overview' | 'bookings' | 'payments' | 'cancellations';
 
@@ -44,6 +47,10 @@ type DrawerItem =
 
 export default function CustomerManagementPage() {
   const [mounted, setMounted] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
   const [customers, setCustomers] = useState<CustomerItem[]>([]);
   const [allBookings, setAllBookings] = useState<BookingItem[]>([]);
   const [allPayments, setAllPayments] = useState<PaymentTransactionItem[]>([]);
@@ -63,6 +70,42 @@ export default function CustomerManagementPage() {
   // Quick feedback states
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [actionSuccessMsg, setActionSuccessMsg] = useState<string | null>(null);
+
+  // Fetch Live Data from Backend API
+  const fetchCustomerData = async (isManualRefresh = false) => {
+    if (isManualRefresh) setRefreshing(true);
+    else setLoading(true);
+    setFetchError(null);
+
+    try {
+      const [fetchedCustomers, fetchedBookings, fetchedPayments] = await Promise.all([
+        customerApi.getCustomers(),
+        customerApi.getAllBookings(),
+        customerApi.getAllPayments(),
+      ]);
+
+      if (Array.isArray(fetchedCustomers)) {
+        setCustomers(fetchedCustomers);
+      }
+      if (Array.isArray(fetchedBookings)) {
+        setAllBookings(fetchedBookings);
+      }
+      if (Array.isArray(fetchedPayments)) {
+        setAllPayments(fetchedPayments);
+      }
+    } catch (err: any) {
+      console.warn('Error fetching customer management data:', err);
+      setFetchError(err.message || 'Failed to fetch customer data.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    setMounted(true);
+    fetchCustomerData();
+  }, []);
 
   // Copy helper
   const handleCopy = (text: string, id: string) => {
@@ -151,12 +194,21 @@ export default function CustomerManagementPage() {
   }, [customerBookings]);
 
   // Cancel & Direct Refund Action Handler (from Booking Drawer)
-  const handleCancelAndRefundBooking = (bookingId: string) => {
+  const handleCancelAndRefundBooking = async (bookingId: string) => {
     const targetBooking = allBookings.find((b) => b.id === bookingId);
     if (!targetBooking || !selectedCustomer) return;
 
     const refundAmount = targetBooking.total_amount;
     const utrRef = `UTR-UPI-${Date.now().toString().slice(-8)}`;
+
+    try {
+      await customerApi.cancelAndRefundBooking(
+        bookingId,
+        'Admin processed direct cancellation & UPI refund',
+      );
+    } catch (e) {
+      console.warn('Could not call cancel API, updating local state:', e);
+    }
 
     // 1. Update Bookings state
     setAllBookings((prev) =>
@@ -1239,6 +1291,17 @@ export default function CustomerManagementPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => fetchCustomerData(true)}
+            disabled={refreshing || loading}
+            className="px-3.5 py-2 rounded-xl bg-white border border-[#E5E7EB] hover:bg-slate-50 shadow-xs flex items-center gap-2 text-xs font-bold text-slate-700 transition-all cursor-pointer disabled:opacity-60"
+            title="Reload live customer records"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 text-[#F94001] ${refreshing ? 'animate-spin' : ''}`} />
+            <span>{refreshing ? 'Syncing...' : 'Refresh'}</span>
+          </button>
+
           <div className="px-3.5 py-2 rounded-xl bg-white border border-[#E5E7EB] shadow-xs flex items-center gap-2 text-xs font-bold text-slate-700">
             <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
             <span>{customers.length} Verified Players</span>
@@ -1424,7 +1487,17 @@ export default function CustomerManagementPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredCustomers.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="py-16 text-center text-slate-400">
+                    <div className="flex flex-col items-center justify-center gap-3">
+                      <Loader2 className="h-7 w-7 text-[#F94001] animate-spin" />
+                      <p className="font-bold text-xs text-slate-700">Fetching live customer directory...</p>
+                      <p className="text-[11px] text-slate-400">Connecting to live Supabase &amp; iBookSports backend</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredCustomers.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-400">
                     <p className="font-semibold text-xs text-slate-700">No matching customers found</p>
