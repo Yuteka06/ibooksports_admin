@@ -76,6 +76,11 @@ export default function AdminLoginPage() {
       });
 
       const liveOtp = res.data?.otp;
+      setVerificationId(res.data?.verification_id || res.data?.reqId || null);
+      setStep('OTP');
+      setTimer(60);
+      setCanResend(false);
+      setOtp(['', '', '', '', '', '']);
       setSuccessMsg(
         liveOtp
           ? `Passcode dispatched via SMS to +91 ${cleanPhone} • Live OTP: ${liveOtp}`
