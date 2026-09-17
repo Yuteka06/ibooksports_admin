@@ -60,9 +60,22 @@ export default function SupportHelpdeskPage() {
   const [newTicketContact, setNewTicketContact] = useState('');
   const [newTicketCategory, setNewTicketCategory] = useState<SupportTicketItem['category']>('PAYMENT');
   const [newTicketPriority, setNewTicketPriority] = useState<SupportTicketItem['priority']>('HIGH');
+  const [newTicketSubject, setNewTicketSubject] = useState('');
+  const [newTicketDescription, setNewTicketDescription] = useState('');
+  const [newTicketBookingId, setNewTicketBookingId] = useState('');
+  const [newTicketAttachmentName, setNewTicketAttachmentName] = useState('');
+  const [raiseError, setRaiseError] = useState<string | null>(null);
+
+  // Toast Notification
+  const [toastMessage, setToastMessage] = useState<{
+    type: 'success' | 'info' | 'error';
+    title: string;
+    description: string;
+  } | null>(null);
 
   // Fetch live venues for filter dropdowns
   useEffect(() => {
+    setMounted(true);
     const fetchVenues = async () => {
       try {
         const res = await apiClient.get<VenueDetail[]>('/venues');
@@ -78,18 +91,6 @@ export default function SupportHelpdeskPage() {
     };
     fetchVenues();
   }, []);
-  const [newTicketSubject, setNewTicketSubject] = useState('');
-  const [newTicketDescription, setNewTicketDescription] = useState('');
-  const [newTicketBookingId, setNewTicketBookingId] = useState('');
-  const [newTicketAttachmentName, setNewTicketAttachmentName] = useState('');
-  const [raiseError, setRaiseError] = useState<string | null>(null);
-
-  // Toast Notification
-  const [toastMessage, setToastMessage] = useState<{
-    type: 'success' | 'info' | 'error';
-    title: string;
-    description: string;
-  } | null>(null);
 
   // Live Backend Sync
   const fetchLiveTickets = async () => {
@@ -453,10 +454,6 @@ export default function SupportHelpdeskPage() {
         );
     }
   };
-
-  // Mounted guard — prevents browser extension hydration mismatch
-  useEffect(() => { setMounted(true); }, []);
-  if (!mounted) return null;
 
   return (
     <div className="space-y-6">

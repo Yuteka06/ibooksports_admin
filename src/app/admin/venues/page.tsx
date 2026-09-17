@@ -243,10 +243,6 @@ export default function VenuesManagementPage() {
 
   const isAnyFilterActive = searchQuery || selectedState !== 'ALL' || selectedStatus !== 'ALL' || selectedSport !== 'ALL';
 
-  // Mounted guard — prevents browser extension hydration mismatch
-  useEffect(() => { setMounted(true); }, []);
-  if (!mounted) return null;
-
   return (
     <div className="animate-in fade-in duration-200 space-y-4 max-w-[1600px] mx-auto">
       {/* 1. MINIMAL HEADER */}

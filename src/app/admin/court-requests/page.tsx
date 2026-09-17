@@ -431,8 +431,6 @@ export default function CourtRequestsPage() {
     setTimeout(() => setToastMessage(null), 4500);
   };
 
-  if (!mounted) return null;
-
   return (
     <div className="animate-in fade-in duration-300 space-y-6">
       {/* 1. PAGE HEADER (MATCHING CUSTOMER MANAGEMENT DESIGN) */}

@@ -277,11 +277,6 @@ export default function CustomerManagementPage() {
   // =========================================================================
   // VIEW 2: CUSTOMER DETAIL PAGE VIEW (MATCHING VENUE MANAGEMENT FULL VIEW)
   // =========================================================================
-
-  // Mounted guard — prevents browser extension hydration mismatch
-  useEffect(() => { setMounted(true); }, []);
-  if (!mounted) return null;
-
   if (selectedCustomer) {
     const formattedId = formatCustomerId(selectedCustomer.id);
     const hoursSpent =
