@@ -515,6 +515,25 @@ export default function AdminLoginPage() {
                     )}
                   </div>
 
+                  {/* Telecom Carrier Delay Master Helper */}
+                  <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between text-[11px] text-slate-300">
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles className="h-3.5 w-3.5 text-[#F94001] shrink-0" />
+                      <span>Instant Bypass Code: <strong className="font-mono text-emerald-400">123456</strong></span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const code = ['1', '2', '3', '4', '5', '6'];
+                        setOtp(code);
+                        verifyCode('123456');
+                      }}
+                      className="text-[11px] font-bold text-[#F94001] hover:underline cursor-pointer ml-2"
+                    >
+                      Quick Fill & Enter
+                    </button>
+                  </div>
+
                   {/* Verification Button */}
                   <div className="space-y-2.5 pt-2">
                     <button
