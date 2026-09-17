@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+  process.env.NEXT_PUBLIC_API_URL ||
+  'https://ibooksports-backend.onrender.com/api/v1';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -182,11 +183,11 @@ export interface PartnerRequestItem {
   bank_details?: BankDetailsItem;
   court_details?: CourtDetailsItem;
   rejection_reason?:
-    | 'SUSPICIOUS'
-    | 'FAKE'
-    | 'INCOMPLETE'
-    | 'NOT_ELIGIBLE'
-    | 'OTHER';
+  | 'SUSPICIOUS'
+  | 'FAKE'
+  | 'INCOMPLETE'
+  | 'NOT_ELIGIBLE'
+  | 'OTHER';
   rejection_note?: string;
   rejected_by_admin_id?: string;
   rejected_at?: string;
@@ -200,12 +201,12 @@ export interface EmailLogItem {
   recipient_name: string;
   subject: string;
   template_type:
-    | 'SUBMITTED'
-    | 'APPROVED'
-    | 'REJECTED'
-    | 'ONBOARDING_SUBMITTED'
-    | 'VENUE_ACTIVATED'
-    | 'ONBOARDING_REJECTED';
+  | 'SUBMITTED'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'ONBOARDING_SUBMITTED'
+  | 'VENUE_ACTIVATED'
+  | 'ONBOARDING_REJECTED';
   html_content: string;
   sent_at: string;
   status: 'SENT' | 'DELIVERED';
