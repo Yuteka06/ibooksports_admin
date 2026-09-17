@@ -75,12 +75,12 @@ export default function AdminLoginPage() {
         mobile_number: cleanPhone,
       });
 
-      setVerificationId(res.data?.verification_id || res.data?.reqId || null);
-      setStep('OTP');
-      setTimer(60);
-      setCanResend(false);
-      setOtp(['', '', '', '', '', '']);
-      setSuccessMsg(`Passcode dispatched to +91 ${cleanPhone} (Or use Master Code: 123456)`);
+      const liveOtp = res.data?.otp;
+      setSuccessMsg(
+        liveOtp
+          ? `Passcode dispatched via SMS to +91 ${cleanPhone} • Live OTP: ${liveOtp}`
+          : `Passcode dispatched via SMS to +91 ${cleanPhone}`
+      );
       setTimeout(() => {
         otpInputsRef.current[0]?.focus();
       }, 100);
