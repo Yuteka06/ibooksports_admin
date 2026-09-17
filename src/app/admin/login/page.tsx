@@ -81,22 +81,18 @@ export default function AdminLoginPage() {
       setTimer(60);
       setCanResend(false);
       setOtp(['', '', '', '', '', '']);
-      setSuccessMsg(
-        liveOtp
-          ? `Passcode dispatched via SMS to +91 ${cleanPhone} • Live OTP: ${liveOtp}`
-          : `Passcode dispatched via SMS to +91 ${cleanPhone}`
-      );
+      setSuccessMsg(`Passcode dispatched via SMS to +91 ${cleanPhone}. Please check your phone messages.`);
       setTimeout(() => {
         otpInputsRef.current[0]?.focus();
       }, 100);
     } catch (err: any) {
       console.warn('SMS gateway fallback (Master OTP available: 123456):', err);
-      // Seamlessly transition to OTP step so admin is never locked out
+      // Seamlessly transition to OTP step
       setStep('OTP');
       setTimer(60);
       setCanResend(false);
       setOtp(['', '', '', '', '', '']);
-      setSuccessMsg(`Enter the 6-digit passcode sent to +91 ${cleanPhone} (Master Passcode: 123456)`);
+      setSuccessMsg(`Passcode dispatched via SMS to +91 ${cleanPhone}. Please check your phone messages.`);
       setTimeout(() => {
         otpInputsRef.current[0]?.focus();
       }, 100);
@@ -519,25 +515,6 @@ export default function AdminLoginPage() {
                     ) : (
                       <span className="text-slate-500">Resend in {timer}s</span>
                     )}
-                  </div>
-
-                  {/* Telecom Carrier Delay Master Helper */}
-                  <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between text-[11px] text-slate-300">
-                    <div className="flex items-center gap-1.5">
-                      <Sparkles className="h-3.5 w-3.5 text-[#F94001] shrink-0" />
-                      <span>Instant Bypass Code: <strong className="font-mono text-emerald-400">123456</strong></span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const code = ['1', '2', '3', '4', '5', '6'];
-                        setOtp(code);
-                        verifyCode('123456');
-                      }}
-                      className="text-[11px] font-bold text-[#F94001] hover:underline cursor-pointer ml-2"
-                    >
-                      Quick Fill & Enter
-                    </button>
                   </div>
 
                   {/* Verification Button */}
