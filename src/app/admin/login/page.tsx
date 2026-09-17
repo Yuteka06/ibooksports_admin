@@ -22,9 +22,8 @@ import {
   CalendarCheck,
   Check,
   Layers,
+  Phone,
 } from 'lucide-react';
-
-import { Phone } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 
 export default function AdminLoginPage() {
