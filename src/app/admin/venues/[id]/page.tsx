@@ -772,48 +772,35 @@ export default function VenueModularOverviewPage() {
         setVenuePhotos(photos);
       }
 
-      // Enhanced Staff matching Screenshot 2 format (clean view-only)
-      const defaultStaff: VenueStaffMember[] = [
-        {
-          id: 'STF-01',
-          name: 'Praveen Raj',
-          mobile_number: '+91 98450 12345',
-          role: 'SUPER_ADMIN',
-          email: 'praveen.raj@ibooksports.com',
-          shift_hours: '06:00 AM - 11:00 PM',
-          status: 'ACTIVE',
-        },
-        {
-          id: 'STF-02',
-          name: currentVenue.staff_name || 'Suresh Kumar',
-          mobile_number: currentVenue.staff_contact || '+91 94432 11220',
-          role: currentVenue.staff_role || 'VENUE_MANAGER',
-          email: 'suresh.kumar@ibooksports.com',
-          shift_hours: '06:00 AM - 02:00 PM',
-          status: 'ACTIVE',
-        },
-        {
-          id: 'STF-03',
-          name: 'Arun Varma',
-          mobile_number: '+91 98450 77123',
-          role: 'DUTY_INCHARGE',
-          email: 'arun.varma@ibooksports.com',
-          shift_hours: '02:00 PM - 11:00 PM',
-          status: 'ACTIVE',
-        },
-        {
-          id: 'STF-04',
-          name: 'Ganesh Moorthy',
-          mobile_number: '+91 99401 55432',
-          role: 'MAINTENANCE_LEAD',
-          email: 'ganesh.m@ibooksports.com',
-          shift_hours: '06:00 AM - 06:00 PM',
-          status: 'INACTIVE',
-        },
-      ];
-      setStaffMembers(defaultStaff);
+      // Live Staff: Map from currentVenue.staff_members or fetch dynamically from backend API
+      if (Array.isArray((currentVenue as any).staff_members) && (currentVenue as any).staff_members.length > 0) {
+        setStaffMembers((currentVenue as any).staff_members);
+      } else {
+        adminApi.getVenueStaff(currentVenue.id).then((liveStaff) => {
+          if (Array.isArray(liveStaff) && liveStaff.length > 0) {
+            setStaffMembers(liveStaff);
+          } else if (currentVenue.staff_name || currentVenue.owner?.full_name) {
+            setStaffMembers([
+              {
+                id: 'STF-01',
+                name: currentVenue.staff_name || currentVenue.owner?.full_name,
+                mobile_number: currentVenue.staff_contact || currentVenue.owner?.phone || '',
+                role: currentVenue.staff_role || 'VENUE_MANAGER',
+                email: currentVenue.owner?.email || currentVenue.email || '',
+                shift_hours: '06:00 AM - 10:00 PM',
+                status: 'ACTIVE',
+              },
+            ]);
+          } else {
+            setStaffMembers([]);
+          }
+        }).catch(() => {
+          setStaffMembers([]);
+        });
+      }
     }
   }, [currentVenue]);
+
 
   // Copy helper
   const handleCopy = (text: string, id: string) => {
@@ -2658,113 +2645,126 @@ export default function VenueModularOverviewPage() {
 
           {/* Minimal View-Only Staff Table */}
           <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-200/90 bg-slate-50/75 text-slate-500 font-semibold tracking-wider text-[10px] uppercase select-none">
-                    <th className="py-3 px-4">Staff ID</th>
-                    <th className="py-3 px-4">Member Name</th>
-                    <th className="py-3 px-4">Designation / Role</th>
-                    <th className="py-3 px-4">Mobile Number</th>
-                    <th className="py-3 px-4">Email Address</th>
-                    <th className="py-3 px-4 text-right">Account Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {staffMembers.map((staff) => {
-                    const isStaffActive = staff.status === 'ACTIVE';
-                    const initials =
-                      staff.name
-                        .split(' ')
-                        .map((n) => n[0])
-                        .join('')
-                        .substring(0, 2)
-                        .toUpperCase() || 'ST';
+            {staffMembers.length === 0 ? (
+              <div className="py-12 px-4 text-center">
+                <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3 text-slate-400">
+                  <Users className="h-6 w-6" />
+                </div>
+                <h3 className="text-xs font-bold text-slate-800">No Ground Staff Registered Yet</h3>
+                <p className="text-[11px] text-slate-400 max-w-sm mx-auto mt-1">
+                  Ground personnel, shift managers, and duty officers added by the venue partner via the mobile or web app will appear here automatically from Supabase.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200/90 bg-slate-50/75 text-slate-500 font-semibold tracking-wider text-[10px] uppercase select-none">
+                      <th className="py-3 px-4">Staff ID</th>
+                      <th className="py-3 px-4">Member Name</th>
+                      <th className="py-3 px-4">Designation / Role</th>
+                      <th className="py-3 px-4">Mobile Number</th>
+                      <th className="py-3 px-4">Email Address</th>
+                      <th className="py-3 px-4 text-right">Account Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {staffMembers.map((staff) => {
+                      const isStaffActive = staff.status === 'ACTIVE';
+                      const initials =
+                        staff.name
+                          .split(' ')
+                          .map((n) => n[0])
+                          .join('')
+                          .substring(0, 2)
+                          .toUpperCase() || 'ST';
 
-                    return (
-                      <tr key={staff.id} className="hover:bg-slate-50/60 transition-colors">
-                        {/* Staff ID */}
-                        <td className="py-3 px-4 whitespace-nowrap">
-                          <span className="px-2 py-1 rounded-md bg-slate-100 font-mono font-bold text-slate-700 text-[11px] border border-slate-200/60">
-                            {staff.id}
-                          </span>
-                        </td>
+                      return (
+                        <tr key={staff.id} className="hover:bg-slate-50/60 transition-colors">
+                          {/* Staff ID */}
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <span className="px-2 py-1 rounded-md bg-slate-100 font-mono font-bold text-slate-700 text-[11px] border border-slate-200/60">
+                              {staff.id}
+                            </span>
+                          </td>
 
-                        {/* Name + Mini Avatar */}
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-xl bg-[#091522] text-white font-black text-xs flex items-center justify-center shrink-0 tracking-tight shadow-2xs">
-                              {initials}
+                          {/* Name + Mini Avatar */}
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-xl bg-[#091522] text-white font-black text-xs flex items-center justify-center shrink-0 tracking-tight shadow-2xs">
+                                {initials}
+                              </div>
+                              <div>
+                                <div className="font-extrabold text-slate-900 text-xs">{staff.name}</div>
+                                {staff.shift_hours && (
+                                  <div className="text-[10px] text-slate-400 font-mono flex items-center gap-1 mt-0.5">
+                                    <Clock className="h-2.5 w-2.5" />
+                                    <span>{staff.shift_hours}</span>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                            <div>
-                              <div className="font-extrabold text-slate-900 text-xs">{staff.name}</div>
-                              {staff.shift_hours && (
-                                <div className="text-[10px] text-slate-400 font-mono flex items-center gap-1 mt-0.5">
-                                  <Clock className="h-2.5 w-2.5" />
-                                  <span>{staff.shift_hours}</span>
-                                </div>
-                              )}
+                          </td>
+
+                          {/* Role */}
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <span className="inline-block px-2.5 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200/70 font-bold text-[10px] tracking-wider uppercase font-mono">
+                              {staff.role}
+                            </span>
+                          </td>
+
+                          {/* Mobile Number */}
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <div className="flex items-center gap-1.5">
+                              <Phone className="h-3.5 w-3.5 text-[#F94001] shrink-0" />
+                              <a
+                                href={`tel:${staff.mobile_number}`}
+                                className="text-slate-800 hover:text-[#F94001] font-semibold text-xs transition-colors font-sans"
+                              >
+                                {staff.mobile_number}
+                              </a>
                             </div>
-                          </div>
-                        </td>
+                          </td>
 
-                        {/* Role */}
-                        <td className="py-3 px-4 whitespace-nowrap">
-                          <span className="inline-block px-2.5 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200/70 font-bold text-[10px] tracking-wider uppercase font-mono">
-                            {staff.role}
-                          </span>
-                        </td>
+                          {/* Email */}
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-1.5">
+                              <Mail className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                              <a
+                                href={`mailto:${staff.email}`}
+                                className="text-slate-600 hover:text-slate-900 font-medium text-xs truncate max-w-[200px] block transition-colors"
+                                title={staff.email}
+                              >
+                                {staff.email}
+                              </a>
+                            </div>
+                          </td>
 
-                        {/* Mobile Number */}
-                        <td className="py-3 px-4 whitespace-nowrap">
-                          <div className="flex items-center gap-1.5">
-                            <Phone className="h-3.5 w-3.5 text-[#F94001] shrink-0" />
-                            <a
-                              href={`tel:${staff.mobile_number}`}
-                              className="text-slate-800 hover:text-[#F94001] font-semibold text-xs transition-colors font-sans"
-                            >
-                              {staff.mobile_number}
-                            </a>
-                          </div>
-                        </td>
-
-                        {/* Email */}
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-1.5">
-                            <Mail className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                            <a
-                              href={`mailto:${staff.email}`}
-                              className="text-slate-600 hover:text-slate-900 font-medium text-xs truncate max-w-[200px] block transition-colors"
-                              title={staff.email}
-                            >
-                              {staff.email}
-                            </a>
-                          </div>
-                        </td>
-
-                        {/* Status Active / Inactive */}
-                        <td className="py-3 px-4 text-right whitespace-nowrap">
-                          <span
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${
-                              isStaffActive
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                : 'bg-slate-100 text-slate-500 border-slate-200'
-                            }`}
-                          >
+                          {/* Status Active / Inactive */}
+                          <td className="py-3 px-4 text-right whitespace-nowrap">
                             <span
-                              className={`h-1.5 w-1.5 rounded-full ${
-                                isStaffActive ? 'bg-emerald-500' : 'bg-slate-400'
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${
+                                isStaffActive
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : 'bg-slate-100 text-slate-500 border-slate-200'
                               }`}
-                            />
-                            <span>{isStaffActive ? 'Active' : 'Inactive'}</span>
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                            >
+                              <span
+                                className={`h-1.5 w-1.5 rounded-full ${
+                                  isStaffActive ? 'bg-emerald-500' : 'bg-slate-400'
+                                }`}
+                              />
+                              <span>{isStaffActive ? 'Active' : 'Inactive'}</span>
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
 
             {/* Table Footer */}
             <div className="p-3 bg-slate-50/60 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400 font-medium">

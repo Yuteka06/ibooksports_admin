@@ -400,6 +400,22 @@ export const adminApi = {
     }
   },
 
+  getVenueById: async (id: string) => {
+    const response = await apiClient.get<any>(`/venues/${id}`);
+    return response.data;
+  },
+
+  getVenueStaff: async (venueId: string) => {
+    try {
+      const response = await apiClient.get<any[]>(`/venues/${venueId}/staff`);
+      return response.data || [];
+    } catch (e) {
+      console.warn('Could not fetch venue staff:', (e as Error).message);
+      return [];
+    }
+  },
+
+
   // Sports & Amenities
   getSports: async () => {
     try {
