@@ -85,7 +85,7 @@ const NAV_SECTIONS: NavSectionConfig[] = [
         label: 'Partner Requests',
         href: '/admin/requests',
         icon: Inbox,
-        badge: '4 New',
+        badge: null,
       },
       {
         label: 'Partner Onboarding',
@@ -97,7 +97,7 @@ const NAV_SECTIONS: NavSectionConfig[] = [
         label: 'Venue Management',
         href: '/admin/venues',
         icon: Building2,
-        badge: '3 Active',
+        badge: null,
       },
       {
         label: 'Court Requests',
@@ -172,9 +172,14 @@ export default function AdminLayout({
   const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const notifDropdownRef = useRef<HTMLDivElement>(null);
 
+  const [mounted, setMounted] = useState(false);
   const [submittedCount, setSubmittedCount] = useState<number | null>(null);
   const [courtRequestsCount, setCourtRequestsCount] = useState<number | null>(null);
   const [activeVenuesCount, setActiveVenuesCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Fetch real-time count & live notifications from backend
   useEffect(() => {
@@ -266,6 +271,9 @@ export default function AdminLayout({
   }, [pathname]);
 
   const getBadgeText = (item: NavItemConfig) => {
+    if (!mounted) {
+      return item.badge || null;
+    }
     if (item.href === '/admin/requests') {
       if (submittedCount !== null && submittedCount > 0) {
         return `${submittedCount} NEW`;
@@ -284,7 +292,7 @@ export default function AdminLayout({
       }
       return '3 ACTIVE';
     }
-    return item.badge;
+    return item.badge || null;
   };
 
   // Close notifications on outside click
@@ -587,6 +595,7 @@ export default function AdminLayout({
 
                       {getBadgeText(item) && (
                         <span
+                          suppressHydrationWarning
                           className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider font-mono ${
                             isActive
                               ? 'bg-[#F94001] text-white'
@@ -680,7 +689,7 @@ export default function AdminLayout({
                               <span>{item.label}</span>
                             </div>
                             {getBadgeText(item) && (
-                              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#F94001] text-white font-bold">
+                              <span suppressHydrationWarning className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#F94001] text-white font-bold">
                                 {getBadgeText(item)}
                               </span>
                             )}
