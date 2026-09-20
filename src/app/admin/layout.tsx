@@ -201,7 +201,7 @@ export default function AdminLayout({
             setSubmittedCount(submitted.length);
 
             // Add real partner requests to notifications
-            allRequests.slice(0, 8).forEach((r) => {
+            allRequests.slice(0, 8).forEach((r: any) => {
               const name = r.partner_details?.name || r.owner_details?.name || r.business_details?.venue_name || 'New Partner';
               const district = r.business_details?.district || r.business_details?.venue_city || 'Coimbatore';
               const isNew = (r.request_status || r.status || '').toUpperCase() === 'SUBMITTED';
@@ -227,7 +227,7 @@ export default function AdminLayout({
             setCourtRequestsCount(pendingCourtsList.length > 0 ? pendingCourtsList.length : 1);
 
             // Add real court requests to notifications
-            courtRequests.slice(0, 6).forEach((cr) => {
+            courtRequests.slice(0, 6).forEach((cr: any) => {
               const isPending = (cr.status || cr.request_status || '').toUpperCase() === 'PENDING' || (cr.status || cr.request_status || '').toUpperCase() === 'NEW_REQUEST';
               liveNotifs.push({
                 id: `court_${cr.id}`,
