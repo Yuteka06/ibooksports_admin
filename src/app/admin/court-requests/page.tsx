@@ -65,6 +65,10 @@ export default function CourtRequestsPage() {
   const [selectedRequestForDrawer, setSelectedRequestForDrawer] =
     useState<CourtExtensionRequest | null>(null);
 
+  // Approve Confirmation Modal State
+  const [pendingApprovalRequest, setPendingApprovalRequest] =
+    useState<CourtExtensionRequest | null>(null);
+
   // Reject Form inside Drawer
   const [isRejectOpen, setIsRejectOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('PRICING_OUT_OF_BOUNDS');
@@ -929,13 +933,23 @@ export default function CourtRequestsPage() {
                       {/* 7. ACTIONS (QUICK APPROVE, REJECT & DETAILS) */}
                       <td className="py-3.5 px-4 align-middle text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1.5">
-                          {status !== 'APPROVED' && status !== 'REJECTED' && (
+                          {status === 'APPROVED' ? (
+                            <span className="h-7 px-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-[11px] inline-flex items-center gap-1 opacity-80 cursor-default">
+                              <Check className="h-3 w-3 text-emerald-600" />
+                              <span>Approved</span>
+                            </span>
+                          ) : status === 'REJECTED' ? (
+                            <span className="h-7 px-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 font-bold text-[11px] inline-flex items-center gap-1 opacity-80 cursor-default">
+                              <X className="h-3 w-3 text-rose-600" />
+                              <span>Declined</span>
+                            </span>
+                          ) : (
                             <>
                               <button
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleApprove(req);
+                                  setPendingApprovalRequest(req);
                                 }}
                                 title="Quick Approve"
                                 className="h-7 w-7 rounded-lg bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white flex items-center justify-center transition-colors cursor-pointer border border-emerald-200 shadow-2xs"
@@ -984,7 +998,7 @@ export default function CourtRequestsPage() {
           (Strictly NO amenities and NO operating hours)
           ========================================================================= */}
       {selectedRequestForDrawer && (
-        <div className="fixed inset-0 z-50 overflow-hidden bg-slate-900/60 backdrop-blur-xs flex justify-end animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 overflow-hidden bg-[#021526]/75 backdrop-blur-md flex justify-end animate-in fade-in duration-300">
           <div className="w-full max-w-2xl bg-white shadow-2xl h-full flex flex-col overflow-hidden animate-in slide-in-from-right duration-300 border-l border-[#E5E7EB]">
             {/* Header */}
             <div className="p-5 bg-white border-b border-[#E5E7EB] flex items-start justify-between gap-3 shrink-0">
@@ -1092,11 +1106,15 @@ export default function CourtRequestsPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-slate-100 text-[#021526] font-black text-sm flex items-center justify-center border border-slate-200 shrink-0">
-                    {selectedRequestForDrawer.owner_name.slice(0, 2).toUpperCase()}
+                  <div className="h-10 w-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-xs text-slate-700">
+                    {selectedRequestForDrawer.owner_name
+                      .split(' ')
+                      .map((n) => n[0])
+                      .join('')
+                      .slice(0, 2)}
                   </div>
-                  <div className="space-y-0.5">
-                    <p className="font-bold text-slate-900 text-sm">
+                  <div>
+                    <p className="font-bold text-slate-900 text-xs">
                       {selectedRequestForDrawer.owner_name}
                     </p>
                     <div className="flex items-center gap-2.5 text-xs text-slate-500">
@@ -1260,7 +1278,7 @@ export default function CourtRequestsPage() {
                     <button
                       type="button"
                       onClick={() => setIsRejectOpen(false)}
-                      className="text-rose-400 hover:text-rose-700 text-xs font-bold"
+                      className="text-rose-400 hover:text-rose-700 text-xs font-bold cursor-pointer"
                     >
                       Cancel
                     </button>
@@ -1318,27 +1336,131 @@ export default function CourtRequestsPage() {
               </button>
 
               <div className="flex items-center gap-2">
-                {normStatus(selectedRequestForDrawer.status) !== 'REJECTED' && (
-                  <button
-                    type="button"
-                    onClick={() => setIsRejectOpen(true)}
-                    className="px-4 py-2 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 text-rose-700 font-bold text-xs transition-colors cursor-pointer"
-                  >
-                    Reject
-                  </button>
-                )}
-
-                {normStatus(selectedRequestForDrawer.status) !== 'APPROVED' && (
-                  <button
-                    type="button"
-                    onClick={() => handleApprove(selectedRequestForDrawer)}
-                    className="px-5 py-2 rounded-xl bg-[#00875A] hover:bg-[#007048] text-white font-bold text-xs shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
-                  >
-                    <Check className="h-4 w-4" />
-                    <span>Approve &amp; Activate</span>
-                  </button>
+                {normStatus(selectedRequestForDrawer.status) === 'APPROVED' ? (
+                  <>
+                    <button
+                      type="button"
+                      disabled
+                      className="px-4 py-2 rounded-xl border border-slate-200 bg-slate-100 text-slate-400 font-bold text-xs opacity-50 cursor-not-allowed"
+                    >
+                      Reject
+                    </button>
+                    <button
+                      type="button"
+                      disabled
+                      className="px-5 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-xs opacity-80 cursor-not-allowed flex items-center gap-1.5"
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                      <span>Approved &amp; Live</span>
+                    </button>
+                  </>
+                ) : normStatus(selectedRequestForDrawer.status) === 'REJECTED' ? (
+                  <>
+                    <button
+                      type="button"
+                      disabled
+                      className="px-4 py-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 font-bold text-xs opacity-80 cursor-not-allowed flex items-center gap-1.5"
+                    >
+                      <XCircle className="h-4 w-4" />
+                      <span>Declined</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled
+                      className="px-5 py-2 rounded-xl border border-slate-200 bg-slate-100 text-slate-400 font-bold text-xs opacity-50 cursor-not-allowed flex items-center gap-1.5"
+                    >
+                      <Check className="h-4 w-4" />
+                      <span>Approve &amp; Activate</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setIsRejectOpen(true)}
+                      className="px-4 py-2 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 text-rose-700 font-bold text-xs transition-colors cursor-pointer"
+                    >
+                      Reject
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPendingApprovalRequest(selectedRequestForDrawer)}
+                      className="px-5 py-2 rounded-xl bg-[#00875A] hover:bg-[#007048] text-white font-bold text-xs shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Check className="h-4 w-4" />
+                      <span>Approve &amp; Activate</span>
+                    </button>
+                  </>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          7. APPROVE CONFIRMATION MODAL POPUP
+          ========================================================================= */}
+      {pendingApprovalRequest && (
+        <div className="fixed inset-0 z-60 bg-[#021526]/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl border border-[#CBD5E1] max-w-md w-full p-6 space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
+              <div className="h-10 w-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-base text-[#021526]">
+                  Confirm Court Approval
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Authorize court creation and activate live slot bookings.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs space-y-2">
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Court Name:</span>
+                <span className="font-bold text-slate-900">{pendingApprovalRequest.court_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Facility / Venue:</span>
+                <span className="font-bold text-slate-900">{pendingApprovalRequest.venue_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Sport:</span>
+                <span className="font-bold text-slate-900">{pendingApprovalRequest.sport}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Hourly Base Rate:</span>
+                <span className="font-bold text-emerald-700 font-mono">₹{pendingApprovalRequest.price_per_hour}/hr</span>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Upon approval, a unique Court ID will be created and synchronized across the Partner App, Vendor Dashboard, and Supabase database.
+            </p>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setPendingApprovalRequest(null)}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const req = pendingApprovalRequest;
+                  setPendingApprovalRequest(null);
+                  handleApprove(req);
+                }}
+                className="px-5 py-2.5 rounded-xl bg-[#00875A] hover:bg-[#007048] text-white font-bold text-xs shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <Check className="h-4 w-4" />
+                <span>Yes, Approve &amp; Activate</span>
+              </button>
             </div>
           </div>
         </div>

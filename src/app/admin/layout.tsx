@@ -42,44 +42,22 @@ interface AdminNotification {
   badge: string;
 }
 
-const DEFAULT_NOTIFICATIONS: AdminNotification[] = [
-  {
-    id: 'notif_1',
-    title: 'New Partner Registration Request',
-    description: 'Champion Badminton Club submitted a partner request for 4 courts in Coimbatore.',
-    time: '5m ago',
-    read: false,
-    link: '/admin/requests',
-    badge: 'New Request',
-  },
-  {
-    id: 'notif_2',
-    title: 'New Venue Partnership Inquiry',
-    description: 'Sky Sports Arena submitted a turf partnership inquiry for football & cricket grounds.',
-    time: '18m ago',
-    read: false,
-    link: '/admin/requests',
-    badge: 'New Request',
-  },
-  {
-    id: 'notif_3',
-    title: 'Dual-Sport Turf Partnership',
-    description: 'Velocity Sports Complex requested priority vendor onboarding callback.',
-    time: '1h ago',
-    read: false,
-    link: '/admin/requests',
-    badge: 'Pending Review',
-  },
-  {
-    id: 'notif_4',
-    title: 'Urgent Turf Partnership Inquiry',
-    description: 'Apex Football Turf submitted a partner inquiry for 2 box turfs in Chennai.',
-    time: '2h ago',
-    read: true,
-    link: '/admin/requests',
-    badge: 'Reviewed',
-  },
-];
+function getRelativeTime(timestamp?: string | Date): string {
+  if (!timestamp) return 'Just now';
+  try {
+    const diffMs = Date.now() - new Date(timestamp).getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return new Date(timestamp).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+  } catch {
+    return 'Recently';
+  }
+}
 
 export interface NavItemConfig {
   label: string;
@@ -191,36 +169,77 @@ export default function AdminLayout({
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [notifications, setNotifications] = useState<AdminNotification[]>(DEFAULT_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const notifDropdownRef = useRef<HTMLDivElement>(null);
 
   const [submittedCount, setSubmittedCount] = useState<number | null>(null);
   const [courtRequestsCount, setCourtRequestsCount] = useState<number | null>(null);
 
-  // Fetch real-time count of SUBMITTED requests and PENDING court requests from backend
+  // Fetch real-time count & live notifications from backend
   useEffect(() => {
     let isMounted = true;
-    async function loadCounts() {
+    async function loadLiveNotifications() {
       try {
-        const [submittedRequests, courtRequests] = await Promise.all([
-          adminApi.getRequests('SUBMITTED').catch(() => null),
-          adminApi.getCourtRequests('PENDING').catch(() => null),
+        const [allRequests, courtRequests] = await Promise.all([
+          adminApi.getRequests().catch(() => []),
+          adminApi.getCourtRequests().catch(() => []),
         ]);
+
         if (isMounted) {
-          if (Array.isArray(submittedRequests)) {
-            setSubmittedCount(submittedRequests.length);
+          const liveNotifs: AdminNotification[] = [];
+
+          if (Array.isArray(allRequests)) {
+            const submitted = allRequests.filter((r) => r.request_status === 'SUBMITTED' || r.status === 'SUBMITTED');
+            setSubmittedCount(submitted.length);
+
+            // Add real partner requests to notifications
+            allRequests.slice(0, 8).forEach((r) => {
+              const name = r.partner_details?.name || r.owner_details?.name || r.business_details?.venue_name || 'New Partner';
+              const district = r.business_details?.district || r.business_details?.venue_city || 'Coimbatore';
+              const isNew = r.request_status === 'SUBMITTED' || r.status === 'SUBMITTED';
+
+              liveNotifs.push({
+                id: `lead_${r.id || r.request_id}`,
+                title: isNew ? 'New Partner Registration Request' : `Partner Request (${r.request_status || r.status || 'Received'})`,
+                description: `${name} submitted a partner registration inquiry for ${district}.`,
+                time: getRelativeTime(r.created_at || r.submitted_at),
+                read: !isNew,
+                link: '/admin/requests',
+                badge: isNew ? 'New Request' : (r.request_status || 'Reviewed'),
+              });
+            });
           }
+
           if (Array.isArray(courtRequests)) {
-            setCourtRequestsCount(courtRequests.length);
+            const pendingCourts = courtRequests.filter((c) => c.status === 'PENDING' || c.status === 'NEW_REQUEST');
+            setCourtRequestsCount(pendingCourts.length);
+
+            // Add real court requests to notifications
+            courtRequests.slice(0, 6).forEach((cr) => {
+              const isPending = cr.status === 'PENDING' || cr.status === 'NEW_REQUEST';
+              liveNotifs.push({
+                id: `court_${cr.id}`,
+                title: 'New Court Addition Request',
+                description: `${cr.court_name || 'New Court'} at ${cr.venue_name || 'Sports Venue'} submitted for review.`,
+                time: getRelativeTime(cr.submitted_at || cr.created_at),
+                read: !isPending,
+                link: '/admin/court-requests',
+                badge: isPending ? 'Court Request' : (cr.status || 'Active'),
+              });
+            });
+          }
+
+          if (liveNotifs.length > 0) {
+            setNotifications(liveNotifs);
           }
         }
       } catch {
-        // Silently retain current count during transient server reloads
+        // Silently retain current notifications during transient network lag
       }
     }
 
-    loadCounts();
-    const interval = setInterval(loadCounts, 30000);
+    loadLiveNotifications();
+    const interval = setInterval(loadLiveNotifications, 30000);
     return () => {
       isMounted = false;
       clearInterval(interval);

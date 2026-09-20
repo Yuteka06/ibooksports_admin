@@ -1011,7 +1011,7 @@ export default function PartnerRequestsPage() {
                       {/* 7. ACTIONS (QUICK APPROVE, REJECT & DETAILS BUTTON) */}
                       <td className="py-3.5 px-4 align-middle text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1.5">
-                          {req.request_status === 'SUBMITTED' && (
+                          {req.request_status === 'SUBMITTED' ? (
                             <>
                               <button
                                 type="button"
@@ -1036,6 +1036,24 @@ export default function PartnerRequestsPage() {
                                 <X className="h-3.5 w-3.5" />
                               </button>
                             </>
+                          ) : req.request_status === 'APPROVED' ? (
+                            <button
+                              type="button"
+                              disabled
+                              title="Already Approved"
+                              className="h-7 w-7 rounded-lg bg-slate-100 text-slate-300 flex items-center justify-center border border-slate-200 cursor-not-allowed opacity-60"
+                            >
+                              <Check className="h-3.5 w-3.5" />
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled
+                              title="Already Rejected"
+                              className="h-7 w-7 rounded-lg bg-slate-100 text-slate-300 flex items-center justify-center border border-slate-200 cursor-not-allowed opacity-60"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
                           )}
 
                           <button
@@ -1068,7 +1086,7 @@ export default function PartnerRequestsPage() {
         <div className="fixed inset-0 z-[9999] top-0 left-0 right-0 bottom-0 w-screen h-screen overflow-hidden">
           {/* Backdrop */}
           <div
-            className="absolute inset-0 bg-slate-950/75 backdrop-blur-sm transition-opacity animate-in fade-in"
+            className="absolute inset-0 bg-[#021526]/75 backdrop-blur-md transition-opacity animate-in fade-in"
             onClick={() => setActiveRequest(null)}
           />
 
@@ -1602,7 +1620,7 @@ export default function PartnerRequestsPage() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="approve-modal-title"
-          className="fixed inset-0 z-[10000] top-0 left-0 right-0 bottom-0 w-screen h-screen bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
+          className="fixed inset-0 z-[10000] top-0 left-0 right-0 bottom-0 w-screen h-screen bg-[#021526]/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-150"
         >
           <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 border border-[#E5E7EB]">
             <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-3">
