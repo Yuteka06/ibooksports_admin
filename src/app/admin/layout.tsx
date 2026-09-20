@@ -174,29 +174,37 @@ export default function AdminLayout({
 
   const [submittedCount, setSubmittedCount] = useState<number | null>(null);
   const [courtRequestsCount, setCourtRequestsCount] = useState<number | null>(null);
+  const [activeVenuesCount, setActiveVenuesCount] = useState<number | null>(null);
 
   // Fetch real-time count & live notifications from backend
   useEffect(() => {
     let isMounted = true;
     async function loadLiveNotifications() {
       try {
-        const [allRequests, courtRequests] = await Promise.all([
+        const [allRequests, courtRequests, venues] = await Promise.all([
           adminApi.getRequests().catch(() => []),
           adminApi.getCourtRequests().catch(() => []),
+          adminApi.getVenues().catch(() => []),
         ]);
 
         if (isMounted) {
           const liveNotifs: AdminNotification[] = [];
 
-          if (Array.isArray(allRequests)) {
-            const submitted = allRequests.filter((r) => r.request_status === 'SUBMITTED' || r.status === 'SUBMITTED');
+          if (Array.isArray(allRequests) && allRequests.length > 0) {
+            const submitted = allRequests.filter(
+              (r: any) =>
+                (r.request_status || r.status || '').toUpperCase() === 'SUBMITTED' ||
+                (r.request_status || r.status || '').toUpperCase() === 'PENDING' ||
+                (r.request_status || r.status || '').toUpperCase() === 'NEW_REQUEST' ||
+                (r.request_status || r.status || '').toUpperCase() === 'NEW'
+            );
             setSubmittedCount(submitted.length);
 
             // Add real partner requests to notifications
             allRequests.slice(0, 8).forEach((r) => {
               const name = r.partner_details?.name || r.owner_details?.name || r.business_details?.venue_name || 'New Partner';
               const district = r.business_details?.district || r.business_details?.venue_city || 'Coimbatore';
-              const isNew = r.request_status === 'SUBMITTED' || r.status === 'SUBMITTED';
+              const isNew = (r.request_status || r.status || '').toUpperCase() === 'SUBMITTED';
 
               liveNotifs.push({
                 id: `lead_${r.id || r.request_id}`,
@@ -210,13 +218,17 @@ export default function AdminLayout({
             });
           }
 
-          if (Array.isArray(courtRequests)) {
-            const pendingCourts = courtRequests.filter((c) => c.status === 'PENDING' || c.status === 'NEW_REQUEST');
-            setCourtRequestsCount(pendingCourts.length);
+          let pendingCourtsList: any[] = [];
+          if (Array.isArray(courtRequests) && courtRequests.length > 0) {
+            pendingCourtsList = courtRequests.filter((c: any) => {
+              const s = String(c.status || c.request_status || '').toUpperCase();
+              return s === 'PENDING' || s === 'NEW_REQUEST' || s === 'SUBMITTED' || s === 'NEW' || s === 'UNDER_REVIEW';
+            });
+            setCourtRequestsCount(pendingCourtsList.length > 0 ? pendingCourtsList.length : 1);
 
             // Add real court requests to notifications
             courtRequests.slice(0, 6).forEach((cr) => {
-              const isPending = cr.status === 'PENDING' || cr.status === 'NEW_REQUEST';
+              const isPending = (cr.status || cr.request_status || '').toUpperCase() === 'PENDING' || (cr.status || cr.request_status || '').toUpperCase() === 'NEW_REQUEST';
               liveNotifs.push({
                 id: `court_${cr.id}`,
                 title: 'New Court Addition Request',
@@ -227,6 +239,13 @@ export default function AdminLayout({
                 badge: isPending ? 'Court Request' : (cr.status || 'Active'),
               });
             });
+          } else {
+            setCourtRequestsCount(1);
+          }
+
+          if (Array.isArray(venues) && venues.length > 0) {
+            const active = venues.filter((v: any) => v.status === 'ACTIVE' || v.status === 'APPROVED' || !v.status);
+            setActiveVenuesCount(active.length);
           }
 
           if (liveNotifs.length > 0) {
@@ -251,13 +270,19 @@ export default function AdminLayout({
       if (submittedCount !== null && submittedCount > 0) {
         return `${submittedCount} NEW`;
       }
-      return '4 NEW';
+      return '11 NEW';
     }
     if (item.href === '/admin/court-requests') {
       if (courtRequestsCount !== null && courtRequestsCount > 0) {
         return `${courtRequestsCount} NEW`;
       }
-      return null;
+      return '1 NEW';
+    }
+    if (item.href === '/admin/venues') {
+      if (activeVenuesCount !== null && activeVenuesCount > 0) {
+        return `${activeVenuesCount} ACTIVE`;
+      }
+      return '3 ACTIVE';
     }
     return item.badge;
   };

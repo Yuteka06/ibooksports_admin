@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Search,
   CheckCircle2,
@@ -29,7 +30,7 @@ import {
   Activity,
   AlertTriangle,
 } from 'lucide-react';
-import { CourtExtensionRequest } from '@/lib/mockData';
+import { CourtExtensionRequest, INITIAL_COURT_REQUESTS } from '@/lib/mockData';
 import { adminApi } from '@/lib/api';
 
 const REJECTION_REASONS = [
@@ -997,9 +998,15 @@ export default function CourtRequestsPage() {
           6. SLIDE BAR DRAWER: Complete Partner Court Request Dossier
           (Strictly NO amenities and NO operating hours)
           ========================================================================= */}
-      {selectedRequestForDrawer && (
-        <div className="fixed inset-0 z-50 overflow-hidden bg-[#021526]/75 backdrop-blur-md flex justify-end animate-in fade-in duration-300">
-          <div className="w-full max-w-2xl bg-white shadow-2xl h-full flex flex-col overflow-hidden animate-in slide-in-from-right duration-300 border-l border-[#E5E7EB]">
+      {mounted && selectedRequestForDrawer && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[9999] top-0 left-0 right-0 bottom-0 w-screen h-screen overflow-hidden flex justify-end">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-[#021526]/75 backdrop-blur-md transition-opacity animate-in fade-in duration-300"
+            onClick={() => setSelectedRequestForDrawer(null)}
+          />
+
+          <div className="relative w-full max-w-2xl bg-white shadow-2xl h-full flex flex-col overflow-hidden animate-in slide-in-from-right duration-300 border-l border-[#E5E7EB] z-10">
             {/* Header */}
             <div className="p-5 bg-white border-b border-[#E5E7EB] flex items-start justify-between gap-3 shrink-0">
               <div className="space-y-1">
@@ -1393,16 +1400,212 @@ export default function CourtRequestsPage() {
                   </>
                 )}
               </div>
+                  </div>
+                  <span className="text-[10px] font-mono text-emerald-700 font-bold">
+                    Direct Gateway Standard
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 text-xs">
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">
+                      Base Hourly Rate
+                    </span>
+                    <p className="font-mono font-black text-sm text-[#021526] mt-0.5">
+                      ₹{selectedRequestForDrawer.price_per_hour}/hr
+                    </p>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-amber-50/50 border border-amber-200/60">
+                    <span className="text-[10px] font-bold text-amber-700 uppercase">
+                      Peak Hours Rate
+                    </span>
+                    <p className="font-mono font-black text-sm text-amber-900 mt-0.5">
+                      ₹{selectedRequestForDrawer.peak_price}/hr
+                    </p>
+                    <p className="text-[9px] font-mono text-amber-600 mt-0.5">
+                      {selectedRequestForDrawer.peak_hours_start} -{' '}
+                      {selectedRequestForDrawer.peak_hours_end}
+                    </p>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-purple-50/50 border border-purple-200/60">
+                    <span className="text-[10px] font-bold text-purple-700 uppercase">
+                      Weekend Rate
+                    </span>
+                    <p className="font-mono font-black text-sm text-purple-900 mt-0.5">
+                      ₹{selectedRequestForDrawer.weekend_price}/hr
+                    </p>
+                    <p className="text-[9px] font-mono text-purple-600 mt-0.5">Fri, Sat, Sun</p>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">
+                    Cancellation &amp; Refund Rules
+                  </span>
+                  <p className="text-slate-700 font-medium">
+                    Free cancellation allowed up to{' '}
+                    <span className="font-bold text-[#021526]">
+                      {selectedRequestForDrawer.cancellation_window_hours} hours
+                    </span>{' '}
+                    before slot commencement with{' '}
+                    <span className="font-bold text-emerald-700">
+                      {selectedRequestForDrawer.refund_percentage}% refund
+                    </span>
+                    .
+                  </p>
+                </div>
+              </div>
+
+              {/* CARD 5: REJECTION REASON / INLINE REJECT FORM */}
+              {selectedRequestForDrawer.rejection_notes && !isRejectOpen && (
+                <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 space-y-1 text-xs">
+                  <span className="text-[10px] font-bold uppercase text-rose-700 tracking-wider">
+                    Previous Rejection Audit Reason
+                  </span>
+                  <p className="text-rose-900 font-medium">
+                    {selectedRequestForDrawer.rejection_notes}
+                  </p>
+                </div>
+              )}
+
+              {/* Inline Reject Form */}
+              {isRejectOpen && (
+                <div className="p-4 rounded-2xl bg-rose-50/80 border border-rose-200 space-y-3 text-xs animate-in fade-in">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black uppercase text-rose-800 tracking-wider">
+                      Specify Rejection Reason
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsRejectOpen(false)}
+                      className="text-rose-400 hover:text-rose-700 text-xs font-bold cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
+                      Reason Category
+                    </label>
+                    <select
+                      value={rejectionReason}
+                      onChange={(e) => setRejectionReason(e.target.value)}
+                      className="w-full p-2 rounded-xl border border-rose-200 bg-white text-xs font-bold text-slate-800 focus:outline-none"
+                    >
+                      {REJECTION_REASONS.map((r) => (
+                        <option key={r.value} value={r.value}>
+                          {r.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
+                      Detailed Feedback for Partner (Required)
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={rejectionNote}
+                      onChange={(e) => setRejectionNote(e.target.value)}
+                      placeholder="Explain precisely why this court request cannot be approved..."
+                      className="w-full p-2.5 rounded-xl border border-rose-200 bg-white text-xs text-slate-800 focus:outline-none placeholder:text-slate-400"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleConfirmReject(selectedRequestForDrawer)}
+                    className="w-full py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
+                  >
+                    Confirm &amp; Reject Court Request
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Sticky Action Footer */}
+            <div className="p-4 bg-slate-50 border-t border-[#E5E7EB] flex items-center justify-between gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => setSelectedRequestForDrawer(null)}
+                className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+
+              <div className="flex items-center gap-2">
+                {normStatus(selectedRequestForDrawer.status) === 'APPROVED' ? (
+                  <>
+                    <button
+                      type="button"
+                      disabled
+                      className="px-4 py-2 rounded-xl border border-slate-200 bg-slate-100 text-slate-400 font-bold text-xs opacity-50 cursor-not-allowed"
+                    >
+                      Reject
+                    </button>
+                    <button
+                      type="button"
+                      disabled
+                      className="px-5 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-xs opacity-80 cursor-not-allowed flex items-center gap-1.5"
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                      <span>Approved &amp; Live</span>
+                    </button>
+                  </>
+                ) : normStatus(selectedRequestForDrawer.status) === 'REJECTED' ? (
+                  <>
+                    <button
+                      type="button"
+                      disabled
+                      className="px-4 py-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 font-bold text-xs opacity-80 cursor-not-allowed flex items-center gap-1.5"
+                    >
+                      <XCircle className="h-4 w-4" />
+                      <span>Declined</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled
+                      className="px-5 py-2 rounded-xl border border-slate-200 bg-slate-100 text-slate-400 font-bold text-xs opacity-50 cursor-not-allowed flex items-center gap-1.5"
+                    >
+                      <Check className="h-4 w-4" />
+                      <span>Approve &amp; Activate</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setIsRejectOpen(true)}
+                      className="px-4 py-2 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 text-rose-700 font-bold text-xs transition-colors cursor-pointer"
+                    >
+                      Reject
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPendingApprovalRequest(selectedRequestForDrawer)}
+                      className="px-5 py-2 rounded-xl bg-[#00875A] hover:bg-[#007048] text-white font-bold text-xs shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Check className="h-4 w-4" />
+                      <span>Approve &amp; Activate</span>
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* =========================================================================
           7. APPROVE CONFIRMATION MODAL POPUP
           ========================================================================= */}
-      {pendingApprovalRequest && (
-        <div className="fixed inset-0 z-60 bg-[#021526]/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+      {mounted && pendingApprovalRequest && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[10000] top-0 left-0 right-0 bottom-0 w-screen h-screen bg-[#021526]/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl shadow-2xl border border-[#CBD5E1] max-w-md w-full p-6 space-y-4 animate-in zoom-in-95 duration-200">
             <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
               <div className="h-10 w-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
@@ -1463,7 +1666,8 @@ export default function CourtRequestsPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
