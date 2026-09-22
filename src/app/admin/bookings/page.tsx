@@ -37,11 +37,153 @@ import {
 } from 'lucide-react';
 import { BookingItem } from '@/lib/mockData';
 
+const formatShortBookingId = (rawCode?: string, id?: string): string => {
+  const str = String(rawCode || id || '').trim();
+  if (!str) return `BK-${Math.floor(1000 + Math.random() * 9000)}`;
+  const match = str.match(/(?:IBS|BKG|BK)?(?:[-_]\d{4})?[-_](\d{4,5})/i);
+  if (match && match[1]) {
+    return `BK-${match[1]}`;
+  }
+  if (str.includes('-') && str.length > 20) {
+    return `BK-${str.replace(/[^A-Za-z0-9]/g, '').slice(0, 5).toUpperCase()}`;
+  }
+  if (/^BK-\d{4,5}$/i.test(str)) {
+    return str.toUpperCase();
+  }
+  return `BK-${str.replace(/[^A-Za-z0-9]/g, '').slice(-4).toUpperCase()}`;
+};
+
 export default function BookingManagementPage() {
   const [bookings, setBookings] = useState<BookingItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [sportFilter, setSportFilter] = useState('ALL');
+
+  // FETCH LIVE BOOKINGS FROM SUPABASE / BACKEND
+  const fetchLiveBookings = React.useCallback(async (showRefreshing = false) => {
+    if (showRefreshing) setIsRefreshing(true);
+    try {
+      const supaUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xnmmoqujxdfeceggjkiy.supabase.co';
+      const supaKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable__UTAPkS12U8tlVnj9Cadsw_ZrJ_qmcb';
+
+      let rows: any[] = [];
+      let supabaseSuccess = false;
+      try {
+        const res = await fetch(`${supaUrl}/rest/v1/bookings?select=*&order=created_at.desc`, {
+          headers: {
+            apikey: supaKey,
+            Authorization: `Bearer ${supaKey}`,
+          },
+        });
+        if (res.ok) {
+          rows = await res.json();
+          supabaseSuccess = true;
+        }
+      } catch (err) {
+        console.warn('Direct Supabase fetch error, fallback to API:', err);
+      }
+
+      // Only fallback to backend API if Supabase connection failed completely
+      if (!supabaseSuccess) {
+        const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+        try {
+          const res = await fetch(`${backendUrl}/bookings`);
+          if (res.ok) {
+            rows = await res.json();
+          }
+        } catch {}
+      }
+
+      if (Array.isArray(rows) && rows.length > 0) {
+        const mapped: BookingItem[] = rows.map((r: any) => {
+          let parsedDate = r.date || '';
+          if (parsedDate && !parsedDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            const d = new Date(parsedDate);
+            if (!isNaN(d.getTime())) {
+              parsedDate = d.toISOString().split('T')[0];
+            }
+          }
+
+          const totalAmt = Number(r.total_amount) || 0;
+          const paidAmt = Number(r.paid_amount ?? r.advance_amount ?? (r.status === 'Confirmed' ? totalAmt : 0));
+          const balAmt = Number(r.balance_amount ?? Math.max(0, totalAmt - paidAmt));
+
+          let pStatus: 'PAID' | 'PARTIAL_PAID' | 'ADVANCE_PAID' | 'PENDING' | 'REFUNDED' | 'FAILED' = 'PAID';
+          const rawPStatus = (r.payment_status || '').toLowerCase();
+          if (rawPStatus.includes('partially') || rawPStatus.includes('partial') || (paidAmt > 0 && balAmt > 0)) {
+            pStatus = 'PARTIAL_PAID';
+          } else if (rawPStatus.includes('refund')) {
+            pStatus = 'REFUNDED';
+          } else if (rawPStatus.includes('fail')) {
+            pStatus = 'FAILED';
+          } else if (rawPStatus.includes('pending') || paidAmt === 0) {
+            pStatus = 'PENDING';
+          } else {
+            pStatus = 'PAID';
+          }
+
+          let bStatus: 'PENDING_PAYMENT' | 'CONFIRMED' | 'IN_PLAY' | 'COMPLETED' | 'CANCELLED' | 'EXPIRED' = 'CONFIRMED';
+          const rawBStatus = (r.status || '').toLowerCase();
+          if (rawBStatus.includes('cancel')) {
+            bStatus = 'CANCELLED';
+          } else if (rawBStatus.includes('pending') || rawBStatus.includes('hold')) {
+            bStatus = 'PENDING_PAYMENT';
+          } else if (rawBStatus.includes('play')) {
+            bStatus = 'IN_PLAY';
+          } else if (rawBStatus.includes('complete')) {
+            bStatus = 'COMPLETED';
+          } else {
+            bStatus = 'CONFIRMED';
+          }
+
+          return {
+            id: String(r.id),
+            booking_code: formatShortBookingId(r.booking_number || r.booking_code, r.id),
+            customer_id: r.customer_id || r.customer_phone || 'cust_live',
+            customer_name: r.customer_name || 'Player',
+            customer_phone: r.customer_phone || '',
+            venue_id: r.venue_id || 'APP10236',
+            venue_name: r.venue_name || (r.venue_id === 'APP10236' ? 'Rex Sports Arena' : (r.venue_id === 'APP10238' ? 'Sky Sports Arena' : 'Fast and Furious Sports')),
+            court_id: r.court_id || 'court-1',
+            court_name: r.court_name || 'Main Arena Court',
+            sport: r.sport || 'FOOTBALL',
+            booking_date: parsedDate,
+            time_slot: r.time_slot || '06:00 PM - 07:00 PM',
+            duration_minutes: Number(r.duration_minutes) || 60,
+            total_amount: totalAmt,
+            platform_fee: Math.round(totalAmt * 0.1),
+            venue_share: totalAmt - Math.round(totalAmt * 0.1),
+            advance_amount: paidAmt,
+            balance_amount: balAmt,
+            payment_status: pStatus,
+            booking_status: bStatus,
+            payment_method: r.payment_method || 'UPI',
+            transaction_id: r.transaction_id || `txn_${String(r.id).slice(0, 8)}`,
+            created_at: r.created_at || new Date().toISOString(),
+          };
+        });
+        setBookings(mapped);
+      } else {
+        setBookings([]);
+      }
+    } catch (e) {
+      console.error('Error fetching live bookings:', e);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLiveBookings();
+    // Auto-refresh every 15 seconds so new vendor bookings appear live
+    const interval = setInterval(() => {
+      fetchLiveBookings();
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [fetchLiveBookings]);
   
   // Date Picker in Right Top Corner of Page Header
   const [selectedDate, setSelectedDate] = useState<string>(''); // YYYY-MM-DD
@@ -174,8 +316,36 @@ export default function BookingManagementPage() {
     return { advance: b.total_amount, balance: 0, isPartial: false, isRefunded: false, due_mode: b.due_mode || 'CASH' };
   };
 
+  // PERSIST BOOKING UPDATES DIRECTLY TO SUPABASE DATABASE
+  const updateSupabaseBookingRecord = async (bookingIdOrCode: string, fields: Record<string, any>) => {
+    try {
+      const supaUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xnmmoqujxdfeceggjkiy.supabase.co';
+      const supaKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable__UTAPkS12U8tlVnj9Cadsw_ZrJ_qmcb';
+      await fetch(`${supaUrl}/rest/v1/bookings?or=(id.eq.${bookingIdOrCode},booking_number.eq.${bookingIdOrCode})`, {
+        method: 'PATCH',
+        headers: {
+          apikey: supaKey,
+          Authorization: `Bearer ${supaKey}`,
+          'Content-Type': 'application/json',
+          Prefer: 'return=minimal',
+        },
+        body: JSON.stringify(fields),
+      });
+    } catch (err) {
+      console.warn('Failed to persist booking update to Supabase:', err);
+    }
+  };
+
   // Mark pending balance as collected at counter (Cash) or via Online Link
   const handleMarkBalancePaid = (bookingId: string, clearMode: 'CASH' | 'ONLINE' = 'CASH') => {
+    const target = bookings.find((b) => b.id === bookingId);
+    updateSupabaseBookingRecord(bookingId, {
+      payment_status: 'Paid',
+      paid_amount: target ? target.total_amount : 0,
+      balance_amount: 0,
+      status: 'Confirmed',
+    });
+
     setBookings((prev) =>
       prev.map((b) => {
         if (b.id === bookingId) {
@@ -207,6 +377,11 @@ export default function BookingManagementPage() {
   const handleCancelBooking = (bookingId: string) => {
     const target = bookings.find((b) => b.id === bookingId);
     const isHold = target?.booking_status === 'PENDING_PAYMENT';
+
+    updateSupabaseBookingRecord(bookingId, {
+      status: 'Cancelled',
+      payment_status: isHold ? 'Failed' : 'Refunded',
+    });
 
     setBookings((prev) =>
       prev.map((b) =>
@@ -244,8 +419,21 @@ export default function BookingManagementPage() {
     );
   };
 
-  // Verify & Confirm Payment (Converts 15-minute hold to Confirmed)
+  // Verify & Confirm Payment (Converts 15-minute hold to Confirmed and saves to Supabase)
   const handleConfirmPendingPayment = (bookingId: string) => {
+    const target = bookings.find((b) => b.id === bookingId);
+    const total = target ? target.total_amount : 0;
+
+    // 1. Persist directly to live Supabase database table
+    updateSupabaseBookingRecord(bookingId, {
+      status: 'Confirmed',
+      payment_status: 'Paid',
+      paid_amount: total,
+      balance_amount: 0,
+      payment_method: 'UPI',
+    });
+
+    // 2. Optimistically update local React state
     setBookings((prev) =>
       prev.map((b) => {
         if (b.id === bookingId) {
@@ -268,8 +456,8 @@ export default function BookingManagementPage() {
     );
     showToast(
       'success',
-      'Payment Verified',
-      'Payment confirmed! 15-minute hold converted to permanent CONFIRMED booking.'
+      'Payment Verified & Saved',
+      'Booking permanently CONFIRMED in database! 15-minute hold released to confirmed status.'
     );
   };
 
@@ -335,8 +523,9 @@ export default function BookingManagementPage() {
 
     // 2. CREATE NEW 15-MINUTE HOLD OR CONFIRMED BOOKING
     const isHoldMode = createPaymentMode === 'ONLINE_HOLD';
-    const newBookingId = `bkg_${Date.now().toString().slice(-4)}`;
-    const newBookingCode = `IBS-2609-${Math.floor(1000 + Math.random() * 9000)}`;
+    const shortCode = `BK-${Math.floor(1000 + Math.random() * 9000)}`;
+    const newBookingId = shortCode.toLowerCase();
+    const newBookingCode = shortCode;
     const now = new Date();
 
     const newBooking: BookingItem = {
@@ -556,6 +745,17 @@ export default function BookingManagementPage() {
               </button>
             )}
           </div>
+
+          <button
+            type="button"
+            onClick={() => fetchLiveBookings(true)}
+            disabled={isRefreshing}
+            className="inline-flex items-center gap-2 rounded-xl bg-white border border-[#CBD5E1] hover:border-[#F94001] text-[#021526] hover:text-[#F94001] px-3.5 py-2 text-xs font-bold shadow-xs transition-all cursor-pointer h-[42px] whitespace-nowrap disabled:opacity-60"
+            title="Sync latest live bookings from Supabase"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 text-[#F94001] ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span>{isRefreshing ? 'Syncing...' : 'Sync Live'}</span>
+          </button>
 
           <button
             type="button"

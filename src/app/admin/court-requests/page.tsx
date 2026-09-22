@@ -30,8 +30,8 @@ import {
   Activity,
   AlertTriangle,
 } from 'lucide-react';
-import { CourtExtensionRequest, INITIAL_COURT_REQUESTS } from '@/lib/mockData';
-import { adminApi } from '@/lib/api';
+import { CourtExtensionRequest } from '@/lib/mockData';
+import { apiClient } from '@/lib/api';
 
 const REJECTION_REASONS = [
   { value: 'PRICING_OUT_OF_BOUNDS', label: 'Hourly pricing violates regional slot rate caps' },
@@ -55,12 +55,70 @@ const SPORT_ICONS: Record<string, string> = {
 export default function CourtRequestsPage() {
   const [mounted, setMounted] = useState(false);
   const [requests, setRequests] = useState<CourtExtensionRequest[]>([]);
+
+  useEffect(() => {
+    setMounted(true);
+    const fetchRequests = async () => {
+      try {
+        const res = await apiClient.get('/court-requests');
+        if (res.data && Array.isArray(res.data)) {
+          const mapped: CourtExtensionRequest[] = res.data.map((r: any) => ({
+            id: r.id || `CRQ-${Math.floor(1000 + Math.random() * 9000)}`,
+            court_id: r.court_id,
+            venue_id: r.venue_id || (r.vendor_mobile ? `ven_${r.vendor_mobile.slice(-4)}` : 'APP10235'),
+            venue_name: r.venue_name || 'Venue',
+            venue_city: r.venue_city || 'Coimbatore, Tamil Nadu',
+            owner_name: r.vendor_name || r.owner_name || 'Venue Owner',
+            owner_phone: r.vendor_mobile ? `+91 ${r.vendor_mobile}` : (r.owner_phone || '+91 9876543210'),
+            same_physical_sports: r.same_physical_sports ?? false,
+            parent_court_name: r.parent_court_name,
+            sport: Array.isArray(r.sports) ? r.sports[0] : (r.sports || r.sport || 'Football'),
+            court_name: r.court_name || 'Court',
+            display_name: r.display_name || r.court_name || 'Court',
+            min_booking_duration: r.min_booking_duration || '1 Hour',
+            price_per_hour: Number(r.price_per_hour) || 1000,
+            peak_hours_start: r.peak_hours_start || '06:00 PM',
+            peak_hours_end: r.peak_hours_end || '10:00 PM',
+            peak_price: Number(r.peak_hours_price || r.peak_price || r.price_per_hour) || 1000,
+            weekend_price: Number(r.weekend_price || r.price_per_hour) || 1000,
+            peak_days: r.peak_days || ['Fri', 'Sat', 'Sun'],
+            cancellation_window_hours: r.cancellation_window_hours ?? 12,
+            refund_percentage: r.refund_percentage ?? 100,
+            status: r.status === 'PENDING' ? 'NEW_REQUEST' : (r.status as any),
+            submission_count: 1,
+            rejection_reason: r.rejection_reason ? 'OTHER' : undefined,
+            rejection_notes: r.rejection_reason,
+            reviewed_by: r.reviewer_name,
+            reviewed_at: r.reviewed_at,
+            history: [
+              {
+                round: 1,
+                action: (r.status === 'PENDING' ? 'SUBMITTED' : r.status) as any,
+                timestamp: r.created_at || new Date().toISOString(),
+                notes: 'Inbound court addition request.',
+              },
+            ],
+            created_at: r.created_at || new Date().toISOString(),
+            submitted_at: r.created_at ? r.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+          }));
+          setRequests(mapped);
+        } else {
+          setRequests([]);
+        }
+      } catch (err) {
+        setRequests([]);
+      }
+    };
+    fetchRequests();
+  }, []);
+
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [selectedState, setSelectedState] = useState<string>('ALL');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('ALL');
   const [selectedSport, setSelectedSport] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'date' | 'rate' | 'court' | 'id'>('date');
+
 
   // Slide Bar Drawer State
   const [selectedRequestForDrawer, setSelectedRequestForDrawer] =
@@ -184,19 +242,19 @@ export default function CourtRequestsPage() {
       const matchesDistrict =
         selectedDistrict === 'ALL' || reqDistrict.toLowerCase() === selectedDistrict.toLowerCase();
       const matchesSport =
-        selectedSport === 'ALL' || req.sport.toLowerCase() === selectedSport.toLowerCase();
+        selectedSport === 'ALL' || (req.sport || '').toLowerCase() === selectedSport.toLowerCase();
 
       const q = searchQuery.toLowerCase().trim();
       const matchesQuery =
         !q ||
-        req.id.toLowerCase().includes(q) ||
-        req.court_name.toLowerCase().includes(q) ||
+        (req.id || '').toLowerCase().includes(q) ||
+        (req.court_name || '').toLowerCase().includes(q) ||
         (req.display_name && req.display_name.toLowerCase().includes(q)) ||
-        req.venue_name.toLowerCase().includes(q) ||
-        req.venue_id.toLowerCase().includes(q) ||
-        req.owner_name.toLowerCase().includes(q) ||
-        req.owner_phone.toLowerCase().includes(q) ||
-        req.sport.toLowerCase().includes(q) ||
+        (req.venue_name || '').toLowerCase().includes(q) ||
+        (req.venue_id || '').toLowerCase().includes(q) ||
+        (req.owner_name || '').toLowerCase().includes(q) ||
+        (req.owner_phone || '').toLowerCase().includes(q) ||
+        (req.sport || '').toLowerCase().includes(q) ||
         reqState.toLowerCase().includes(q) ||
         reqDistrict.toLowerCase().includes(q);
 
@@ -850,7 +908,7 @@ export default function CourtRequestsPage() {
                               {req.venue_name}
                             </p>
                             <span className="font-mono text-[10px] text-slate-500 bg-slate-100 px-1 py-0.2 rounded border border-slate-200">
-                              {req.venue_id.toUpperCase()}
+                              {(req.venue_id || 'APP10235').toUpperCase()}
                             </span>
                           </div>
                           <div className="flex items-center gap-1 text-[11px] text-slate-500 font-medium">
@@ -1064,7 +1122,7 @@ export default function CourtRequestsPage() {
                       {selectedRequestForDrawer.venue_name}
                     </p>
                     <span className="font-mono text-[10px] text-slate-500">
-                      {selectedRequestForDrawer.venue_id.toUpperCase()}
+                      {(selectedRequestForDrawer.venue_id || 'APP10235').toUpperCase()}
                     </span>
                   </div>
 
@@ -1134,7 +1192,7 @@ export default function CourtRequestsPage() {
                       </a>
                       <span>&bull;</span>
                       <span className="font-mono text-[10px] text-slate-400">
-                        Vendor ID: VEND-{selectedRequestForDrawer.venue_id.slice(-4)}
+                        Vendor ID: VEND-{(selectedRequestForDrawer.venue_id || '10235').slice(-4)}
                       </span>
                     </div>
                   </div>

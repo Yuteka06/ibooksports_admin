@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Landmark,
   Search,
@@ -38,15 +38,36 @@ import {
   SettlementBatchItem,
   SettlementBookingItem,
 } from '@/lib/mockData';
+import { apiClient } from '@/lib/api';
 
 export default function SettlementManagementPage() {
   const [settlements, setSettlements] = useState<SettlementBatchItem[]>([]);
+
+  useEffect(() => {
+    const fetchSettlements = async () => {
+      try {
+        const res = await apiClient.get('/payments/settlements');
+        if (res.data?.data && Array.isArray(res.data.data)) {
+          setSettlements(res.data.data);
+        } else if (Array.isArray(res.data)) {
+          setSettlements(res.data);
+        } else {
+          setSettlements([]);
+        }
+      } catch (e) {
+        setSettlements([]);
+      }
+    };
+    fetchSettlements();
+  }, []);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   
   // Date & Month Filter in Top Right Corner (User Requirement)
   const [filterType, setFilterType] = useState<'ALL' | 'DATE' | 'MONTH'>('ALL');
   const [selectedDate, setSelectedDate] = useState<string>(''); // YYYY-MM-DD
+
   const [selectedMonth, setSelectedMonth] = useState<string>(''); // YYYY-MM
   
   // Slide-out Drawer (Slide Bar) State

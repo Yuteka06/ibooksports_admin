@@ -89,6 +89,7 @@ type VenueModularTab =
 
 interface VenueStaffMember {
   id: string;
+  db_id?: string;
   name: string;
   mobile_number: string;
   role: string;
@@ -142,11 +143,24 @@ export default function VenueModularOverviewPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [statusNotification, setStatusNotification] = useState<string | null>(null);
 
+  // Live real data fetched from backend for this venue
+  const [liveVenueBookings, setLiveVenueBookings] = useState<BookingItem[]>([]);
+  const [liveVenueSettlements, setLiveVenueSettlements] = useState<SettlementBatchItem[]>([]);
+  const [liveVenueSupportTickets, setLiveVenueSupportTickets] = useState<SupportTicketItem[]>([]);
+
   // Selected Booking Drawer State (inside Bookings Tab)
   const [selectedBookingForDrawer, setSelectedBookingForDrawer] = useState<BookingItem | null>(null);
 
-  // Staff state (view only)
+  // Staff state & Live Actions
   const [staffMembers, setStaffMembers] = useState<VenueStaffMember[]>([]);
+  const [isRefreshingStaff, setIsRefreshingStaff] = useState(false);
+  const [isAddStaffOpen, setIsAddStaffOpen] = useState(false);
+  const [newStaffName, setNewStaffName] = useState('');
+  const [newStaffPhone, setNewStaffPhone] = useState('');
+  const [newStaffEmail, setNewStaffEmail] = useState('');
+  const [newStaffRole, setNewStaffRole] = useState('Coach');
+  const [newStaffShift, setNewStaffShift] = useState('Standard (06:00 AM - 02:00 PM)');
+  const [isSubmittingStaff, setIsSubmittingStaff] = useState(false);
 
   // Courts state (view only)
   const [courtsList, setCourtsList] = useState<EnhancedCourtItem[]>([]);
@@ -416,6 +430,82 @@ export default function VenueModularOverviewPage() {
       loadCourtRequests();
     }
   }, [venueId]);
+
+  // Load real live bookings, settlements, and support tickets for this venue
+  useEffect(() => {
+    if (!venueId) return;
+
+    const fetchVenueRelatedData = async () => {
+      try {
+        const [bookingsRes, settlementsRes, supportRes] = await Promise.all([
+          apiClient.get<any[]>('/bookings').catch(() => ({ data: [] })),
+          apiClient.get<any[]>('/payments/settlements').catch(() => ({ data: [] })),
+          apiClient.get<any[]>('/support', { params: { venue_id: venueId } }).catch(() => ({ data: [] })),
+        ]);
+
+        const rawBookings = bookingsRes.data || [];
+        const venueNameClean = currentVenue?.venue_name?.toLowerCase() || '';
+        const vIdClean = venueId.toLowerCase();
+
+        const filteredB: BookingItem[] = rawBookings
+          .filter((b: any) => {
+            const bVenueId = String(b.venueId || b.venue_id || '').toLowerCase();
+            const bVenueName = String(b.venueName || b.venue_name || '').toLowerCase();
+            return (
+              bVenueId === vIdClean ||
+              (bVenueId && vIdClean.includes(bVenueId)) ||
+              (venueNameClean && bVenueName && (bVenueName.includes(venueNameClean) || venueNameClean.includes(bVenueName)))
+            );
+          })
+          .map((b: any) => ({
+            id: String(b.id),
+            booking_code: b.booking_code || b.bookingCode || `BK-${b.id}`,
+            customer_id: b.customer_id || b.customerId || 'cust_1',
+            customer_name: b.customer_name || b.customerName || 'Player',
+            customer_phone: b.customer_phone || b.customerPhone || '',
+            venue_id: b.venue_id || b.venueId || venueId,
+            venue_name: b.venue_name || b.venueName || currentVenue?.venue_name || 'Venue',
+            court_id: b.court_id || b.courtId || 'court-1',
+            court_name: b.court_name || b.courtName || 'Court 1',
+            sport: b.sport || 'FOOTBALL',
+            booking_date: b.date || b.booking_date || b.bookingDate || '',
+            time_slot: b.time_slot || b.timeSlot || '',
+            duration_minutes: Number(b.duration_minutes || b.durationMinutes) || 60,
+            total_amount: Number(b.total_amount || b.totalAmount) || 0,
+            platform_fee: Number(b.platform_fee || b.platformFee) || 0,
+            venue_share: Number(b.venue_share || b.venueShare) || 0,
+            advance_amount: Number(b.advance_amount || b.advanceAmount || b.paid_amount || b.paidAmount) || 0,
+            balance_amount: Number(b.balance_amount || b.balanceAmount) || 0,
+            payment_status: (b.payment_status || b.paymentStatus || 'PAID') as any,
+            booking_status: (b.status === 'Confirmed' ? 'CONFIRMED' : (b.booking_status || b.status || 'CONFIRMED')) as any,
+            payment_method: b.payment_method || b.paymentMethod || 'UPI',
+            transaction_id: b.transaction_id || b.transactionId || `TXN-${b.id}`,
+            created_at: b.created_at || b.createdAt || new Date().toISOString(),
+          }));
+        setLiveVenueBookings(filteredB);
+
+        const rawSettlements = settlementsRes.data || [];
+        const filteredS: SettlementBatchItem[] = rawSettlements.filter((s: any) => {
+          const sVenueId = String(s.venue_id || s.venueId || '').toLowerCase();
+          const sVenueName = String(s.venue_name || s.venueName || '').toLowerCase();
+          return (
+            sVenueId === vIdClean ||
+            (sVenueId && vIdClean.includes(sVenueId)) ||
+            (venueNameClean && sVenueName && (sVenueName.includes(venueNameClean) || venueNameClean.includes(sVenueName)))
+          );
+        });
+        setLiveVenueSettlements(filteredS);
+
+        const rawSupport = supportRes.data || [];
+        const filteredT: SupportTicketItem[] = Array.isArray(rawSupport) ? rawSupport : [];
+        setLiveVenueSupportTickets(filteredT);
+      } catch (err) {
+        console.warn('Failed to load venue-related live data', err);
+      }
+    };
+
+    fetchVenueRelatedData();
+  }, [venueId, currentVenue]);
 
   // Find active venue
   const currentVenue = useMemo(() => {
@@ -772,34 +862,92 @@ export default function VenueModularOverviewPage() {
         setVenuePhotos(photos);
       }
 
-      // Live Staff: Map from currentVenue.staff_members or fetch dynamically from backend API
-      if (Array.isArray((currentVenue as any).staff_members) && (currentVenue as any).staff_members.length > 0) {
-        setStaffMembers((currentVenue as any).staff_members);
-      } else {
-        adminApi.getVenueStaff(currentVenue.id).then((liveStaff) => {
-          if (Array.isArray(liveStaff) && liveStaff.length > 0) {
-            setStaffMembers(liveStaff);
-          } else if (currentVenue.staff_name || currentVenue.owner?.full_name) {
-            setStaffMembers([
-              {
-                id: 'STF-01',
-                name: currentVenue.staff_name || currentVenue.owner?.full_name,
-                mobile_number: currentVenue.staff_contact || currentVenue.owner?.phone || '',
-                role: currentVenue.staff_role || 'VENUE_MANAGER',
-                email: currentVenue.owner?.email || currentVenue.email || '',
-                shift_hours: '06:00 AM - 10:00 PM',
-                status: 'ACTIVE',
-              },
-            ]);
-          } else {
-            setStaffMembers([]);
-          }
-        }).catch(() => {
+      // Live Staff: Fetch directly from live Supabase / backend API
+      adminApi.getVenueStaff(currentVenue.id).then((liveStaff) => {
+        if (Array.isArray(liveStaff)) {
+          setStaffMembers(liveStaff);
+        } else {
           setStaffMembers([]);
-        });
-      }
+        }
+      }).catch(() => {
+        setStaffMembers([]);
+      });
     }
   }, [currentVenue]);
+
+  // Live Staff Management Action Handlers
+  const fetchLiveStaff = async () => {
+    if (!currentVenue?.id) return;
+    setIsRefreshingStaff(true);
+    try {
+      const live = await adminApi.getVenueStaff(currentVenue.id);
+      if (Array.isArray(live)) {
+        setStaffMembers(live);
+      }
+    } catch (e) {
+      console.error('Error fetching live staff:', e);
+    } finally {
+      setIsRefreshingStaff(false);
+    }
+  };
+
+  const handleToggleStaffStatus = async (staff: VenueStaffMember) => {
+    const targetId = staff.db_id || staff.id;
+    const nextStatus = staff.status === 'ACTIVE' ? 'Inactive' : 'Active';
+    // Optimistic UI update
+    setStaffMembers((prev) =>
+      prev.map((s) => (s.id === staff.id ? { ...s, status: nextStatus.toUpperCase() as any } : s))
+    );
+    try {
+      await adminApi.updateVenueStaff(targetId, {
+        status: nextStatus,
+        phone: staff.mobile_number,
+      });
+      await fetchLiveStaff();
+    } catch (e) {
+      console.error('Failed to update staff status:', e);
+    }
+  };
+
+  const handleDeleteStaff = async (staff: VenueStaffMember) => {
+    if (!confirm(`Are you sure you want to permanently remove staff member "${staff.name}" from Supabase?`)) {
+      return;
+    }
+    const targetId = staff.db_id || staff.id;
+    setStaffMembers((prev) => prev.filter((s) => s.id !== staff.id));
+    try {
+      await adminApi.deleteVenueStaff(targetId);
+      await fetchLiveStaff();
+    } catch (e) {
+      console.error('Failed to delete staff:', e);
+    }
+  };
+
+  const handleCreateStaffSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newStaffName.trim() || !newStaffPhone.trim() || !currentVenue?.id) return;
+    setIsSubmittingStaff(true);
+    try {
+      await adminApi.createVenueStaff({
+        venue_id: currentVenue.id,
+        name: newStaffName.trim(),
+        phone: newStaffPhone.trim(),
+        email: newStaffEmail.trim() || undefined,
+        role: newStaffRole,
+        shift: newStaffShift,
+        status: 'Active',
+      });
+      setIsAddStaffOpen(false);
+      setNewStaffName('');
+      setNewStaffPhone('');
+      setNewStaffEmail('');
+      await fetchLiveStaff();
+    } catch (err) {
+      console.error('Failed to create staff:', err);
+    } finally {
+      setIsSubmittingStaff(false);
+    }
+  };
 
 
   // Copy helper
@@ -836,10 +984,10 @@ export default function VenueModularOverviewPage() {
     setTimeout(() => setStatusNotification(null), 3500);
   };
 
-  // Filtered Bookings for this venue (Real data only)
+  // Filtered Bookings for this venue (Real live data only)
   const venueBookings = useMemo<BookingItem[]>(() => {
-    return [];
-  }, [currentVenue]);
+    return liveVenueBookings;
+  }, [liveVenueBookings]);
 
   const filteredBookings = useMemo<BookingItem[]>(() => {
     return venueBookings.filter((b: BookingItem) => {
@@ -860,15 +1008,15 @@ export default function VenueModularOverviewPage() {
     return venueBookings.filter((b: BookingItem) => b.booking_status === 'CANCELLED' || (b.refund_amount && b.refund_amount > 0));
   }, [venueBookings]);
 
-  // Filtered Settlements
+  // Filtered Settlements (Real live data only)
   const venueSettlements = useMemo<SettlementBatchItem[]>(() => {
-    return [];
-  }, [currentVenue]);
+    return liveVenueSettlements;
+  }, [liveVenueSettlements]);
 
-  // Filtered Support Tickets
+  // Filtered Support Tickets (Real live data only)
   const venueSupportTickets = useMemo<SupportTicketItem[]>(() => {
-    return [];
-  }, [currentVenue]);
+    return liveVenueSupportTickets;
+  }, [liveVenueSupportTickets]);
 
   // Helper for formatted venue ID
   const formatVenueId = (id: string) => {
@@ -2640,6 +2788,28 @@ export default function VenueModularOverviewPage() {
               <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
                 {staffMembers.filter((s) => s.status === 'INACTIVE').length} Inactive
               </span>
+
+              {/* Sync Live Button */}
+              <button
+                type="button"
+                onClick={fetchLiveStaff}
+                disabled={isRefreshingStaff}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-colors cursor-pointer"
+                title="Sync Live with Supabase"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${isRefreshingStaff ? 'animate-spin text-[#F94001]' : 'text-slate-500'}`} />
+                <span>{isRefreshingStaff ? 'Syncing...' : 'Sync Live'}</span>
+              </button>
+
+              {/* Add Staff Button */}
+              <button
+                type="button"
+                onClick={() => setIsAddStaffOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-[#F94001] hover:bg-[#e03900] rounded-xl shadow-2xs transition-colors cursor-pointer"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>Add Staff</span>
+              </button>
             </div>
           </div>
 
@@ -2654,6 +2824,16 @@ export default function VenueModularOverviewPage() {
                 <p className="text-[11px] text-slate-400 max-w-sm mx-auto mt-1">
                   Ground personnel, shift managers, and duty officers added by the venue partner via the mobile or web app will appear here automatically from Supabase.
                 </p>
+                <div className="mt-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddStaffOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-[#F94001] hover:bg-[#e03900] rounded-xl shadow-2xs cursor-pointer"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Add First Staff Member</span>
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -2665,7 +2845,8 @@ export default function VenueModularOverviewPage() {
                       <th className="py-3 px-4">Designation / Role</th>
                       <th className="py-3 px-4">Mobile Number</th>
                       <th className="py-3 px-4">Email Address</th>
-                      <th className="py-3 px-4 text-right">Account Status</th>
+                      <th className="py-3 px-4 text-center">Account Status</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -2741,7 +2922,7 @@ export default function VenueModularOverviewPage() {
                           </td>
 
                           {/* Status Active / Inactive */}
-                          <td className="py-3 px-4 text-right whitespace-nowrap">
+                          <td className="py-3 px-4 text-center whitespace-nowrap">
                             <span
                               className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${
                                 isStaffActive
@@ -2757,6 +2938,33 @@ export default function VenueModularOverviewPage() {
                               <span>{isStaffActive ? 'Active' : 'Inactive'}</span>
                             </span>
                           </td>
+
+                          {/* Actions: Toggle Status (PATCH) & Delete (DELETE) */}
+                          <td className="py-3 px-4 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleToggleStaffStatus(staff)}
+                                className={`px-2.5 py-1 rounded-lg text-[10.5px] font-bold border transition-colors cursor-pointer ${
+                                  isStaffActive
+                                    ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                                    : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                                }`}
+                                title={isStaffActive ? 'Deactivate staff account in Supabase' : 'Activate staff account in Supabase'}
+                              >
+                                {isStaffActive ? 'Deactivate' : 'Activate'}
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteStaff(staff)}
+                                className="p-1 rounded-lg text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-colors cursor-pointer"
+                                title="Delete staff permanently from Supabase"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </td>
                         </tr>
                       );
                     })}
@@ -2765,16 +2973,130 @@ export default function VenueModularOverviewPage() {
               </div>
             )}
 
-
             {/* Table Footer */}
             <div className="p-3 bg-slate-50/60 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400 font-medium">
-              <span>Showing {staffMembers.length} authorized staff accounts for this venue</span>
+              <span>Showing {staffMembers.length} authorized staff accounts from Supabase</span>
               <span className="flex items-center gap-1 text-slate-500">
                 <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                Staff accounts and access permissions are managed via Venue Partner App
+                Live PostgreSQL synchronized &bull; Changes persist to Supabase venue_staff table
               </span>
             </div>
           </div>
+
+          {/* ADD STAFF MODAL */}
+          {isAddStaffOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+              <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
+                <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50/60">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-[#F94001]" />
+                    <h3 className="text-sm font-bold text-slate-900">Add Venue Staff Member</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddStaffOpen(false)}
+                    className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleCreateStaffSubmit} className="p-4 space-y-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Staff Member Name <span className="text-[#F94001]">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Suresh Kumar"
+                      value={newStaffName}
+                      onChange={(e) => setNewStaffName(e.target.value)}
+                      className="w-full h-9 px-3 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#F94001] focus:bg-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Mobile Phone Number <span className="text-[#F94001]">*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      placeholder="e.g. 9840123456"
+                      value={newStaffPhone}
+                      onChange={(e) => setNewStaffPhone(e.target.value)}
+                      className="w-full h-9 px-3 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#F94001] focus:bg-white font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Email Address (Optional)
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="e.g. suresh@ibooksports.com"
+                      value={newStaffEmail}
+                      onChange={(e) => setNewStaffEmail(e.target.value)}
+                      className="w-full h-9 px-3 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#F94001] focus:bg-white"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        Designation / Role
+                      </label>
+                      <select
+                        value={newStaffRole}
+                        onChange={(e) => setNewStaffRole(e.target.value)}
+                        className="w-full h-9 px-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#F94001] focus:bg-white"
+                      >
+                        <option value="Manager">Manager</option>
+                        <option value="Coach">Coach</option>
+                        <option value="Groundkeeper">Groundkeeper</option>
+                        <option value="Cashier">Cashier</option>
+                        <option value="VERIFICATION_OFFICER">Verification Officer</option>
+                        <option value="OPERATIONS_MANAGER">Operations Manager</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        Shift Timings
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 06:00 AM - 02:00 PM"
+                        value={newStaffShift}
+                        onChange={(e) => setNewStaffShift(e.target.value)}
+                        className="w-full h-9 px-3 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#F94001] focus:bg-white text-[11px]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setIsAddStaffOpen(false)}
+                      className="px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSubmittingStaff}
+                      className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white bg-[#F94001] hover:bg-[#e03900] rounded-xl shadow-2xs cursor-pointer"
+                    >
+                      {isSubmittingStaff ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                      <span>{isSubmittingStaff ? 'Saving...' : 'Save to Supabase'}</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

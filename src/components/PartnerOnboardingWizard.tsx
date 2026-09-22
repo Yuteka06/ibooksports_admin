@@ -488,9 +488,10 @@ export default function PartnerOnboardingWizard() {
             : '';
         const resolvedMobile =
           data.partner_details?.mobile_number ||
-          data.mobile_number ||
           data.business_details?.venue_mobile_number ||
-          storedMobile ||
+          (data.mobile_number && data.mobile_number !== '9876543210' ? data.mobile_number : '') ||
+          (storedMobile && storedMobile !== '9876543210' ? storedMobile : '') ||
+          data.mobile_number ||
           '';
 
         if (resolvedMobile) {
@@ -502,11 +503,11 @@ export default function PartnerOnboardingWizard() {
 
         if (data.partner_details) {
           setPartnerName(data.partner_details.name || '');
-          setPartnerEmail(data.partner_details.email || '');
+          setPartnerEmail(data.partner_details.email || data.business_details?.venue_email || '');
           setPartnerAddress(data.partner_details.address || '');
           setPartnerState(data.partner_details.state || 'Tamil Nadu');
           setPartnerDistrict(data.partner_details.district || 'Coimbatore');
-          setPartnerPincode(data.partner_details.pincode || '');
+          setPartnerPincode(data.partner_details.pincode || '641018');
           if (data.partner_details.aadhaar_document_id) {
             setAadhaarDocId(data.partner_details.aadhaar_document_id);
             setAadhaarFileName(`${data.partner_details.aadhaar_document_id}.pdf`);
@@ -515,6 +516,8 @@ export default function PartnerOnboardingWizard() {
             setProfilePhotoDocId(data.partner_details.profile_photo_document_id);
             setProfilePhotoFileName(`${data.partner_details.profile_photo_document_id}.jpg`);
           }
+        } else if (data.business_details?.venue_email) {
+          setPartnerEmail(data.business_details.venue_email);
         }
 
         // Pre-fill Business Details

@@ -9,7 +9,7 @@ export const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 30000,
+  timeout: 60000,
 });
 
 // Rule 11 & Rule 8: Request Interceptor for Auth & Debug Logging
@@ -406,13 +406,157 @@ export const adminApi = {
   },
 
   getVenueStaff: async (venueId: string) => {
+    // 1. Direct Supabase REST fetch FIRST (guarantees real PostgreSQL venue_staff records)
+    try {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xnmmoqujxdfeceggjkiy.supabase.co';
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable__UTAPkS12U8tlVnj9Cadsw_ZrJ_qmcb';
+      const clean = venueId.trim();
+      const candidates = [clean, clean.replace('VEN-', 'APP'), clean.replace('APP', 'VEN-')];
+      const res = await fetch(`${supabaseUrl}/rest/v1/venue_staff?venue_id=in.(${candidates.join(',')})&order=created_at.desc`, {
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+        },
+      });
+      if (res.ok) {
+        const rows: any[] = await res.json();
+        if (Array.isArray(rows)) {
+          return rows.map((s, idx) => ({
+            id: s.id.length > 10 ? `STF-${String(idx + 1).padStart(2, '0')}` : s.id,
+            db_id: s.id,
+            venue_id: s.venue_id,
+            name: s.name,
+            role: s.role,
+            phone: s.phone,
+            mobile_number: s.phone,
+            email: s.email || '',
+            shift: s.shift || 'Full Day',
+            shift_hours: s.shift || 'Full Day',
+            status: s.status?.toUpperCase() === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE',
+            manage_bookings: s.manage_bookings ?? true,
+            collect_cash: s.collect_cash ?? false,
+            block_slots: s.block_slots ?? false,
+            view_finances: s.view_finances ?? false,
+            edit_pricing: s.edit_pricing ?? false,
+          }));
+        }
+      }
+    } catch (err) {
+      console.warn('Supabase direct venue staff fetch failed:', err);
+    }
+
+    // 2. Fallback to backend API
     try {
       const response = await apiClient.get<any[]>(`/venues/${venueId}/staff`);
-      return response.data || [];
+      if (Array.isArray(response.data) && response.data.length > 0) {
+        return response.data;
+      }
     } catch (e) {
-      console.warn('Could not fetch venue staff:', (e as Error).message);
-      return [];
+      console.warn('Could not fetch venue staff from backend:', (e as Error).message);
     }
+    return [];
+  },
+
+  createVenueStaff: async (payload: {
+    venue_id: string;
+    name: string;
+    role: string;
+    phone: string;
+    email?: string;
+    shift?: string;
+    status?: string;
+  }) => {
+    // 1. Try backend
+    try {
+      const res = await apiClient.post('/vendor-staff', payload);
+      if (res.data) return res.data;
+    } catch (e) {}
+
+    // 2. Direct Supabase REST
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xnmmoqujxdfeceggjkiy.supabase.co';
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable__UTAPkS12U8tlVnj9Cadsw_ZrJ_qmcb';
+    const newId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `stf-${Date.now()}`;
+    const now = new Date().toISOString();
+    const res = await fetch(`${supabaseUrl}/rest/v1/venue_staff`, {
+      method: 'POST',
+      headers: {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${supabaseKey}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+      },
+      body: JSON.stringify({
+        id: newId,
+        venue_id: payload.venue_id,
+        name: payload.name.trim(),
+        role: payload.role || 'Staff',
+        phone: payload.phone.trim(),
+        email: payload.email?.trim() || null,
+        shift: payload.shift || 'Standard',
+        status: payload.status || 'Active',
+        manage_bookings: true,
+        collect_cash: false,
+        block_slots: false,
+        view_finances: false,
+        edit_pricing: false,
+        created_at: now,
+        updated_at: now,
+      }),
+    });
+    return res.json();
+  },
+
+  updateVenueStaff: async (staffId: string, data: any) => {
+    // 1. Try backend
+    try {
+      const res = await apiClient.patch(`/vendor-staff/${staffId}`, data);
+      if (res.data) return res.data;
+    } catch (e) {}
+
+    // 2. Direct Supabase REST
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xnmmoqujxdfeceggjkiy.supabase.co';
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable__UTAPkS12U8tlVnj9Cadsw_ZrJ_qmcb';
+    const payload: any = {
+      ...(data.name && { name: data.name.trim() }),
+      ...(data.role && { role: data.role }),
+      ...(data.phone && { phone: data.phone.trim() }),
+      ...(data.email !== undefined && { email: data.email?.trim() || null }),
+      ...(data.shift && { shift: data.shift }),
+      ...(data.status && { status: data.status }),
+      updated_at: new Date().toISOString(),
+    };
+
+    const res = await fetch(`${supabaseUrl}/rest/v1/venue_staff?id=eq.${staffId}`, {
+      method: 'PATCH',
+      headers: {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${supabaseKey}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+      },
+      body: JSON.stringify(payload),
+    });
+    return res.json();
+  },
+
+  deleteVenueStaff: async (staffId: string) => {
+    // 1. Try backend
+    try {
+      await apiClient.delete(`/vendor-staff/${staffId}`);
+    } catch (e) {}
+
+    // 2. Direct Supabase REST
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xnmmoqujxdfeceggjkiy.supabase.co';
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable__UTAPkS12U8tlVnj9Cadsw_ZrJ_qmcb';
+    const res = await fetch(`${supabaseUrl}/rest/v1/venue_staff?id=eq.${staffId}`, {
+      method: 'DELETE',
+      headers: {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${supabaseKey}`,
+        Prefer: 'return=representation',
+      },
+    });
+    return res.json();
   },
 
 

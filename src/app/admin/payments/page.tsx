@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   CreditCard,
   Search,
@@ -42,9 +42,29 @@ import {
   PaymentStatusType,
   PaymentMethodCategory,
 } from '@/lib/mockData';
+import { apiClient } from '@/lib/api';
 
 export default function PaymentManagementPage() {
   const [payments, setPayments] = useState<PaymentTransactionItem[]>([]);
+
+  useEffect(() => {
+    const fetchPayments = async () => {
+      try {
+        const res = await apiClient.get('/payments');
+        if (res.data?.data && Array.isArray(res.data.data)) {
+          setPayments(res.data.data);
+        } else if (Array.isArray(res.data)) {
+          setPayments(res.data);
+        } else {
+          setPayments([]);
+        }
+      } catch (e) {
+        setPayments([]);
+      }
+    };
+    fetchPayments();
+  }, []);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | PaymentStatusType>('ALL');
   const [methodFilter, setMethodFilter] = useState<'ALL' | string>('ALL');
@@ -52,6 +72,7 @@ export default function PaymentManagementPage() {
   
   // Date Picker Filter - ON TOP RIGHT CORNER OF PAGE HEADER
   const [selectedDate, setSelectedDate] = useState<string>(''); // YYYY-MM-DD
+
   
   // Slide-out Drawer State (Consolidated into 2 Tabs: Overview & Tax Invoice, Payment Link & Gateway Audit)
   const [selectedTxn, setSelectedTxn] = useState<PaymentTransactionItem | null>(null);

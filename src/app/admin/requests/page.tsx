@@ -42,150 +42,7 @@ const REJECTION_REASON_OPTIONS = [
   { value: 'OTHER', label: 'Other' },
 ];
 
-const FALLBACK_PARTNER_REQUESTS: PartnerRequestItem[] = [
-  {
-    request_id: 'REQ-2026-0891',
-    request_type: 'ONBOARDING',
-    requester_name: 'K. Rajesh Kumar',
-    requester_email: 'rajesh@apexarena.in',
-    mobile_number: '9842184920',
-    venue_name: 'Apex Sports Arena & Box Turf',
-    venue_location: 'https://maps.google.com/?q=Apex+Arena+Coimbatore',
-    state: 'Tamil Nadu',
-    district: 'Coimbatore',
-    sports: ['Cricket', 'Football', 'Badminton'],
-    number_of_courts: 4,
-    request_status: 'SUBMITTED',
-    status_updated_at: '2026-09-08T09:30:00Z',
-    created_at: '2026-09-08T09:30:00Z',
-  },
-  {
-    request_id: 'REQ-2026-0892',
-    request_type: 'ONBOARDING',
-    requester_name: 'Sneha Hegde',
-    requester_email: 'sneha@unitedturf.com',
-    mobile_number: '9880132910',
-    venue_name: 'Decathlon United Turf Complex',
-    venue_location: 'https://maps.google.com/?q=Decathlon+Whitefield',
-    state: 'Karnataka',
-    district: 'Bengaluru',
-    sports: ['Football', 'Pickleball', 'Tennis'],
-    number_of_courts: 6,
-    request_status: 'SUBMITTED',
-    status_updated_at: '2026-09-08T08:15:00Z',
-    created_at: '2026-09-08T08:15:00Z',
-  },
-  {
-    request_id: 'REQ-2026-0893',
-    request_type: 'ONBOARDING',
-    requester_name: 'S. Karthik',
-    requester_email: 'karthik@smashzone.co.in',
-    mobile_number: '9444018233',
-    venue_name: 'SmashZone Badminton Hub',
-    venue_location: 'https://maps.google.com/?q=Smashzone+Chennai',
-    state: 'Tamil Nadu',
-    district: 'Chennai',
-    sports: ['Badminton', 'Table Tennis'],
-    number_of_courts: 8,
-    request_status: 'APPROVED',
-    status_updated_at: '2026-09-07T16:20:00Z',
-    created_at: '2026-09-07T14:10:00Z',
-    approval_access_link: 'http://localhost:3001/onboarding/a8f9024bc68e102f901cbde9320e8810c9e',
-    onboarding_link_sent_at: '2026-09-07T16:20:00Z',
-    onboarding_token_expiry: '2026-09-14T16:20:00Z',
-    raw_onboarding_token: 'a8f9024bc68e102f901cbde9320e8810c9e',
-  },
-  {
-    request_id: 'REQ-2026-0894',
-    request_type: 'ONBOARDING',
-    requester_name: 'Vikram Reddy',
-    requester_email: 'vikram@strikevelocity.in',
-    mobile_number: '9908144520',
-    venue_name: 'Strike Velocity Padel & Turf',
-    venue_location: 'https://maps.google.com/?q=Strike+Velocity+Hyderabad',
-    state: 'Telangana',
-    district: 'Hyderabad',
-    sports: ['Pickleball', 'Football', 'Cricket'],
-    number_of_courts: 5,
-    request_status: 'SUBMITTED',
-    status_updated_at: '2026-09-08T07:45:00Z',
-    created_at: '2026-09-08T07:45:00Z',
-  },
-  {
-    request_id: 'REQ-2026-0895',
-    request_type: 'ONBOARDING',
-    requester_name: 'Mathew Thomas',
-    requester_email: 'mathew@greenfieldsports.in',
-    mobile_number: '9745190212',
-    venue_name: 'GreenField Sports Village',
-    venue_location: 'https://maps.google.com/?q=GreenField+Kochi',
-    state: 'Kerala',
-    district: 'Kochi',
-    sports: ['Football', 'Cricket'],
-    number_of_courts: 3,
-    request_status: 'APPROVED',
-    status_updated_at: '2026-09-06T11:00:00Z',
-    created_at: '2026-09-06T09:30:00Z',
-    approval_access_link: 'http://localhost:3001/onboarding/d37801be9c33110efac8129031d2798e',
-    onboarding_link_sent_at: '2026-09-06T11:00:00Z',
-    raw_onboarding_token: 'd37801be9c33110efac8129031d2798e',
-  },
-  {
-    request_id: 'REQ-2026-0896',
-    request_type: 'ONBOARDING',
-    requester_name: 'M. Pandian',
-    requester_email: 'pandian@championturf.com',
-    mobile_number: '9843077114',
-    venue_name: 'Champion Turf & Box Arena',
-    venue_location: 'https://maps.google.com/?q=Champion+Turf+Madurai',
-    state: 'Tamil Nadu',
-    district: 'Madurai',
-    sports: ['Cricket', 'Football'],
-    number_of_courts: 2,
-    request_status: 'REJECTED',
-    status_updated_at: '2026-09-05T14:30:00Z',
-    created_at: '2026-09-05T10:15:00Z',
-    rejection_reason: 'INCOMPLETE',
-    rejection_note: 'GST Certificate and Municipal Trade License missing from registration payload.',
-    rejected_by_admin_id: 'admin_super_01',
-    rejected_at: '2026-09-05T14:30:00Z',
-  },
-  {
-    request_id: 'REQ-2026-0897',
-    request_type: 'ONBOARDING',
-    requester_name: 'Arvind Menon',
-    requester_email: 'arvind@skylinearena.in',
-    mobile_number: '9741288401',
-    venue_name: 'Skyline Rooftop Arena',
-    venue_location: 'https://maps.google.com/?q=Skyline+Arena+Bengaluru',
-    state: 'Karnataka',
-    district: 'Bengaluru',
-    sports: ['Football', 'Badminton'],
-    number_of_courts: 3,
-    request_status: 'SUBMITTED',
-    status_updated_at: '2026-09-08T06:50:00Z',
-    created_at: '2026-09-08T06:50:00Z',
-  },
-  {
-    request_id: 'REQ-2026-0898',
-    request_type: 'ONBOARDING',
-    requester_name: 'Priya Sundaram',
-    requester_email: 'priya@acetennis.co.in',
-    mobile_number: '9488210924',
-    venue_name: 'Ace Tennis & Pickleball Park',
-    venue_location: 'https://maps.google.com/?q=Ace+Tennis+Coimbatore',
-    state: 'Tamil Nadu',
-    district: 'Coimbatore',
-    sports: ['Tennis', 'Pickleball'],
-    number_of_courts: 4,
-    request_status: 'APPROVED',
-    status_updated_at: '2026-09-04T12:00:00Z',
-    created_at: '2026-09-04T09:00:00Z',
-    approval_access_link: 'http://localhost:3001/onboarding/f21094ba1280ccb87201ef32098dca01',
-    onboarding_link_sent_at: '2026-09-04T12:00:00Z',
-    raw_onboarding_token: 'f21094ba1280ccb87201ef32098dca01',
-  },
-];
+
 
 export default function PartnerRequestsPage() {
   const [mounted, setMounted] = useState(false);
@@ -238,12 +95,12 @@ export default function PartnerRequestsPage() {
   const reasonSelectId = useId();
   const rejectionNoteId = useId();
 
-  // Fetch Requests
+  // Fetch Requests (strictly live from backend API)
   const loadRequests = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await adminApi.getRequests().catch(() => null);
-      let combined = (data && data.length > 0) ? data : FALLBACK_PARTNER_REQUESTS;
+      const data = await adminApi.getRequests().catch(() => []);
+      let combined: PartnerRequestItem[] = Array.isArray(data) ? data : [];
 
       // Merge newly submitted partner requests from public website form
       if (typeof window !== 'undefined') {
@@ -279,30 +136,8 @@ export default function PartnerRequestsPage() {
       }
       setRequests(combined);
     } catch (e) {
-      console.warn('Using fallback partner requests dataset', e);
-      let combined = FALLBACK_PARTNER_REQUESTS;
-      if (typeof window !== 'undefined') {
-        try {
-          const stored = localStorage.getItem('ibooksports_partner_requests');
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              const backendIds = new Set(combined.map((c) => c.request_id));
-              const backendPhones = new Set(
-                combined.map((c) => (c.mobile_number || '').replace(/\D/g, '').slice(-10)).filter(Boolean)
-              );
-              const remainingLocal = parsed.filter((p: any) => {
-                const pPhone = (p.mobile_number || '').replace(/\D/g, '').slice(-10);
-                if (backendIds.has(p.request_id)) return false;
-                if (pPhone && backendPhones.has(pPhone)) return false;
-                return true;
-              });
-              combined = [...remainingLocal, ...combined];
-            }
-          }
-        } catch {}
-      }
-      setRequests(combined);
+      console.error('Failed to load partner requests', e);
+      setRequests([]);
     } finally {
       setLoading(false);
     }
