@@ -100,40 +100,7 @@ export default function PartnerRequestsPage() {
     setLoading(true);
     try {
       const data = await adminApi.getRequests().catch(() => []);
-      let combined: PartnerRequestItem[] = Array.isArray(data) ? data : [];
-
-      // Merge newly submitted partner requests from public website form
-      if (typeof window !== 'undefined') {
-        try {
-          const stored = localStorage.getItem('ibooksports_partner_requests');
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              const backendIds = new Set(combined.map((c) => c.request_id));
-              const backendPhones = new Set(
-                combined.map((c) => (c.mobile_number || '').replace(/\D/g, '').slice(-10)).filter(Boolean)
-              );
-
-              // Filter out local entries that already exist in backend (by id or normalized phone)
-              const remainingLocal = parsed.filter((p: any) => {
-                const pPhone = (p.mobile_number || '').replace(/\D/g, '').slice(-10);
-                if (backendIds.has(p.request_id)) return false;
-                if (pPhone && backendPhones.has(pPhone)) return false;
-                return true;
-              });
-
-              // Keep local storage clean & synchronized with backend
-              if (remainingLocal.length !== parsed.length) {
-                localStorage.setItem('ibooksports_partner_requests', JSON.stringify(remainingLocal));
-              }
-
-              combined = [...remainingLocal, ...combined];
-            }
-          }
-        } catch (e) {
-          console.error('Error merging local partner requests', e);
-        }
-      }
+      const combined: PartnerRequestItem[] = Array.isArray(data) ? data : [];
       setRequests(combined);
     } catch (e) {
       console.error('Failed to load partner requests', e);
@@ -252,26 +219,6 @@ export default function PartnerRequestsPage() {
         venue_name: approvingRequest.venue_name,
         mobile_number: approvingRequest.mobile_number,
       });
-
-      // Persist in localStorage under ibooksports_partner_requests
-      if (typeof window !== 'undefined') {
-        const stored = localStorage.getItem('ibooksports_partner_requests');
-        let parsed = stored ? JSON.parse(stored) : [];
-        const found = parsed.find((p: any) => p.request_id === approvingRequest.request_id);
-        if (found) {
-          found.request_status = 'APPROVED';
-          found.approval_access_link = customOnboardingLink.trim();
-        } else {
-          parsed.unshift({
-            ...approvingRequest,
-            request_status: 'APPROVED',
-            approval_access_link: customOnboardingLink.trim(),
-          });
-        }
-        localStorage.setItem('ibooksports_partner_requests', JSON.stringify(parsed));
-
-        // Approval link is saved with the request and backend session is created dynamically
-      }
 
       setToastMessage({
         type: 'success',

@@ -227,34 +227,13 @@ export default function WebsiteLeadForm() {
       };
 
       const res = await websiteApi.submitVenueDetails(payload);
-      const effectiveId = res?.data?.requestId || res?.data?.id || `APP${Math.floor(10000 + Math.random() * 90000)}`;
+      const effectiveId =
+        res?.data?.requestId ||
+        res?.data?.request_id ||
+        res?.data?.id;
 
-      // Create partner request item and persist to localStorage
-      const partnerRequestRecord = {
-        request_id: effectiveId,
-        request_type: 'ONBOARDING' as const,
-        requester_name: trimmedName,
-        requester_email: trimmedEmail || `${trimmedName.toLowerCase().replace(/[^a-z0-9]/g, '')}@turfpartner.com`,
-        mobile_number: formData.mobileNumber,
-        venue_name: trimmedVenueName,
-        venue_location: trimmedLocationUrl,
-        state: formData.state.trim(),
-        district: formData.district.trim(),
-        sports: finalSportsList,
-        number_of_courts: 4,
-        request_status: 'SUBMITTED' as const,
-        created_at: new Date().toISOString(),
-        status_updated_at: new Date().toISOString(),
-      };
-
-      if (typeof window !== 'undefined') {
-        try {
-          const stored = localStorage.getItem('ibooksports_partner_requests');
-          const parsed = stored ? JSON.parse(stored) : [];
-          localStorage.setItem('ibooksports_partner_requests', JSON.stringify([partnerRequestRecord, ...parsed]));
-        } catch (e) {
-          console.error('Error storing request in localStorage', e);
-        }
+      if (!effectiveId) {
+        throw new Error('Server did not return a valid reference ID. Please try again.');
       }
 
       setSubmissionResult({
