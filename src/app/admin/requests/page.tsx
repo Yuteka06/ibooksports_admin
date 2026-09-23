@@ -232,7 +232,7 @@ export default function PartnerRequestsPage() {
     const baseUrl =
       typeof window !== 'undefined' && window.location.origin
         ? window.location.origin
-        : 'http://localhost:3000';
+        : 'https://ibooksports-admin.vercel.app';
 
     setCustomOnboardingLink(`${baseUrl}/onboarding/${token}`);
     setApproveError(null);
@@ -1513,7 +1513,7 @@ export default function PartnerRequestsPage() {
                     type="text"
                     value={customOnboardingLink}
                     onChange={(e) => setCustomOnboardingLink(e.target.value)}
-                    placeholder="http://localhost:3000/onboarding/752bca5f7e68c4c3540d0dec4df796ae13b907c0a12ff68ec9684afbc0bdd416"
+                    placeholder="https://ibooksports-admin.vercel.app/onboarding/752bca5f7e68c4c3540d0dec4df796ae13b907c0a12ff68ec9684afbc0bdd416"
                     className="w-full rounded-xl border border-[#E5E7EB] bg-[#F8F9FA] px-3.5 py-2.5 text-xs font-mono text-[#021526] focus:border-[#F94001] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#F94001] transition-all shadow-xs"
                   />
                   <p className="text-[11px] text-[#5F6368]">
