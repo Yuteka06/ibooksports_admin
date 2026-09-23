@@ -159,11 +159,7 @@ export default function SupportHelpdeskPage() {
     }
 
     try {
-      await fetch(`http://localhost:4000/api/v1/support/${ticketId}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'IN_PROGRESS' }),
-      });
+      await apiClient.patch(`/support/${ticketId}/status`, { status: 'IN_PROGRESS' });
     } catch (e) {}
 
     const t = tickets.find((item) => item.id === ticketId);
@@ -203,14 +199,10 @@ export default function SupportHelpdeskPage() {
     setIsEditingResolution(false);
 
     try {
-      await fetch(`http://localhost:4000/api/v1/support/${selectedTicket.id}/resolve`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          resolution_notes: resolutionNotes.trim(),
-          resolved_by: 'Super Admin',
-          notify_requester: notifyRequester,
-        }),
+      await apiClient.patch(`/support/${selectedTicket.id}/resolve`, {
+        resolution_notes: resolutionNotes.trim(),
+        resolved_by: 'Super Admin',
+        notify_requester: notifyRequester,
       });
     } catch (e) {}
 
@@ -235,11 +227,7 @@ export default function SupportHelpdeskPage() {
     }
 
     try {
-      await fetch(`http://localhost:4000/api/v1/support/${ticketId}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'OPEN' }),
-      });
+      await apiClient.patch(`/support/${ticketId}/status`, { status: 'OPEN' });
     } catch (e) {}
 
     setToastMessage({
@@ -304,29 +292,26 @@ export default function SupportHelpdeskPage() {
     setIsRaiseModalOpen(false);
     setRaiseError(null);
 
-    // Call Backend Endpoint
+    // Call Backend Endpoint via apiClient
     try {
-      const res = await fetch('http://localhost:4000/api/v1/support', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          venue_id: matchedVenue?.id || 'ven_1001',
-          venue_name: matchedVenue?.venue_name || 'Sky Sports Arena',
-          person_name: newTicketPersonName.trim(),
-          contact_number: newTicketContact.trim(),
-          category: newTicketCategory,
-          priority: newTicketPriority,
-          subject: newTicketSubject.trim(),
-          description: newTicketDescription.trim(),
-          booking_id: newTicketBookingId.trim() || undefined,
-          attachment_name: newTicketAttachmentName.trim() || undefined,
-        }),
+      const res = await apiClient.post('/support', {
+        venue_id: matchedVenue?.id || 'ven_1001',
+        venue_name: matchedVenue?.venue_name || 'Sky Sports Arena',
+        person_name: newTicketPersonName.trim(),
+        contact_number: newTicketContact.trim(),
+        category: newTicketCategory,
+        priority: newTicketPriority,
+        subject: newTicketSubject.trim(),
+        description: newTicketDescription.trim(),
+        booking_id: newTicketBookingId.trim() || undefined,
+        attachment_name: newTicketAttachmentName.trim() || undefined,
       });
-      if (res.ok) {
-        const created = await res.json();
+      if (res.data) {
+        const created = res.data;
         setTickets((prev) => [created, ...prev.filter((t) => t.id !== newTicket.id)]);
       }
     } catch (e) {}
+
 
     // Reset Form
     setNewTicketPersonName('');

@@ -263,11 +263,7 @@ export default function AdminLayout({
     }
 
     loadLiveNotifications();
-    const interval = setInterval(loadLiveNotifications, 30000);
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-    };
+
   }, [pathname]);
 
   const getBadgeText = (item: NavItemConfig) => {
@@ -460,9 +456,8 @@ export default function AdminLayout({
                             markAsRead(notif.id);
                             setNotificationsOpen(false);
                           }}
-                          className={`p-3 sm:p-3.5 flex items-start gap-3 hover:bg-slate-50 transition-colors block ${
-                            !notif.read ? 'bg-orange-50/40' : ''
-                          }`}
+                          className={`p-3 sm:p-3.5 flex items-start gap-3 hover:bg-slate-50 transition-colors block ${!notif.read ? 'bg-orange-50/40' : ''
+                            }`}
                         >
                           <div className="h-8 w-8 rounded-xl bg-orange-100 text-[#F94001] flex items-center justify-center shrink-0 mt-0.5">
                             <Inbox className="h-4 w-4" />
@@ -578,17 +573,15 @@ export default function AdminLayout({
                     <Link
                       key={item.href}
                       href={item.href}
-                      className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all duration-150 ${
-                        isActive
-                          ? 'bg-[#021526] text-white font-semibold shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
-                      }`}
+                      className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all duration-150 ${isActive
+                        ? 'bg-[#021526] text-white font-semibold shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
+                        }`}
                     >
                       <div className="flex items-center gap-2.5">
                         <Icon
-                          className={`h-4 w-4 ${
-                            isActive ? 'text-[#F94001]' : 'text-slate-400'
-                          }`}
+                          className={`h-4 w-4 ${isActive ? 'text-[#F94001]' : 'text-slate-400'
+                            }`}
                         />
                         <span>{item.label}</span>
                       </div>
@@ -596,11 +589,10 @@ export default function AdminLayout({
                       {getBadgeText(item) && (
                         <span
                           suppressHydrationWarning
-                          className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider font-mono ${
-                            isActive
-                              ? 'bg-[#F94001] text-white'
-                              : 'bg-slate-100 text-slate-600 border border-slate-200'
-                          }`}
+                          className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider font-mono ${isActive
+                            ? 'bg-[#F94001] text-white'
+                            : 'bg-slate-100 text-slate-600 border border-slate-200'
+                            }`}
                         >
                           {getBadgeText(item)}
                         </span>
@@ -674,17 +666,15 @@ export default function AdminLayout({
                             key={item.href}
                             href={item.href}
                             onClick={() => setIsMobileMenuOpen(false)}
-                            className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold ${
-                              isActive
-                                ? 'bg-[#FFF1EC] text-[#F94001] font-bold border-l-4 border-[#F94001]'
-                                : 'text-[#021526] hover:bg-[#F3F4F4]'
-                            }`}
+                            className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold ${isActive
+                              ? 'bg-[#FFF1EC] text-[#F94001] font-bold border-l-4 border-[#F94001]'
+                              : 'text-[#021526] hover:bg-[#F3F4F4]'
+                              }`}
                           >
                             <div className="flex items-center gap-2.5">
                               <Icon
-                                className={`h-4 w-4 ${
-                                  isActive ? 'text-[#F94001]' : 'text-[#5F6368]'
-                                }`}
+                                className={`h-4 w-4 ${isActive ? 'text-[#F94001]' : 'text-[#5F6368]'
+                                  }`}
                               />
                               <span>{item.label}</span>
                             </div>

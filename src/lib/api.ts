@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
   process.env.NEXT_PUBLIC_API_URL ||
   'https://ibooksports-backend.onrender.com/api/v1';
 
@@ -113,7 +114,11 @@ export interface VenueResponse {
   success: boolean;
   message: string;
   data: {
+    id?: string;
+    requestId?: string;
+    request_id?: string;
     name: string;
+    email?: string;
     mobile_number: number;
     venue_name: string;
     venue_location_name: string;
@@ -135,6 +140,11 @@ export interface UpdateRequestStatusPayload {
   request_status: 'SUBMITTED' | 'APPROVED' | 'REJECTED';
   approval_access_link?: string;
   correction_items?: CorrectionItemPayload[];
+  // Fallback fields — sent so backend can email even if request isn't in memory
+  requester_name?: string;
+  requester_email?: string;
+  venue_name?: string;
+  mobile_number?: string;
 }
 
 export interface BankDetailsItem {
@@ -406,50 +416,29 @@ export const adminApi = {
   },
 
   getVenueStaff: async (venueId: string) => {
-    // 1. Direct Supabase REST fetch FIRST (guarantees real PostgreSQL venue_staff records)
-    try {
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xnmmoqujxdfeceggjkiy.supabase.co';
-      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable__UTAPkS12U8tlVnj9Cadsw_ZrJ_qmcb';
-      const clean = venueId.trim();
-      const candidates = [clean, clean.replace('VEN-', 'APP'), clean.replace('APP', 'VEN-')];
-      const res = await fetch(`${supabaseUrl}/rest/v1/venue_staff?venue_id=in.(${candidates.join(',')})&order=created_at.desc`, {
-        headers: {
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-        },
-      });
-      if (res.ok) {
-        const rows: any[] = await res.json();
-        if (Array.isArray(rows)) {
-          return rows.map((s, idx) => ({
-            id: s.id.length > 10 ? `STF-${String(idx + 1).padStart(2, '0')}` : s.id,
-            db_id: s.id,
-            venue_id: s.venue_id,
-            name: s.name,
-            role: s.role,
-            phone: s.phone,
-            mobile_number: s.phone,
-            email: s.email || '',
-            shift: s.shift || 'Full Day',
-            shift_hours: s.shift || 'Full Day',
-            status: s.status?.toUpperCase() === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE',
-            manage_bookings: s.manage_bookings ?? true,
-            collect_cash: s.collect_cash ?? false,
-            block_slots: s.block_slots ?? false,
-            view_finances: s.view_finances ?? false,
-            edit_pricing: s.edit_pricing ?? false,
-          }));
-        }
-      }
-    } catch (err) {
-      console.warn('Supabase direct venue staff fetch failed:', err);
-    }
-
-    // 2. Fallback to backend API
     try {
       const response = await apiClient.get<any[]>(`/venues/${venueId}/staff`);
       if (Array.isArray(response.data) && response.data.length > 0) {
-        return response.data;
+        return response.data.map((s, idx) => ({
+          id: s.id || s.db_id,
+          db_id: s.db_id || s.id,
+          staff_id: s.staff_id || s.display_id || `STF-${String(idx + 1).padStart(2, '0')}`,
+          display_id: s.display_id || s.staff_id || `STF-${String(idx + 1).padStart(2, '0')}`,
+          venue_id: s.venue_id || s.venueId || venueId,
+          name: s.name || s.staff_name,
+          role: s.role || s.staff_role || 'Staff',
+          phone: s.phone || s.mobile_number || s.staff_contact || '',
+          mobile_number: s.mobile_number || s.phone || s.staff_contact || '',
+          email: s.email || '',
+          shift: s.shift || s.shift_hours || 'Full Day',
+          shift_hours: s.shift_hours || s.shift || 'Full Day',
+          status: (s.status?.toUpperCase() === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE') as 'ACTIVE' | 'INACTIVE',
+          manage_bookings: s.manage_bookings ?? s.manageBookings ?? true,
+          collect_cash: s.collect_cash ?? s.collectCash ?? false,
+          block_slots: s.block_slots ?? s.blockSlots ?? false,
+          view_finances: s.view_finances ?? s.viewFinances ?? false,
+          edit_pricing: s.edit_pricing ?? s.editPricing ?? false,
+        }));
       }
     } catch (e) {
       console.warn('Could not fetch venue staff from backend:', (e as Error).message);
@@ -466,98 +455,35 @@ export const adminApi = {
     shift?: string;
     status?: string;
   }) => {
-    // 1. Try backend
     try {
       const res = await apiClient.post('/vendor-staff', payload);
-      if (res.data) return res.data;
-    } catch (e) {}
-
-    // 2. Direct Supabase REST
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xnmmoqujxdfeceggjkiy.supabase.co';
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable__UTAPkS12U8tlVnj9Cadsw_ZrJ_qmcb';
-    const newId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `stf-${Date.now()}`;
-    const now = new Date().toISOString();
-    const res = await fetch(`${supabaseUrl}/rest/v1/venue_staff`, {
-      method: 'POST',
-      headers: {
-        apikey: supabaseKey,
-        Authorization: `Bearer ${supabaseKey}`,
-        'Content-Type': 'application/json',
-        Prefer: 'return=representation',
-      },
-      body: JSON.stringify({
-        id: newId,
-        venue_id: payload.venue_id,
-        name: payload.name.trim(),
-        role: payload.role || 'Staff',
-        phone: payload.phone.trim(),
-        email: payload.email?.trim() || null,
-        shift: payload.shift || 'Standard',
-        status: payload.status || 'Active',
-        manage_bookings: true,
-        collect_cash: false,
-        block_slots: false,
-        view_finances: false,
-        edit_pricing: false,
-        created_at: now,
-        updated_at: now,
-      }),
-    });
-    return res.json();
+      return res.data;
+    } catch (e) {
+      console.warn('createVenueStaff backend error:', e);
+      throw e;
+    }
   },
 
   updateVenueStaff: async (staffId: string, data: any) => {
-    // 1. Try backend
     try {
       const res = await apiClient.patch(`/vendor-staff/${staffId}`, data);
-      if (res.data) return res.data;
-    } catch (e) {}
-
-    // 2. Direct Supabase REST
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xnmmoqujxdfeceggjkiy.supabase.co';
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable__UTAPkS12U8tlVnj9Cadsw_ZrJ_qmcb';
-    const payload: any = {
-      ...(data.name && { name: data.name.trim() }),
-      ...(data.role && { role: data.role }),
-      ...(data.phone && { phone: data.phone.trim() }),
-      ...(data.email !== undefined && { email: data.email?.trim() || null }),
-      ...(data.shift && { shift: data.shift }),
-      ...(data.status && { status: data.status }),
-      updated_at: new Date().toISOString(),
-    };
-
-    const res = await fetch(`${supabaseUrl}/rest/v1/venue_staff?id=eq.${staffId}`, {
-      method: 'PATCH',
-      headers: {
-        apikey: supabaseKey,
-        Authorization: `Bearer ${supabaseKey}`,
-        'Content-Type': 'application/json',
-        Prefer: 'return=representation',
-      },
-      body: JSON.stringify(payload),
-    });
-    return res.json();
+      return res.data;
+    } catch (e) {
+      console.warn('updateVenueStaff backend error:', e);
+      throw e;
+    }
   },
 
   deleteVenueStaff: async (staffId: string) => {
-    // 1. Try backend
     try {
-      await apiClient.delete(`/vendor-staff/${staffId}`);
-    } catch (e) {}
-
-    // 2. Direct Supabase REST
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xnmmoqujxdfeceggjkiy.supabase.co';
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable__UTAPkS12U8tlVnj9Cadsw_ZrJ_qmcb';
-    const res = await fetch(`${supabaseUrl}/rest/v1/venue_staff?id=eq.${staffId}`, {
-      method: 'DELETE',
-      headers: {
-        apikey: supabaseKey,
-        Authorization: `Bearer ${supabaseKey}`,
-        Prefer: 'return=representation',
-      },
-    });
-    return res.json();
+      const res = await apiClient.delete(`/vendor-staff/${staffId}`);
+      return res.data;
+    } catch (e) {
+      console.warn('deleteVenueStaff backend error:', e);
+      throw e;
+    }
   },
+
 
 
   // Sports & Amenities
@@ -1286,6 +1212,53 @@ export const customerApi = {
 
   updateCustomer: async (id: string, data: any) => {
     const response = await apiClient.patch(`/customers/${id}`, data);
+    return response.data;
+  },
+};
+
+export const vendorStaffApi = {
+  getStaff: async (params?: {
+    venueId?: string;
+    courtId?: string;
+    role?: string;
+    status?: string;
+    query?: string;
+  }) => {
+    const response = await apiClient.get<any[]>('/vendor/staff', { params });
+    return response.data || [];
+  },
+
+  getStaffById: async (id: string) => {
+    const response = await apiClient.get<any>(`/vendor-staff/${id}`);
+    return response.data;
+  },
+
+  createStaff: async (data: {
+    venueId?: string;
+    name: string;
+    role: string;
+    phone: string;
+    email?: string;
+    shift?: string;
+    courtId?: string;
+    status?: string;
+    manageBookings?: boolean;
+    collectCash?: boolean;
+    blockSlots?: boolean;
+    viewFinances?: boolean;
+    editPricing?: boolean;
+  }) => {
+    const response = await apiClient.post<any>('/vendor/staff', data);
+    return response.data;
+  },
+
+  updateStaff: async (id: string, data: any) => {
+    const response = await apiClient.patch<any>(`/vendor-staff/${id}`, data);
+    return response.data;
+  },
+
+  deleteStaff: async (id: string) => {
+    const response = await apiClient.delete<any>(`/vendor-staff/${id}`);
     return response.data;
   },
 };

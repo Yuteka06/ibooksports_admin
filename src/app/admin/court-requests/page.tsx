@@ -31,7 +31,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { CourtExtensionRequest } from '@/lib/mockData';
-import { apiClient } from '@/lib/api';
+import { apiClient, adminApi } from '@/lib/api';
 
 const REJECTION_REASONS = [
   { value: 'PRICING_OUT_OF_BOUNDS', label: 'Hourly pricing violates regional slot rate caps' },
@@ -55,62 +55,6 @@ const SPORT_ICONS: Record<string, string> = {
 export default function CourtRequestsPage() {
   const [mounted, setMounted] = useState(false);
   const [requests, setRequests] = useState<CourtExtensionRequest[]>([]);
-
-  useEffect(() => {
-    setMounted(true);
-    const fetchRequests = async () => {
-      try {
-        const res = await apiClient.get('/court-requests');
-        if (res.data && Array.isArray(res.data)) {
-          const mapped: CourtExtensionRequest[] = res.data.map((r: any) => ({
-            id: r.id || `CRQ-${Math.floor(1000 + Math.random() * 9000)}`,
-            court_id: r.court_id,
-            venue_id: r.venue_id || (r.vendor_mobile ? `ven_${r.vendor_mobile.slice(-4)}` : 'APP10235'),
-            venue_name: r.venue_name || 'Venue',
-            venue_city: r.venue_city || 'Coimbatore, Tamil Nadu',
-            owner_name: r.vendor_name || r.owner_name || 'Venue Owner',
-            owner_phone: r.vendor_mobile ? `+91 ${r.vendor_mobile}` : (r.owner_phone || '+91 9876543210'),
-            same_physical_sports: r.same_physical_sports ?? false,
-            parent_court_name: r.parent_court_name,
-            sport: Array.isArray(r.sports) ? r.sports[0] : (r.sports || r.sport || 'Football'),
-            court_name: r.court_name || 'Court',
-            display_name: r.display_name || r.court_name || 'Court',
-            min_booking_duration: r.min_booking_duration || '1 Hour',
-            price_per_hour: Number(r.price_per_hour) || 1000,
-            peak_hours_start: r.peak_hours_start || '06:00 PM',
-            peak_hours_end: r.peak_hours_end || '10:00 PM',
-            peak_price: Number(r.peak_hours_price || r.peak_price || r.price_per_hour) || 1000,
-            weekend_price: Number(r.weekend_price || r.price_per_hour) || 1000,
-            peak_days: r.peak_days || ['Fri', 'Sat', 'Sun'],
-            cancellation_window_hours: r.cancellation_window_hours ?? 12,
-            refund_percentage: r.refund_percentage ?? 100,
-            status: r.status === 'PENDING' ? 'NEW_REQUEST' : (r.status as any),
-            submission_count: 1,
-            rejection_reason: r.rejection_reason ? 'OTHER' : undefined,
-            rejection_notes: r.rejection_reason,
-            reviewed_by: r.reviewer_name,
-            reviewed_at: r.reviewed_at,
-            history: [
-              {
-                round: 1,
-                action: (r.status === 'PENDING' ? 'SUBMITTED' : r.status) as any,
-                timestamp: r.created_at || new Date().toISOString(),
-                notes: 'Inbound court addition request.',
-              },
-            ],
-            created_at: r.created_at || new Date().toISOString(),
-            submitted_at: r.created_at ? r.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
-          }));
-          setRequests(mapped);
-        } else {
-          setRequests([]);
-        }
-      } catch (err) {
-        setRequests([]);
-      }
-    };
-    fetchRequests();
-  }, []);
 
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [selectedState, setSelectedState] = useState<string>('ALL');
@@ -350,7 +294,7 @@ export default function CourtRequestsPage() {
         mapped = [];
       }
 
-      // Merge local storage court requests (e.g. from venue extension modal)
+      // Merge local storage court requests (e.g. from venue extension modal or prior admin reviews)
       if (typeof window !== 'undefined') {
         try {
           const stored = localStorage.getItem('ibooksports_court_requests');
@@ -362,7 +306,20 @@ export default function CourtRequestsPage() {
                 if (existingIdx === -1) {
                   mapped.unshift(localReq);
                 } else {
-                  mapped[existingIdx] = { ...mapped[existingIdx], ...localReq };
+                  const backendStatus = mapped[existingIdx].status;
+                  const localStatus = localReq.status;
+                  const finalStatus =
+                    localStatus === 'APPROVED' || backendStatus === 'APPROVED'
+                      ? 'APPROVED'
+                      : localStatus === 'REJECTED' || backendStatus === 'REJECTED'
+                      ? 'REJECTED'
+                      : (backendStatus || localStatus);
+                  mapped[existingIdx] = {
+                    ...mapped[existingIdx],
+                    ...localReq,
+                    status: finalStatus,
+                    court_id: localReq.court_id || mapped[existingIdx].court_id,
+                  };
                 }
               });
             }
@@ -406,6 +363,18 @@ export default function CourtRequestsPage() {
       const res = await adminApi.reviewCourtRequest(req.id, {
         status: 'APPROVED',
         reviewer_name: 'Platform Super Admin',
+        ...({
+          court_name: req.court_name,
+          display_name: req.display_name,
+          sports: [req.sport],
+          price_per_hour: req.price_per_hour,
+          peak_hours_price: req.peak_price,
+          weekend_price: req.weekend_price,
+          venue_name: req.venue_name,
+          venue_city: req.venue_city,
+          vendor_mobile: req.owner_phone?.replace(/\D/g, '').slice(-10),
+          vendor_name: req.owner_name,
+        } as any),
       });
       if (res?.court_id) {
         createdCourtId = res.court_id;
@@ -440,6 +409,25 @@ export default function CourtRequestsPage() {
       setSelectedRequestForDrawer(updated);
     }
 
+    // Persist to localStorage so refreshing never revokes back to Pending
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('ibooksports_court_requests');
+        let list: CourtExtensionRequest[] = stored ? JSON.parse(stored) : [];
+        if (!Array.isArray(list)) list = [];
+        const idx = list.findIndex((x) => x.id === req.id);
+        if (idx !== -1) {
+          list[idx] = { ...list[idx], ...updated, status: 'APPROVED' };
+        } else {
+          list.unshift(updated);
+        }
+        localStorage.setItem('ibooksports_court_requests', JSON.stringify(list));
+      } catch (e) {
+        console.warn('Could not update local court requests:', e);
+      }
+    }
+
+
     setToastMessage({
       type: 'success',
       title: 'Court Request Approved',
@@ -457,6 +445,11 @@ export default function CourtRequestsPage() {
         status: 'REJECTED',
         rejection_reason: finalNote,
         reviewer_name: 'Platform Super Admin',
+        ...({
+          court_name: req.court_name,
+          venue_name: req.venue_name,
+          vendor_mobile: req.owner_phone?.replace(/\D/g, '').slice(-10),
+        } as any),
       });
     } catch (err) {
       console.warn('Backend reviewCourtRequest error (proceeding locally):', err);
@@ -482,7 +475,27 @@ export default function CourtRequestsPage() {
     };
 
     setRequests((prev) => prev.map((item) => (item.id === req.id ? updated : item)));
-    setSelectedRequestForDrawer(updated);
+    if (selectedRequestForDrawer?.id === req.id) {
+      setSelectedRequestForDrawer(updated);
+    }
+
+    // Persist to localStorage
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('ibooksports_court_requests');
+        let list: CourtExtensionRequest[] = stored ? JSON.parse(stored) : [];
+        if (!Array.isArray(list)) list = [];
+        const idx = list.findIndex((x) => x.id === req.id);
+        if (idx !== -1) {
+          list[idx] = { ...list[idx], ...updated, status: 'REJECTED' };
+        } else {
+          list.unshift(updated);
+        }
+        localStorage.setItem('ibooksports_court_requests', JSON.stringify(list));
+      } catch (e) {
+        console.warn('Could not update local court requests:', e);
+      }
+    }
     setIsRejectOpen(false);
     setRejectionNote('');
 

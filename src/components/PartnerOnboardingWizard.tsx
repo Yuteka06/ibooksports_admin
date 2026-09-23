@@ -449,15 +449,36 @@ export default function PartnerOnboardingWizard() {
       setInitializing(false);
     }, 2000);
 
-    const activeToken =
-      urlToken ||
-      (typeof window !== 'undefined'
-        ? localStorage.getItem('ibooksports_onboarding_token')
-        : null) ||
-      'onb_tok_demo_10231';
+    let activeToken: string | undefined = urlToken;
+    if (!activeToken && typeof window !== 'undefined') {
+      activeToken = localStorage.getItem('ibooksports_onboarding_token') || undefined;
+      if (!activeToken || activeToken === 'onb_tok_demo_10231') {
+        try {
+          const storedRequests = localStorage.getItem('ibooksports_partner_requests');
+          if (storedRequests) {
+            const list = JSON.parse(storedRequests);
+            if (Array.isArray(list) && list.length > 0) {
+              const approvedReq = list.find((r: any) => r.request_status === 'APPROVED' && r.approval_access_link) || list[0];
+              if (approvedReq?.approval_access_link?.includes('/onboarding/')) {
+                activeToken = approvedReq.approval_access_link.split('/onboarding/')[1]?.trim();
+              } else if (approvedReq?.request_id) {
+                activeToken = approvedReq.request_id;
+              }
+            }
+          }
+        } catch {}
+      }
+    }
+
+    if (!activeToken) {
+      activeToken = 'APP10240';
+    }
 
     if (activeToken) {
       setToken(activeToken);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('ibooksports_onboarding_token', activeToken);
+      }
       loadSession(activeToken).finally(() => {
         clearTimeout(safetyTimer);
         setInitializing(false);
@@ -472,9 +493,9 @@ export default function PartnerOnboardingWizard() {
 
   const loadSession = async (sessionToken: string) => {
     try {
-      const data = await onboardingApi.getSession(sessionToken);
+      const data: any = await onboardingApi.getSession(sessionToken);
       if (data) {
-        setApplicationId(data.application_id);
+        setApplicationId(data.application_id || sessionToken);
         setCurrentStep(data.current_step || 1);
         setMaxCompletedStep(data.current_step || 1);
         setApplicationStatus(data.status || 'DRAFT');
@@ -482,75 +503,84 @@ export default function PartnerOnboardingWizard() {
         if (data.app_access_link) setAppAccessLink(data.app_access_link);
 
         // Pre-fill Partner Details
-        const storedMobile =
-          typeof window !== 'undefined'
-            ? localStorage.getItem('ibooksports_partner_mobile')
-            : '';
+        const partner = data.partner_details || data.owner || {};
+        const business = data.business_details || data.venue || {};
+
         const resolvedMobile =
-          data.partner_details?.mobile_number ||
-          data.business_details?.venue_mobile_number ||
-          (data.mobile_number && data.mobile_number !== '9876543210' ? data.mobile_number : '') ||
-          (storedMobile && storedMobile !== '9876543210' ? storedMobile : '') ||
+          partner.mobile_number ||
           data.mobile_number ||
+          business.venue_mobile_number ||
+          data.requester_phone ||
+          data.phone ||
           '';
 
         if (resolvedMobile) {
-          setMobileNumber(resolvedMobile);
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('ibooksports_partner_mobile', resolvedMobile);
+          const cleanMobile = String(resolvedMobile).replace(/\D/g, '').slice(-10);
+          if (cleanMobile) {
+            setMobileNumber(cleanMobile);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('ibooksports_partner_mobile', cleanMobile);
+            }
           }
         }
 
-        if (data.partner_details) {
-          setPartnerName(data.partner_details.name || '');
-          setPartnerEmail(data.partner_details.email || data.business_details?.venue_email || '');
-          setPartnerAddress(data.partner_details.address || '');
-          setPartnerState(data.partner_details.state || 'Tamil Nadu');
-          setPartnerDistrict(data.partner_details.district || 'Coimbatore');
-          setPartnerPincode(data.partner_details.pincode || '641018');
-          if (data.partner_details.aadhaar_document_id) {
-            setAadhaarDocId(data.partner_details.aadhaar_document_id);
-            setAadhaarFileName(`${data.partner_details.aadhaar_document_id}.pdf`);
-          }
-          if (data.partner_details.profile_photo_document_id) {
-            setProfilePhotoDocId(data.partner_details.profile_photo_document_id);
-            setProfilePhotoFileName(`${data.partner_details.profile_photo_document_id}.jpg`);
-          }
-        } else if (data.business_details?.venue_email) {
-          setPartnerEmail(data.business_details.venue_email);
+        const resolvedName = partner.name || data.requester_name || data.owner_name || '';
+        if (resolvedName) {
+          setPartnerName(resolvedName);
+        }
+
+        const resolvedEmail = partner.email || business.venue_email || data.requester_email || '';
+        if (resolvedEmail) {
+          setPartnerEmail(resolvedEmail);
+        }
+
+        if (partner.address) setPartnerAddress(partner.address);
+        if (partner.state) setPartnerState(partner.state);
+        if (partner.district) setPartnerDistrict(partner.district);
+        if (partner.pincode) setPartnerPincode(partner.pincode);
+
+        if (partner.aadhaar_document_id) {
+          setAadhaarDocId(partner.aadhaar_document_id);
+          setAadhaarFileName(`${partner.aadhaar_document_id}.pdf`);
+        }
+        if (partner.profile_photo_document_id) {
+          setProfilePhotoDocId(partner.profile_photo_document_id);
+          setProfilePhotoFileName(`${partner.profile_photo_document_id}.jpg`);
         }
 
         // Pre-fill Business Details
-        if (data.business_details) {
-          setVenueName(data.business_details.venue_name || '');
-          setVenueEmail(
-            data.business_details.venue_email || data.partner_details?.email || '',
-          );
-          setVenueMobile(
-            data.business_details.venue_mobile_number ||
-            data.partner_details?.mobile_number ||
-            data.mobile_number ||
-            '',
-          );
-          setVenueAddress(data.business_details.venue_address || '');
-          setVenueGoogleMaps(
-            data.business_details.venue_google_maps_link || '',
-          );
-          setHasGst(data.business_details.has_gst || false);
-          if (data.business_details.gst_number) {
-            setGstNumber(data.business_details.gst_number);
-          }
-          if (data.business_details.gst_document_id) {
-            setGstDocId(data.business_details.gst_document_id);
-            setGstFileName(`${data.business_details.gst_document_id}.pdf`);
-          }
+        if (business.venue_name || data.venue_name) {
+          setVenueName(business.venue_name || data.venue_name || '');
+        }
+        if (business.venue_email || resolvedEmail) {
+          setVenueEmail(business.venue_email || resolvedEmail);
+        }
+        if (business.venue_mobile_number || resolvedMobile) {
+          const cleanVenMobile = String(business.venue_mobile_number || resolvedMobile).replace(/\D/g, '').slice(-10);
+          setVenueMobile(cleanVenMobile);
+        }
+        if (business.venue_address || data.venue_address) {
+          setVenueAddress(business.venue_address || data.venue_address || '');
+        }
+        if (business.venue_google_maps_link || data.venue_location || data.googleMapsLink) {
+          setVenueGoogleMaps(business.venue_google_maps_link || data.venue_location || data.googleMapsLink || '');
+        }
+        if (business.has_gst !== undefined) {
+          setHasGst(business.has_gst);
+        }
+        if (business.gst_number) {
+          setGstNumber(business.gst_number);
+        }
+        if (business.gst_document_id) {
+          setGstDocId(business.gst_document_id);
+          setGstFileName(`${business.gst_document_id}.pdf`);
         }
 
         // Pre-fill Photos
         if (data.court_photos && data.court_photos.length > 0) {
           setCourtPhotoList(
-            data.court_photos.map((id, idx) => ({
-              id,
+            data.court_photos.map((id: any, idx: number) => ({
+              id: String(id),
               name: `Facility Photo ${idx + 1}.jpg`,
             })),
           );
@@ -561,8 +591,9 @@ export default function PartnerOnboardingWizard() {
           if (data.operating_hours.day_schedules && data.operating_hours.day_schedules.length > 0) {
             const mapped = DAYS_ORDER.map((d) => {
               const found = data.operating_hours?.day_schedules?.find(
-                (item) => item.day === d.day,
+                (item: any) => item.day === d.day,
               );
+
               return {
                 day: d.day,
                 label: d.label,

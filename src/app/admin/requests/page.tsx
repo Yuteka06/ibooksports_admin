@@ -247,6 +247,10 @@ export default function PartnerRequestsPage() {
       await adminApi.updateRequestStatus(approvingRequest.request_id, {
         request_status: 'APPROVED',
         approval_access_link: customOnboardingLink.trim() || undefined,
+        requester_name: approvingRequest.requester_name,
+        requester_email: approvingRequest.requester_email,
+        venue_name: approvingRequest.venue_name,
+        mobile_number: approvingRequest.mobile_number,
       });
 
       // Persist in localStorage under ibooksports_partner_requests
@@ -321,6 +325,10 @@ export default function PartnerRequestsPage() {
         rejection_reason: rejectionReason,
         rejection_note: rejectionNote.trim() || undefined,
         admin_id: 'admin_super_01',
+        requester_name: rejectingRequest.requester_name,
+        requester_email: rejectingRequest.requester_email,
+        venue_name: rejectingRequest.venue_name,
+        mobile_number: rejectingRequest.mobile_number,
       });
 
       setToastMessage({

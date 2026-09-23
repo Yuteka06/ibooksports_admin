@@ -36,6 +36,7 @@ import {
   PlusCircle,
 } from 'lucide-react';
 import { BookingItem } from '@/lib/mockData';
+import { apiClient } from '@/lib/api';
 
 const formatShortBookingId = (rawCode?: string, id?: string): string => {
   const str = String(rawCode || id || '').trim();
@@ -61,39 +62,18 @@ export default function BookingManagementPage() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [sportFilter, setSportFilter] = useState('ALL');
 
-  // FETCH LIVE BOOKINGS FROM SUPABASE / BACKEND
+  // FETCH LIVE BOOKINGS FROM BACKEND API
   const fetchLiveBookings = React.useCallback(async (showRefreshing = false) => {
     if (showRefreshing) setIsRefreshing(true);
     try {
-      const supaUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xnmmoqujxdfeceggjkiy.supabase.co';
-      const supaKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable__UTAPkS12U8tlVnj9Cadsw_ZrJ_qmcb';
-
       let rows: any[] = [];
-      let supabaseSuccess = false;
       try {
-        const res = await fetch(`${supaUrl}/rest/v1/bookings?select=*&order=created_at.desc`, {
-          headers: {
-            apikey: supaKey,
-            Authorization: `Bearer ${supaKey}`,
-          },
-        });
-        if (res.ok) {
-          rows = await res.json();
-          supabaseSuccess = true;
+        const res = await apiClient.get<any[]>('/bookings');
+        if (Array.isArray(res.data)) {
+          rows = res.data;
         }
       } catch (err) {
-        console.warn('Direct Supabase fetch error, fallback to API:', err);
-      }
-
-      // Only fallback to backend API if Supabase connection failed completely
-      if (!supabaseSuccess) {
-        const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
-        try {
-          const res = await fetch(`${backendUrl}/bookings`);
-          if (res.ok) {
-            rows = await res.json();
-          }
-        } catch {}
+        console.warn('Backend bookings fetch error:', err);
       }
 
       if (Array.isArray(rows) && rows.length > 0) {
@@ -316,23 +296,12 @@ export default function BookingManagementPage() {
     return { advance: b.total_amount, balance: 0, isPartial: false, isRefunded: false, due_mode: b.due_mode || 'CASH' };
   };
 
-  // PERSIST BOOKING UPDATES DIRECTLY TO SUPABASE DATABASE
+  // PERSIST BOOKING UPDATES THROUGH BACKEND API
   const updateSupabaseBookingRecord = async (bookingIdOrCode: string, fields: Record<string, any>) => {
     try {
-      const supaUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xnmmoqujxdfeceggjkiy.supabase.co';
-      const supaKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable__UTAPkS12U8tlVnj9Cadsw_ZrJ_qmcb';
-      await fetch(`${supaUrl}/rest/v1/bookings?or=(id.eq.${bookingIdOrCode},booking_number.eq.${bookingIdOrCode})`, {
-        method: 'PATCH',
-        headers: {
-          apikey: supaKey,
-          Authorization: `Bearer ${supaKey}`,
-          'Content-Type': 'application/json',
-          Prefer: 'return=minimal',
-        },
-        body: JSON.stringify(fields),
-      });
+      await apiClient.patch(`/bookings/${bookingIdOrCode}`, fields);
     } catch (err) {
-      console.warn('Failed to persist booking update to Supabase:', err);
+      console.warn('Failed to persist booking update to backend:', err);
     }
   };
 

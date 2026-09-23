@@ -90,6 +90,8 @@ type VenueModularTab =
 interface VenueStaffMember {
   id: string;
   db_id?: string;
+  staff_id?: string;
+  display_id?: string;
   name: string;
   mobile_number: string;
   role: string;
@@ -431,6 +433,11 @@ export default function VenueModularOverviewPage() {
     }
   }, [venueId]);
 
+  // Find active venue
+  const currentVenue = useMemo(() => {
+    return venues.find((v) => v.id === venueId) || venues[0] || null;
+  }, [venues, venueId]);
+
   // Load real live bookings, settlements, and support tickets for this venue
   useEffect(() => {
     if (!venueId) return;
@@ -507,10 +514,6 @@ export default function VenueModularOverviewPage() {
     fetchVenueRelatedData();
   }, [venueId, currentVenue]);
 
-  // Find active venue
-  const currentVenue = useMemo(() => {
-    return venues.find((v) => v.id === venueId) || venues[0] || null;
-  }, [venues, venueId]);
 
   const saveCourtRequestsToStorage = (updatedList: CourtExtensionRequest[]) => {
     setCourtRequests(updatedList);
@@ -2865,7 +2868,7 @@ export default function VenueModularOverviewPage() {
                           {/* Staff ID */}
                           <td className="py-3 px-4 whitespace-nowrap">
                             <span className="px-2 py-1 rounded-md bg-slate-100 font-mono font-bold text-slate-700 text-[11px] border border-slate-200/60">
-                              {staff.id}
+                              {staff.staff_id || staff.display_id || (staff.id?.length > 10 ? 'STF-01' : staff.id)}
                             </span>
                           </td>
 
