@@ -16,11 +16,21 @@ export const apiClient = axios.create({
 // Rule 11 & Rule 8: Request Interceptor for Auth & Debug Logging
 apiClient.interceptors.request.use(
   (config) => {
-    if (typeof window !== 'undefined') {
-      const token =
+      let token =
         localStorage.getItem('ibooksports_token') ||
         localStorage.getItem('token') ||
         localStorage.getItem('onboarding_token');
+
+      if (!token) {
+        try {
+          const adminAuth = localStorage.getItem('ibooksports_admin_auth');
+          if (adminAuth) {
+            const parsed = JSON.parse(adminAuth);
+            token = parsed?.token;
+          }
+        } catch {}
+      }
+
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
       }
