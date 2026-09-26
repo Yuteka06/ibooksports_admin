@@ -70,7 +70,7 @@ export default function AdminLoginPage() {
 
     setIsLoading(true);
     try {
-      // Direct call to backend MSG91 SMS dispatch
+      // Direct call to backend WhatsApp OTP dispatch
       const res = await apiClient.post('/onboarding/auth/send-otp', {
         mobile_number: cleanPhone,
       });
@@ -81,18 +81,18 @@ export default function AdminLoginPage() {
       setTimer(60);
       setCanResend(false);
       setOtp(['', '', '', '', '', '']);
-      setSuccessMsg(`Passcode dispatched via SMS to +91 ${cleanPhone}. Please check your phone messages.`);
+      setSuccessMsg(`Passcode dispatched via WhatsApp to +91 ${cleanPhone}. Please check your phone.`);
       setTimeout(() => {
         otpInputsRef.current[0]?.focus();
       }, 100);
     } catch (err: any) {
-      console.warn('SMS gateway fallback (Master OTP available: 123456):', err);
+      console.warn('WhatsApp gateway fallback (Master OTP available: 123456):', err);
       // Seamlessly transition to OTP step
       setStep('OTP');
       setTimer(60);
       setCanResend(false);
       setOtp(['', '', '', '', '', '']);
-      setSuccessMsg(`Passcode dispatched via SMS to +91 ${cleanPhone}. Please check your phone messages.`);
+      setSuccessMsg(`Passcode dispatched via WhatsApp to +91 ${cleanPhone}. Please check your phone.`);
       setTimeout(() => {
         otpInputsRef.current[0]?.focus();
       }, 100);
@@ -150,7 +150,7 @@ export default function AdminLoginPage() {
   const verifyCode = async (codeToVerify?: string) => {
     const code = codeToVerify || otp.join('');
     if (code.length < 6) {
-      setError('Please enter all 6 digits of the SMS OTP.');
+      setError('Please enter all 6 digits of the WhatsApp OTP.');
       return;
     }
 
@@ -160,7 +160,7 @@ export default function AdminLoginPage() {
     const cleanPhone = phoneNumber.replace(/\D/g, '').slice(-10);
 
     try {
-      // Verify with backend MSG91 endpoint
+      // Verify with backend WhatsApp OTP endpoint
       const res = await apiClient.post('/onboarding/auth/login', {
         mobile_number: cleanPhone,
         otp: code,
@@ -181,7 +181,7 @@ export default function AdminLoginPage() {
             })
           );
         }
-        setSuccessMsg('SMS passcode verified! Directing to Super Admin Console...');
+        setSuccessMsg('WhatsApp passcode verified! Directing to Super Admin Console...');
         setTimeout(() => {
           if (typeof window !== 'undefined') {
             window.location.href = '/admin';
@@ -190,7 +190,7 @@ export default function AdminLoginPage() {
           }
         }, 300);
       } else {
-        setError(res.data?.message || 'Incorrect SMS OTP code. Please check your phone.');
+        setError(res.data?.message || 'Incorrect OTP code. Please check your WhatsApp.');
         setIsLoading(false);
       }
     } catch (err: any) {
@@ -353,7 +353,7 @@ export default function AdminLoginPage() {
             {/* Security Guarantee Note */}
             <div className="flex items-center gap-2 text-xs text-slate-400 pt-1">
               <Lock className="h-3.5 w-3.5 text-slate-400" />
-              <span>Multi-tier admin access protected by instant MSG91 SMS OTP authentication.</span>
+              <span>Multi-tier admin access protected by instant WhatsApp OTP authentication.</span>
             </div>
           </div>
 
@@ -381,8 +381,8 @@ export default function AdminLoginPage() {
                 </h2>
                 <p className="text-xs text-slate-400 leading-relaxed">
                   {step === 'MOBILE'
-                    ? 'Enter your verified administrator phone number to receive an instant SMS one-time passcode.'
-                    : `Secure passcode dispatched via MSG91 SMS to +91 ${phoneNumber}`}
+                    ? 'Enter your verified administrator phone number to receive an instant WhatsApp one-time passcode.'
+                    : `Secure passcode dispatched via WhatsApp to +91 ${phoneNumber}`}
                 </p>
               </div>
 
@@ -438,7 +438,7 @@ export default function AdminLoginPage() {
                       />
                     </div>
                     <p className="text-[11px] text-slate-500">
-                      Dispatched instantly via MSG91 Enterprise Telecom Gateway
+                      Dispatched instantly via Meta WhatsApp Gateway
                     </p>
                   </div>
 
@@ -452,11 +452,11 @@ export default function AdminLoginPage() {
                     {isLoading ? (
                       <>
                         <RefreshCw className="h-4 w-4 animate-spin" />
-                        <span>Dispatching SMS OTP via MSG91...</span>
+                        <span>Dispatching WhatsApp OTP...</span>
                       </>
                     ) : (
                       <>
-                        <span>Send SMS Passcode</span>
+                        <span>Send WhatsApp Passcode</span>
                         <ArrowRight className="h-4 w-4" />
                       </>
                     )}
@@ -467,7 +467,7 @@ export default function AdminLoginPage() {
                 <div className="space-y-5">
                   <div className="space-y-2">
                     <label htmlFor="admin-otp-0" className="text-xs font-bold uppercase tracking-wider text-slate-300 block">
-                      Enter 6-Digit SMS Code
+                      Enter 6-Digit WhatsApp Code
                     </label>
                     <div className="flex items-center justify-between gap-2">
                       {otp.map((digit, idx) => (
@@ -510,7 +510,7 @@ export default function AdminLoginPage() {
                         onClick={() => handleSendOtp()}
                         className="text-[#F94001] hover:underline font-bold transition-colors cursor-pointer"
                       >
-                        Resend SMS
+                        Resend Code
                       </button>
                     ) : (
                       <span className="text-slate-500">Resend in {timer}s</span>
@@ -529,7 +529,7 @@ export default function AdminLoginPage() {
                       {isLoading ? (
                         <>
                           <RefreshCw className="h-4 w-4 animate-spin" />
-                          <span>Verifying with MSG91...</span>
+                          <span>Verifying OTP...</span>
                         </>
                       ) : (
                         <>

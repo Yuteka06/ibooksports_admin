@@ -58,7 +58,7 @@ export default function PartnerLoginForm() {
       }
       setOtpSent(true);
       setCountdown(60);
-      setSuccessMessage('A one-time verification passcode has been dispatched to your mobile number via SMS.');
+      setSuccessMessage('A one-time verification passcode has been dispatched to your WhatsApp.');
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } }; message?: string };
       setErrorMessage(
