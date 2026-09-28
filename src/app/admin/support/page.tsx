@@ -885,7 +885,7 @@ export default function SupportHelpdeskPage() {
 
                     {/* Reported */}
                     <td className="py-3.5 px-4 text-[#5F6368] text-[11px]">
-                      {t.created_at.split(' ')[0]}
+                      {t.created_at ? (t.created_at.includes(' ') ? t.created_at.split(' ')[0] : (t.created_at.includes('T') ? t.created_at.split('T')[0] : t.created_at)) : 'Today'}
                     </td>
 
                     {/* Action */}

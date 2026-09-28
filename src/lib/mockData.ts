@@ -247,6 +247,7 @@ export interface PaymentTransactionItem {
   slot_time?: string;
   booking_date?: string;
   due_mode?: 'CASH' | 'ONLINE';
+  created_at?: string;
 }
 
 export interface SettlementBookingItem {

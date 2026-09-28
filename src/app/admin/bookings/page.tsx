@@ -78,7 +78,7 @@ export default function BookingManagementPage() {
 
       if (Array.isArray(rows) && rows.length > 0) {
         const mapped: BookingItem[] = rows.map((r: any) => {
-          let parsedDate = r.date || '';
+          let parsedDate = r.booking_date || r.date || '';
           if (parsedDate && !parsedDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
             const d = new Date(parsedDate);
             if (!isNaN(d.getTime())) {
@@ -86,12 +86,12 @@ export default function BookingManagementPage() {
             }
           }
 
-          const totalAmt = Number(r.total_amount) || 0;
-          const paidAmt = Number(r.paid_amount ?? r.advance_amount ?? (r.status === 'Confirmed' ? totalAmt : 0));
-          const balAmt = Number(r.balance_amount ?? Math.max(0, totalAmt - paidAmt));
+          const totalAmt = Number(r.total_amount ?? r.totalAmount ?? 0);
+          const paidAmt = Number(r.paid_amount ?? r.paidAmount ?? r.advance_amount ?? (r.status === 'Confirmed' ? totalAmt : 0));
+          const balAmt = Number(r.balance_amount ?? r.balanceAmount ?? Math.max(0, totalAmt - paidAmt));
 
           let pStatus: 'PAID' | 'PARTIAL_PAID' | 'ADVANCE_PAID' | 'PENDING' | 'REFUNDED' | 'FAILED' = 'PAID';
-          const rawPStatus = (r.payment_status || '').toLowerCase();
+          const rawPStatus = (r.payment_status || r.paymentStatus || '').toLowerCase();
           if (rawPStatus.includes('partially') || rawPStatus.includes('partial') || (paidAmt > 0 && balAmt > 0)) {
             pStatus = 'PARTIAL_PAID';
           } else if (rawPStatus.includes('refund')) {
@@ -105,7 +105,7 @@ export default function BookingManagementPage() {
           }
 
           let bStatus: 'PENDING_PAYMENT' | 'CONFIRMED' | 'IN_PLAY' | 'COMPLETED' | 'CANCELLED' | 'EXPIRED' = 'CONFIRMED';
-          const rawBStatus = (r.status || '').toLowerCase();
+          const rawBStatus = (r.booking_status || r.status || '').toLowerCase();
           if (rawBStatus.includes('cancel')) {
             bStatus = 'CANCELLED';
           } else if (rawBStatus.includes('pending') || rawBStatus.includes('hold')) {
@@ -120,18 +120,18 @@ export default function BookingManagementPage() {
 
           return {
             id: String(r.id),
-            booking_code: formatShortBookingId(r.booking_number || r.booking_code, r.id),
-            customer_id: r.customer_id || r.customer_phone || 'cust_live',
-            customer_name: r.customer_name || 'Player',
-            customer_phone: r.customer_phone || '',
-            venue_id: r.venue_id || 'APP10236',
-            venue_name: r.venue_name || (r.venue_id === 'APP10236' ? 'Rex Sports Arena' : (r.venue_id === 'APP10238' ? 'Sky Sports Arena' : 'Fast and Furious Sports')),
-            court_id: r.court_id || 'court-1',
-            court_name: r.court_name || 'Main Arena Court',
+            booking_code: formatShortBookingId(r.booking_number || r.booking_code || r.bookingNumber, r.id),
+            customer_id: r.customer_id || r.customerId || r.customer_phone || r.customerPhone || 'cust_live',
+            customer_name: r.customer_name || r.customerName || 'Player',
+            customer_phone: r.customer_phone || r.customerPhone || '',
+            venue_id: r.venue_id || r.venueId || 'APP10236',
+            venue_name: r.venue_name || r.venueName || (r.venue_id === 'APP10236' ? 'Rex Sports Arena' : (r.venue_id === 'APP10238' ? 'Sky Sports Arena' : 'Fast and Furious Sports')),
+            court_id: r.court_id || r.courtId || 'court-1',
+            court_name: r.court_name || r.courtName || 'Main Arena Court',
             sport: r.sport || 'FOOTBALL',
             booking_date: parsedDate,
-            time_slot: r.time_slot || '06:00 PM - 07:00 PM',
-            duration_minutes: Number(r.duration_minutes) || 60,
+            time_slot: r.time_slot || r.timeSlot || '06:00 PM - 07:00 PM',
+            duration_minutes: Number(r.duration_minutes ?? r.durationMinutes) || 60,
             total_amount: totalAmt,
             platform_fee: Math.round(totalAmt * 0.1),
             venue_share: totalAmt - Math.round(totalAmt * 0.1),
@@ -1476,7 +1476,7 @@ export default function BookingManagementPage() {
                       <div className="space-y-1">
                         <span className="text-[10px] font-bold text-slate-400 uppercase">Check-in Passcode</span>
                         <p className="font-mono font-black text-lg text-slate-900">
-                          {selectedBooking.booking_code.split('-').pop()}
+                          {selectedBooking?.booking_code ? selectedBooking.booking_code.split('-').pop() : (selectedBooking?.id ? String(selectedBooking.id).slice(-4) : '1001')}
                         </p>
                         <p className="text-[10px] text-slate-500">Player presents code at venue entry gate</p>
                       </div>

@@ -1560,7 +1560,7 @@ export default function AdminSettingsPage() {
                   </thead>
                   <tbody className="divide-y divide-[#E5E7EB] text-xs">
                     {staffList.map((staff) => {
-                      const initials = staff.name
+                      const initials = (staff.name || 'Staff')
                         .split(' ')
                         .map((n) => n[0])
                         .join('')

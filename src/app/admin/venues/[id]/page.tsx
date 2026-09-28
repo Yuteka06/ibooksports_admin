@@ -2856,7 +2856,7 @@ export default function VenueModularOverviewPage() {
                     {staffMembers.map((staff) => {
                       const isStaffActive = staff.status === 'ACTIVE';
                       const initials =
-                        staff.name
+                        (staff.name || 'Staff Member')
                           .split(' ')
                           .map((n) => n[0])
                           .join('')

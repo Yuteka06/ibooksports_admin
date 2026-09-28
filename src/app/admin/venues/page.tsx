@@ -154,7 +154,7 @@ export default function VenuesManagementPage() {
       if (v.sports_list && Array.isArray(v.sports_list)) {
         v.sports_list.forEach((s) => sportsSet.add(s.trim()));
       } else if (v.sports) {
-        v.sports.split(',').forEach((s) => sportsSet.add(s.trim()));
+        (typeof v.sports === 'string' ? v.sports.split(',') : []).forEach((s: string) => sportsSet.add(s.trim()));
       }
     });
     return Array.from(sportsSet).sort();
@@ -238,7 +238,7 @@ export default function VenuesManagementPage() {
     if (role.toLowerCase().includes('manager')) return 'Manager';
     if (role.toLowerCase().includes('supervisor')) return 'Supervisor';
     if (role.toLowerCase().includes('director')) return 'Director';
-    return role.split(' ')[0];
+    return (role || '').split(' ')[0] || 'Staff';
   };
 
   const isAnyFilterActive = searchQuery || selectedState !== 'ALL' || selectedStatus !== 'ALL' || selectedSport !== 'ALL';
@@ -811,7 +811,8 @@ export default function VenuesManagementPage() {
                   const occupancy = isLiveActive ? (v.today_slot_occupancy_percent || 85) : 0;
 
                   // Clean sports list string
-                  const sportsStr = (v.sports_list || v.sports.split(','))
+                  const sportsList = v.sports_list || (typeof v.sports === 'string' ? v.sports.split(',') : []);
+                  const sportsStr = sportsList
                     .map((s) => s.trim())
                     .join(', ');
 

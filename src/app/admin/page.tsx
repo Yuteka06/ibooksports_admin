@@ -997,33 +997,44 @@ export default function AdminDashboardPage() {
                   </tr>
                 ) : (
                   recentBookings.slice(0, 5).map((b) => {
-                    const isPartial = b.payment_status === 'PARTIAL_PAID' || b.booking_code === 'IBS-2603-9002' || b.booking_code === 'IBS-2603-9004';
-                    const cleanPayment = b.payment_method?.toLowerCase().includes('card')
+                    const bookingCode = b.booking_code || b.bookingNumber || b.booking_number || b.id || 'BK-1001';
+                    const customerName = b.customer_name || b.customerName || 'Player';
+                    const customerPhone = b.customer_phone || b.customerPhone || '';
+                    const venueName = b.venue_name || b.courtName || b.court_name || 'Main Arena';
+                    const sport = b.sport || 'FOOTBALL';
+                    const bookingDate = b.booking_date || b.date || '';
+                    const rawTimeSlot = b.time_slot || b.timeSlot || '06:00 PM - 07:00 PM';
+                    const startTime = rawTimeSlot.includes('-') ? rawTimeSlot.split('-')[0].trim() : rawTimeSlot;
+                    const totalAmt = Number(b.total_amount ?? b.totalAmount ?? 0);
+                    const isPartial = (b.payment_status || b.paymentStatus || '').toUpperCase().includes('PARTIAL');
+                    const paymentMethod = b.payment_method || b.paymentMethod || 'UPI';
+                    const cleanPayment = paymentMethod.toLowerCase().includes('card')
                       ? 'Card'
-                      : b.payment_method?.toLowerCase().includes('net') || b.payment_method?.toLowerCase().includes('banking')
+                      : paymentMethod.toLowerCase().includes('net') || paymentMethod.toLowerCase().includes('banking')
                         ? 'Net Banking'
                         : 'UPI';
+                    const statusStr = (b.booking_status || b.status || 'CONFIRMED').toUpperCase();
 
                     return (
-                      <tr key={b.id} className="hover:bg-slate-50/70 transition-colors">
+                      <tr key={b.id || bookingCode} className="hover:bg-slate-50/70 transition-colors">
                         <td className="py-3 pr-3 font-mono font-bold text-[#F94001]">
-                          {b.booking_code}
+                          {bookingCode}
                         </td>
                         <td className="py-3 pr-3">
-                          <p className="font-bold text-slate-900">{b.customer_name}</p>
-                          <p className="text-[11px] text-slate-500 font-mono">{b.customer_phone}</p>
+                          <p className="font-bold text-slate-900">{customerName}</p>
+                          <p className="text-[11px] text-slate-500 font-mono">{customerPhone}</p>
                         </td>
                         <td className="py-3 pr-3">
-                          <p className="font-medium text-slate-800 truncate max-w-[170px]">{b.venue_name}</p>
-                          <p className="text-[10px] font-bold text-[#F94001]">{b.sport}</p>
+                          <p className="font-medium text-slate-800 truncate max-w-[170px]">{venueName}</p>
+                          <p className="text-[10px] font-bold text-[#F94001]">{sport}</p>
                         </td>
                         <td className="py-3 pr-3 font-mono text-[11px] text-slate-600">
-                          {b.booking_date} &bull; {b.time_slot.split(' - ')[0]}
+                          {bookingDate} &bull; {startTime}
                         </td>
                         <td className="py-3 pr-3 font-mono">
                           {isPartial ? (
                             <div className="space-y-0.5">
-                              <span className="font-bold text-emerald-700">₹{b.total_amount * 0.5}</span>
+                              <span className="font-bold text-emerald-700">₹{totalAmt * 0.5}</span>
                               <div>
                                 {b.due_mode === 'ONLINE' ? (
                                   <span className="text-[9px] font-bold text-sky-800 bg-sky-50 border border-sky-200 px-1 py-0.2 rounded">
@@ -1037,7 +1048,7 @@ export default function AdminDashboardPage() {
                               </div>
                             </div>
                           ) : (
-                            <span className="font-bold text-emerald-700">₹{b.total_amount} Paid</span>
+                            <span className="font-bold text-emerald-700">₹{totalAmt} Paid</span>
                           )}
                         </td>
                         <td className="py-3 pr-3 font-bold text-slate-800 text-[11px]">
@@ -1045,16 +1056,16 @@ export default function AdminDashboardPage() {
                         </td>
                         <td className="py-3 text-right">
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${b.booking_status === 'COMPLETED'
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${statusStr === 'COMPLETED'
                                 ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-                                : b.booking_status === 'IN_PLAY'
+                                : statusStr === 'IN_PLAY' || statusStr === 'ONGOING'
                                   ? 'bg-blue-50 text-blue-700 border border-blue-200 animate-pulse'
-                                  : b.booking_status === 'CONFIRMED'
+                                  : statusStr === 'CONFIRMED'
                                     ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                     : 'bg-rose-50 text-rose-700 border border-rose-200'
                               }`}
                           >
-                            {b.booking_status}
+                            {statusStr}
                           </span>
                         </td>
                       </tr>

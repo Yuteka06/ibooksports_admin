@@ -166,7 +166,7 @@ export default function PaymentManagementPage() {
   const dateFilteredPayments = useMemo(() => {
     if (!selectedDate) return payments;
     return payments.filter((p) => {
-      const itemDate = p.booking_date || p.timestamp.split(' ')[0];
+      const itemDate = p.booking_date || (p.timestamp ? (p.timestamp.includes(' ') ? p.timestamp.split(' ')[0] : p.timestamp.split('T')[0]) : (p.created_at ? p.created_at.split('T')[0] : ''));
       return itemDate === selectedDate;
     });
   }, [payments, selectedDate]);
@@ -569,7 +569,7 @@ export default function PaymentManagementPage() {
                   const isPartial = p.payment_status === 'ADVANCE_PAID';
                   const isPaid = p.payment_status === 'FULLY_PAID';
                   const isRefunded = p.payment_status === 'REFUNDED';
-                  const bookingDate = p.booking_date || p.timestamp.split(' ')[0];
+                  const bookingDate = p.booking_date || (p.timestamp ? (p.timestamp.includes(' ') ? p.timestamp.split(' ')[0] : p.timestamp.split('T')[0]) : (p.created_at ? p.created_at.split('T')[0] : ''));
                   const cleanPaymentType = getCleanPaymentType(p);
 
                   // Booking Status color (colored text only - NO background as requested!)
@@ -1113,7 +1113,7 @@ export default function PaymentManagementPage() {
                             {selectedTxn.invoice_number || `INV-2026-${selectedTxn.booking_code}`}
                           </span>
                           <p className="text-[10px] text-slate-500 mt-0.5">
-                            Date: {selectedTxn.timestamp.split(' ')[0]}
+                            Date: {selectedTxn.timestamp ? (selectedTxn.timestamp.includes(' ') ? selectedTxn.timestamp.split(' ')[0] : selectedTxn.timestamp.split('T')[0]) : (selectedTxn.created_at ? selectedTxn.created_at.split('T')[0] : '2026-09-28')}
                           </p>
                         </div>
                       </div>
