@@ -108,12 +108,14 @@ export default function WebsiteLeadForm() {
 
   // Handle Phone change
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (formError) setFormError(null);
     const val = e.target.value.replace(/\D/g, '').slice(0, 10);
     setFormData((prev) => ({ ...prev, mobileNumber: val }));
   };
 
   // Toggle Sport Selection
   const handleToggleSport = (sportId: string) => {
+    if (formError) setFormError(null);
     setFormData((prev) => {
       const exists = prev.selectedSports.includes(sportId);
       const updated = exists
@@ -125,6 +127,7 @@ export default function WebsiteLeadForm() {
 
   // Remove Sport Chip
   const handleRemoveSport = (sportId: string) => {
+    if (formError) setFormError(null);
     setFormData((prev) => ({
       ...prev,
       selectedSports: prev.selectedSports.filter((id) => id !== sportId),
@@ -408,9 +411,10 @@ export default function WebsiteLeadForm() {
                   required
                   placeholder="e.g. Karthik Rajan"
                   value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
+                  onChange={(e) => {
+                    if (formError) setFormError(null);
+                    setFormData({ ...formData, name: e.target.value });
+                  }}
                   className="w-full rounded-xl border border-[#E5E7EB] bg-[#F8F9FA] pl-10 pr-4 py-2.5 text-xs sm:text-sm text-[#021526] placeholder-[#5F6368] transition-all focus:border-[#F94001] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#F94001]"
                   suppressHydrationWarning
                 />
@@ -429,9 +433,10 @@ export default function WebsiteLeadForm() {
                   required
                   placeholder="e.g. karthik@skysports.com"
                   value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
+                  onChange={(e) => {
+                    if (formError) setFormError(null);
+                    setFormData({ ...formData, email: e.target.value });
+                  }}
                   className="w-full rounded-xl border border-[#E5E7EB] bg-[#F8F9FA] pl-10 pr-4 py-2.5 text-xs sm:text-sm text-[#021526] placeholder-[#5F6368] transition-all focus:border-[#F94001] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#F94001]"
                   suppressHydrationWarning
                 />
@@ -486,9 +491,10 @@ export default function WebsiteLeadForm() {
                 required
                 placeholder="e.g. Sky Sports Arena"
                 value={formData.venueName}
-                onChange={(e) =>
-                  setFormData({ ...formData, venueName: e.target.value })
-                }
+                onChange={(e) => {
+                  if (formError) setFormError(null);
+                  setFormData({ ...formData, venueName: e.target.value });
+                }}
                 className="w-full rounded-xl border border-[#E5E7EB] bg-[#F8F9FA] pl-10 pr-4 py-2.5 text-xs sm:text-sm text-[#021526] placeholder-[#5F6368] transition-all focus:border-[#F94001] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#F94001]"
                 suppressHydrationWarning
               />
@@ -507,12 +513,13 @@ export default function WebsiteLeadForm() {
                 required
                 placeholder="e.g. https://www.google.com/maps?q=11.0283,77.0012"
                 value={formData.venueLocationName}
-                onChange={(e) =>
+                onChange={(e) => {
+                  if (formError) setFormError(null);
                   setFormData({
                     ...formData,
                     venueLocationName: e.target.value,
-                  })
-                }
+                  });
+                }}
                 className="w-full rounded-xl border border-[#E5E7EB] bg-[#F8F9FA] pl-10 pr-4 py-2.5 text-xs sm:text-sm text-[#021526] placeholder-[#5F6368] transition-all focus:border-[#F94001] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#F94001]"
                 suppressHydrationWarning
               />
