@@ -400,7 +400,9 @@ export default function VenueModularOverviewPage() {
                 },
               ],
               created_at: r.created_at,
-              submitted_at: r.created_at ? r.created_at.split('T')[0] : '2026-03-09',
+              submitted_at: (typeof r.created_at === 'string' && r.created_at.includes('T'))
+                ? r.created_at.split('T')[0]
+                : (r.created_at ? String(r.created_at).slice(0, 10) : '2026-03-09'),
             }));
           }
         } catch (err) {

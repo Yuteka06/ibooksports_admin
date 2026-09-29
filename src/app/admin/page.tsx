@@ -78,11 +78,11 @@ export default function AdminDashboardPage() {
       0,
     );
     const totalOnline = realBookings
-      .filter((b) => !b.paymentMethod?.toLowerCase().includes('cash'))
-      .reduce((sum, b) => sum + (Number(b.paidAmount || b.paid_amount || b.totalAmount) || 0), 0);
+      .filter((b) => !String(b?.paymentMethod || b?.payment_method || '').toLowerCase().includes('cash'))
+      .reduce((sum, b) => sum + (Number(b?.paidAmount ?? b?.paid_amount ?? b?.totalAmount ?? b?.total_amount) || 0), 0);
     const totalCash = realBookings
-      .filter((b) => b.paymentMethod?.toLowerCase().includes('cash'))
-      .reduce((sum, b) => sum + (Number(b.paidAmount || b.paid_amount) || 0), 0);
+      .filter((b) => String(b?.paymentMethod || b?.payment_method || '').toLowerCase().includes('cash'))
+      .reduce((sum, b) => sum + (Number(b?.paidAmount ?? b?.paid_amount ?? 0) || 0), 0);
     const totalBookings = realBookings.length;
 
     const basePoints =
@@ -1003,17 +1003,21 @@ export default function AdminDashboardPage() {
                     const venueName = b.venue_name || b.courtName || b.court_name || 'Main Arena';
                     const sport = b.sport || 'FOOTBALL';
                     const bookingDate = b.booking_date || b.date || '';
-                    const rawTimeSlot = b.time_slot || b.timeSlot || '06:00 PM - 07:00 PM';
-                    const startTime = rawTimeSlot.includes('-') ? rawTimeSlot.split('-')[0].trim() : rawTimeSlot;
+                    const rawTimeSlot = typeof b?.time_slot === 'string'
+                      ? b.time_slot
+                      : (typeof b?.timeSlot === 'string' ? b.timeSlot : '06:00 PM - 07:00 PM');
+                    const startTime = rawTimeSlot.includes('-')
+                      ? (rawTimeSlot.split('-')[0] || '').trim()
+                      : rawTimeSlot;
                     const totalAmt = Number(b.total_amount ?? b.totalAmount ?? 0);
-                    const isPartial = (b.payment_status || b.paymentStatus || '').toUpperCase().includes('PARTIAL');
-                    const paymentMethod = b.payment_method || b.paymentMethod || 'UPI';
+                    const isPartial = String(b.payment_status || b.paymentStatus || '').toUpperCase().includes('PARTIAL');
+                    const paymentMethod = String(b.payment_method || b.paymentMethod || 'UPI');
                     const cleanPayment = paymentMethod.toLowerCase().includes('card')
                       ? 'Card'
                       : paymentMethod.toLowerCase().includes('net') || paymentMethod.toLowerCase().includes('banking')
                         ? 'Net Banking'
                         : 'UPI';
-                    const statusStr = (b.booking_status || b.status || 'CONFIRMED').toUpperCase();
+                    const statusStr = String(b.booking_status || b.status || 'CONFIRMED').toUpperCase();
 
                     return (
                       <tr key={b.id || bookingCode} className="hover:bg-slate-50/70 transition-colors">

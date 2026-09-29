@@ -288,7 +288,9 @@ export default function CourtRequestsPage() {
             },
           ],
           created_at: r.created_at,
-          submitted_at: r.created_at ? r.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+          submitted_at: (typeof r.created_at === 'string' && r.created_at.includes('T'))
+            ? r.created_at.split('T')[0]
+            : (r.created_at ? String(r.created_at).slice(0, 10) : new Date().toISOString().split('T')[0]),
         }));
       } else {
         mapped = [];
