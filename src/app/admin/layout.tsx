@@ -31,6 +31,7 @@ import {
   LogOut,
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
+import { AdminErrorBoundary } from '@/components/AdminErrorBoundary';
 
 interface AdminNotification {
   id: string;
@@ -719,7 +720,11 @@ export default function AdminLayout({
 
         {/* MAIN CONTENT AREA - FLUID FULL WIDTH */}
         <main className="flex-1 w-full min-w-0 p-4 sm:p-6 lg:p-8 bg-[#F8F9FA] overflow-y-auto">
-          <div className="w-full max-w-[1600px] mx-auto">{children}</div>
+          <div className="w-full max-w-[1600px] mx-auto">
+            <AdminErrorBoundary fallbackTitle="Admin Section Error">
+              {children}
+            </AdminErrorBoundary>
+          </div>
         </main>
       </div>
     </div>
