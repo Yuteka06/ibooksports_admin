@@ -46,12 +46,22 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
-// Rule 11, 12, 6: Response Interceptor handling status codes & meaningful errors
+// Rule 11, 12, 6: Response Interceptor handling status codes, retries & meaningful errors
 apiClient.interceptors.response.use(
   (response) => {
     return response;
   },
-  (error) => {
+  async (error) => {
+    const config = error.config;
+    
+    // Automatic retry for idempotent GET requests on transient network glitches (ERR_NETWORK_CHANGED, ECONNABORTED, offline reconnects)
+    if (config && (!config._retryCount || config._retryCount < 2) && (!error.response || error.code === 'ERR_NETWORK' || error.message?.includes('Network Error') || error.message?.includes('ERR_NETWORK_CHANGED'))) {
+      config._retryCount = (config._retryCount || 0) + 1;
+      const delayMs = config._retryCount * 800;
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      return apiClient(config);
+    }
+
     const status = error.response?.status;
     let customErrorMsg = '';
 
