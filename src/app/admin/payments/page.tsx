@@ -166,7 +166,10 @@ export default function PaymentManagementPage() {
   const dateFilteredPayments = useMemo(() => {
     if (!selectedDate) return payments;
     return payments.filter((p) => {
-      const itemDate = p.booking_date || (p.timestamp ? (p.timestamp.includes(' ') ? p.timestamp.split(' ')[0] : p.timestamp.split('T')[0]) : (p.created_at ? p.created_at.split('T')[0] : ''));
+      const rawTime = p.booking_date || p.timestamp || p.created_at || '';
+      const itemDate = typeof rawTime === 'string'
+        ? (rawTime.includes(' ') ? rawTime.split(' ')[0] : (rawTime.includes('T') ? rawTime.split('T')[0] : rawTime))
+        : '';
       return itemDate === selectedDate;
     });
   }, [payments, selectedDate]);
@@ -569,7 +572,10 @@ export default function PaymentManagementPage() {
                   const isPartial = p.payment_status === 'ADVANCE_PAID';
                   const isPaid = p.payment_status === 'FULLY_PAID';
                   const isRefunded = p.payment_status === 'REFUNDED';
-                  const bookingDate = p.booking_date || (p.timestamp ? (p.timestamp.includes(' ') ? p.timestamp.split(' ')[0] : p.timestamp.split('T')[0]) : (p.created_at ? p.created_at.split('T')[0] : ''));
+                  const rawBookingTime = p.booking_date || p.timestamp || p.created_at || '';
+                  const bookingDate = typeof rawBookingTime === 'string'
+                    ? (rawBookingTime.includes(' ') ? rawBookingTime.split(' ')[0] : (rawBookingTime.includes('T') ? rawBookingTime.split('T')[0] : rawBookingTime))
+                    : '2026-09-28';
                   const cleanPaymentType = getCleanPaymentType(p);
 
                   // Booking Status color (colored text only - NO background as requested!)
@@ -1113,7 +1119,12 @@ export default function PaymentManagementPage() {
                             {selectedTxn.invoice_number || `INV-2026-${selectedTxn.booking_code}`}
                           </span>
                           <p className="text-[10px] text-slate-500 mt-0.5">
-                            Date: {selectedTxn.timestamp ? (selectedTxn.timestamp.includes(' ') ? selectedTxn.timestamp.split(' ')[0] : selectedTxn.timestamp.split('T')[0]) : (selectedTxn.created_at ? selectedTxn.created_at.split('T')[0] : '2026-09-28')}
+                            Date: {(() => {
+                              const rawInvTime = selectedTxn.timestamp || selectedTxn.created_at || '';
+                              return typeof rawInvTime === 'string'
+                                ? (rawInvTime.includes(' ') ? rawInvTime.split(' ')[0] : (rawInvTime.includes('T') ? rawInvTime.split('T')[0] : rawInvTime))
+                                : '2026-09-28';
+                            })()}
                           </p>
                         </div>
                       </div>

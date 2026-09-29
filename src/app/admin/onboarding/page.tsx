@@ -260,10 +260,15 @@ export default function PartnerOnboardingAdminTrackerPage() {
             ? 'VEN-' + actionTargetApp.application_id.replace('REQ-', '')
             : `VEN-${Date.now().toString().slice(-4)}`;
 
+          const rawSports = (actionTargetApp.business_details as any)?.sports;
           const sportsArr: string[] = actionTargetApp.courts_config?.sports?.length
             ? actionTargetApp.courts_config.sports
-            : ((actionTargetApp.business_details as any)?.sports
-                ? String((actionTargetApp.business_details as any).sports).split(',').map((s: string) => s.trim())
+            : (rawSports
+                ? (Array.isArray(rawSports)
+                    ? rawSports
+                    : typeof rawSports === 'string'
+                    ? rawSports.split(',').map((s: string) => s.trim()).filter(Boolean)
+                    : ['Football', 'Cricket'])
                 : ['Football', 'Cricket']);
 
           const courtsArr = (actionTargetApp.courts_config?.courts && actionTargetApp.courts_config.courts.length > 0)
@@ -736,16 +741,16 @@ export default function PartnerOnboardingAdminTrackerPage() {
                 filteredApps.map((app) => {
                   const stepNum = app.current_step || 1;
                   const progressPercent = Math.min(100, Math.round((stepNum / 8) * 100));
-                  const fullTimestamp = app.updated_at || app.created_at || 'Just now';
+                  const fullTimestamp = String(app.updated_at || app.created_at || 'Just now');
                   const dateObj = new Date(fullTimestamp);
                   const isValidDate = !isNaN(dateObj.getTime());
                   const datePart = isValidDate 
                     ? dateObj.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) 
-                    : (fullTimestamp.includes(' ') ? fullTimestamp.split(' ')[0] : fullTimestamp);
+                    : (typeof fullTimestamp === 'string' && fullTimestamp.includes(' ') ? fullTimestamp.split(' ')[0] : fullTimestamp);
                   
                   const timePart = isValidDate
                     ? dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-                    : (fullTimestamp.includes(' ') ? fullTimestamp.split(' ').slice(1).join(' ') : '');
+                    : (typeof fullTimestamp === 'string' && fullTimestamp.includes(' ') ? fullTimestamp.split(' ').slice(1).join(' ') : '');
 
                   return (
                     <tr key={app.application_id} className="hover:bg-[#FFF8F5]/60 transition-colors">

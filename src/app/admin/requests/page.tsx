@@ -187,7 +187,7 @@ export default function PartnerRequestsPage() {
     setApprovingRequest(req);
     const existingToken =
       req.raw_onboarding_token ||
-      (req.approval_access_link && req.approval_access_link.includes('/onboarding/')
+      (typeof req.approval_access_link === 'string' && req.approval_access_link.includes('/onboarding/')
         ? req.approval_access_link.split('/onboarding/')[1]?.trim()
         : null);
 
@@ -302,7 +302,9 @@ export default function PartnerRequestsPage() {
     const set = new Set<string>();
     requests.forEach((r) => {
       if (r.sports && Array.isArray(r.sports)) {
-        r.sports.forEach((s) => set.add(s.trim()));
+        r.sports.forEach((s) => {
+          if (typeof s === 'string' && s.trim()) set.add(s.trim());
+        });
       }
     });
     return Array.from(set).sort();
@@ -320,8 +322,11 @@ export default function PartnerRequestsPage() {
       return false;
     }
     if (selectedSport !== 'ALL') {
-      const sportsList = r.sports || [];
-      const hasSport = sportsList.some((s) => s.toLowerCase().includes(selectedSport.toLowerCase()));
+      const rawSports: any = r.sports || (r as any).sports_offered || [];
+      const sportsList: string[] = Array.isArray(rawSports)
+        ? rawSports
+        : (typeof rawSports === 'string' ? (rawSports as string).split(',') : []);
+      const hasSport = sportsList.some((s) => typeof s === 'string' && s.toLowerCase().includes(selectedSport.toLowerCase()));
       if (!hasSport) return false;
     }
     if (selectedCity !== 'ALL') {
@@ -330,14 +335,18 @@ export default function PartnerRequestsPage() {
     }
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      const matchId = r.request_id.toLowerCase().includes(query);
-      const matchVenue = r.venue_name.toLowerCase().includes(query);
-      const matchName = r.requester_name.toLowerCase().includes(query);
+      const matchId = (r.request_id || '').toLowerCase().includes(query);
+      const matchVenue = (r.venue_name || '').toLowerCase().includes(query);
+      const matchName = (r.requester_name || '').toLowerCase().includes(query);
       const matchDistrict = (r.district || '').toLowerCase().includes(query);
       const matchState = (r.state || '').toLowerCase().includes(query);
       const matchPhone = (r.mobile_number || '').includes(query);
       const matchEmail = (r.requester_email || '').toLowerCase().includes(query);
-      const matchSports = (r.sports || []).some((s) => s.toLowerCase().includes(query));
+      const rawSports: any = r.sports || (r as any).sports_offered || [];
+      const sportsList: string[] = Array.isArray(rawSports)
+        ? rawSports
+        : (typeof rawSports === 'string' ? (rawSports as string).split(',') : []);
+      const matchSports = sportsList.some((s) => typeof s === 'string' && s.toLowerCase().includes(query));
       return matchId || matchVenue || matchName || matchDistrict || matchState || matchPhone || matchEmail || matchSports;
     }
     return true;
@@ -678,7 +687,16 @@ export default function PartnerRequestsPage() {
                     : '09:30 AM';
 
                   const isCopied = copiedId === req.request_id;
-                  const sportsList = req.sports && req.sports.length > 0 ? req.sports.join(', ') : 'Multi-Sport';
+                  const sportsList = (() => {
+                    const raw: any = req.sports || (req as any).sports_offered;
+                    if (Array.isArray(raw) && raw.length > 0) {
+                      return raw.filter((s) => typeof s === 'string').join(', ');
+                    }
+                    if (typeof raw === 'string' && (raw as string).trim()) {
+                      return (raw as string).trim();
+                    }
+                    return 'Multi-Sport';
+                  })();
 
                   return (
                     <tr

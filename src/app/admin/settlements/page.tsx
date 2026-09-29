@@ -454,9 +454,14 @@ export default function SettlementManagementPage() {
                 >
                   <option value="">All Months</option>
                   {availableMonths.map((m) => {
-                    const [year, month] = m.split('-');
-                    const dateObj = new Date(parseInt(year), parseInt(month) - 1, 1);
-                    const label = dateObj.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                    if (!m || typeof m !== 'string' || !m.includes('-')) return null;
+                    const parts = m.split('-');
+                    const year = parts[0];
+                    const month = parts[1];
+                    const dateObj = new Date(parseInt(year, 10), parseInt(month, 10) - 1, 1);
+                    const label = isNaN(dateObj.getTime())
+                      ? m
+                      : dateObj.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
                     return (
                       <option key={m} value={m}>
                         {label} ({m})

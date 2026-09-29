@@ -885,7 +885,13 @@ export default function SupportHelpdeskPage() {
 
                     {/* Reported */}
                     <td className="py-3.5 px-4 text-[#5F6368] text-[11px]">
-                      {t.created_at ? (t.created_at.includes(' ') ? t.created_at.split(' ')[0] : (t.created_at.includes('T') ? t.created_at.split('T')[0] : t.created_at)) : 'Today'}
+                      {(() => {
+                        const raw = t.created_at || '';
+                        if (!raw) return 'Today';
+                        return typeof raw === 'string'
+                          ? (raw.includes(' ') ? raw.split(' ')[0] : (raw.includes('T') ? raw.split('T')[0] : raw))
+                          : 'Today';
+                      })()}
                     </td>
 
                     {/* Action */}
@@ -1335,7 +1341,7 @@ export default function SupportHelpdeskPage() {
                               onClick={() => setResolutionNotes(preset)}
                               className="text-[10px] bg-slate-50 hover:bg-emerald-50 hover:text-emerald-800 border border-slate-200 rounded-md px-2 py-0.5 transition-colors text-left cursor-pointer"
                             >
-                              + {preset.split(' ')[0]} {preset.split(' ')[1]} {preset.split(' ')[2]}
+                              + {typeof preset === 'string' ? preset.split(' ').slice(0, 3).join(' ') : 'Preset note'}
                             </button>
                           ))}
                         </div>

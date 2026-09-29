@@ -179,9 +179,9 @@ export default function AdminCmsPage() {
     const categoryMatch = categories.find((c) => c.key === faqForm.category);
     const categoryLabel = categoryMatch ? categoryMatch.label : faqForm.category;
 
-    const tagsArray = faqForm.tags
-      .split(',')
-      .map((t) => t.trim())
+    const rawTags = faqForm.tags || '';
+    const tagsArray = (typeof rawTags === 'string' ? rawTags.split(',') : Array.isArray(rawTags) ? rawTags : [])
+      .map((t: any) => (typeof t === 'string' ? t.trim() : String(t || '').trim()))
       .filter(Boolean);
 
     const newFaqItem: CmsFaqItem = {
