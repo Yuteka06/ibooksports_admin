@@ -261,15 +261,14 @@ export default function PartnerOnboardingAdminTrackerPage() {
             : `VEN-${Date.now().toString().slice(-4)}`;
 
           const rawSports = (actionTargetApp.business_details as any)?.sports;
-          const sportsArr: string[] = actionTargetApp.courts_config?.sports?.length
-            ? actionTargetApp.courts_config.sports
-            : (rawSports
-                ? (Array.isArray(rawSports)
-                    ? rawSports
-                    : typeof rawSports === 'string'
+          const configSports = actionTargetApp.courts_config?.sports;
+          const sportsArr: string[] = (Array.isArray(configSports) && configSports.length > 0)
+            ? configSports
+            : (Array.isArray(rawSports) && rawSports.length > 0
+                ? rawSports
+                : (typeof rawSports === 'string' && rawSports.trim()
                     ? rawSports.split(',').map((s: string) => s.trim()).filter(Boolean)
-                    : ['Football', 'Cricket'])
-                : ['Football', 'Cricket']);
+                    : ['Football', 'Cricket']));
 
           const courtsArr = (actionTargetApp.courts_config?.courts && actionTargetApp.courts_config.courts.length > 0)
             ? actionTargetApp.courts_config.courts.map((c: any, idx: number) => ({

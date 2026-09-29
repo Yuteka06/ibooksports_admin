@@ -235,12 +235,13 @@ export default function VenuesManagementPage() {
 
   // Shorten staff role cleanly
   const formatShortRole = (role?: string) => {
-    if (!role) return 'Manager';
+    if (!role || typeof role !== 'string') return 'Manager';
+    const cleanRole = role.toLowerCase();
     if (role.toLowerCase().includes('incharge')) return 'Incharge';
     if (role.toLowerCase().includes('manager')) return 'Manager';
     if (role.toLowerCase().includes('supervisor')) return 'Supervisor';
     if (role.toLowerCase().includes('director')) return 'Director';
-    return (role || '').split(' ')[0] || 'Staff';
+    return role.trim().split(/\s+/)[0] || 'Staff';
   };
 
   const isAnyFilterActive = searchQuery || selectedState !== 'ALL' || selectedStatus !== 'ALL' || selectedSport !== 'ALL';

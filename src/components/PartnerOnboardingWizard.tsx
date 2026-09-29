@@ -478,8 +478,9 @@ export default function PartnerOnboardingWizard() {
             const list = JSON.parse(storedRequests);
             if (Array.isArray(list) && list.length > 0) {
               const approvedReq = list.find((r: any) => r.request_status === 'APPROVED' && r.approval_access_link) || list[0];
-              if (approvedReq?.approval_access_link?.includes('/onboarding/')) {
-                activeToken = approvedReq.approval_access_link.split('/onboarding/')[1]?.trim();
+              const link = approvedReq?.approval_access_link;
+              if (typeof link === 'string' && link.includes('/onboarding/')) {
+                activeToken = link.split('/onboarding/')[1]?.trim();
               } else if (approvedReq?.request_id) {
                 activeToken = approvedReq.request_id;
               }
