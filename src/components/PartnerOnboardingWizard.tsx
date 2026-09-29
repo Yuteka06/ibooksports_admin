@@ -173,6 +173,25 @@ export default function PartnerOnboardingWizard() {
   const [appAccessLink, setAppAccessLink] = useState<string | undefined>();
   const [mounted, setMounted] = useState(false);
 
+  // Authentication & Phone OTP Verification State Gate
+  const [isMobileVerified, setIsMobileVerified] = useState<boolean>(false);
+  const [loginMobile, setLoginMobile] = useState('');
+  const [loginOtp, setLoginOtp] = useState('');
+  const [loginOtpSent, setLoginOtpSent] = useState(false);
+  const [loginVerificationId, setLoginVerificationId] = useState('');
+  const [loginCountdown, setLoginCountdown] = useState(0);
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [loginSuccess, setLoginSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (loginCountdown > 0) {
+      timer = setInterval(() => setLoginCountdown((c) => c - 1), 1000);
+    }
+    return () => clearInterval(timer);
+  }, [loginCountdown]);
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -502,6 +521,16 @@ export default function PartnerOnboardingWizard() {
         if (data.rejection_reasons) setRejectionReasons(data.rejection_reasons);
         if (data.app_access_link) setAppAccessLink(data.app_access_link);
 
+        // Check if verified in this browser session
+        if (typeof window !== 'undefined') {
+          const isVerified =
+            sessionStorage.getItem(`ibooksports_onboarding_verified_${sessionToken}`) === 'true' ||
+            sessionStorage.getItem('ibooksports_onboarding_authenticated') === 'true';
+          if (isVerified) {
+            setIsMobileVerified(true);
+          }
+        }
+
         // Pre-fill Partner Details
         const partner = data.partner_details || data.owner || {};
         const business = data.business_details || data.venue || {};
@@ -518,6 +547,7 @@ export default function PartnerOnboardingWizard() {
           const cleanMobile = String(resolvedMobile).replace(/\D/g, '').slice(-10);
           if (cleanMobile) {
             setMobileNumber(cleanMobile);
+            setLoginMobile(cleanMobile);
             if (typeof window !== 'undefined') {
               localStorage.setItem('ibooksports_partner_mobile', cleanMobile);
             }
@@ -660,8 +690,17 @@ export default function PartnerOnboardingWizard() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('ibooksports_onboarding_token');
-    router.push('/onboarding/login');
+    if (typeof window !== 'undefined') {
+      if (token) {
+        sessionStorage.removeItem(`ibooksports_onboarding_verified_${token}`);
+      }
+      sessionStorage.removeItem('ibooksports_onboarding_authenticated');
+      localStorage.removeItem('ibooksports_onboarding_token');
+    }
+    setIsMobileVerified(false);
+    setLoginOtp('');
+    setLoginOtpSent(false);
+    setSuccessMessage('Logged out from onboarding portal.');
   };
 
   // --- STEP 1: SAVE PARTNER DETAILS WITH STRICT VALIDATION ---
@@ -1121,6 +1160,77 @@ export default function PartnerOnboardingWizard() {
     );
   };
 
+  // Mobile OTP Login / Access Handlers
+  const handleSendVerificationOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const cleanNumber = (loginMobile || mobileNumber).replace(/\D/g, '').slice(-10);
+    if (cleanNumber.length !== 10) {
+      setLoginError('Please enter a valid 10-digit Indian mobile number.');
+      return;
+    }
+    setLoginError(null);
+    setLoginSuccess(null);
+    setLoginLoading(true);
+    try {
+      const res = await onboardingApi.sendOtp(cleanNumber);
+      if (res.verification_id) {
+        setLoginVerificationId(res.verification_id);
+      }
+      setLoginOtpSent(true);
+      setLoginCountdown(60);
+      setLoginSuccess('A 6-digit verification code has been dispatched to your WhatsApp/SMS.');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } }; message?: string };
+      setLoginError(
+        error.response?.data?.message ||
+          error.message ||
+          'Unable to send OTP. Please check the mobile number.',
+      );
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  const handleVerifyOtpAndAccess = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const cleanOtp = loginOtp.replace(/\D/g, '');
+    if (cleanOtp.length < 4) {
+      setLoginError('Please enter the 6-digit verification OTP code.');
+      return;
+    }
+    setLoginError(null);
+    setLoginLoading(true);
+    try {
+      const cleanNumber = (loginMobile || mobileNumber).replace(/\D/g, '').slice(-10);
+      const res = await onboardingApi.verifyOtp(
+        loginVerificationId,
+        cleanNumber,
+        cleanOtp,
+      );
+      if (res.success || res.mobile_verified) {
+        setIsMobileVerified(true);
+        if (typeof window !== 'undefined') {
+          if (token) {
+            sessionStorage.setItem(`ibooksports_onboarding_verified_${token}`, 'true');
+          }
+          sessionStorage.setItem('ibooksports_onboarding_authenticated', 'true');
+        }
+        setSuccessMessage('Mobile verified successfully! Welcome to the Partner Onboarding Portal.');
+      } else {
+        setLoginError((res as { message?: string }).message || 'Invalid or expired OTP code.');
+      }
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } }; message?: string };
+      setLoginError(
+        error.response?.data?.message ||
+          error.message ||
+          'Invalid verification code. Please try again.',
+      );
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
   if (initializing) {
     return (
       <div className="min-h-screen bg-[#F8F9FA] flex flex-col items-center justify-center space-y-4">
@@ -1172,42 +1282,220 @@ export default function PartnerOnboardingWizard() {
                 Ref: <strong className="text-white">{applicationId}</strong>
               </span>
             )}
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-white/10 text-xs font-bold text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Logout</span>
-            </button>
+            {isMobileVerified ? (
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-white/10 text-xs font-bold text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <LogOut className="h-3.5 w-3.5 text-rose-400" />
+                <span className="hidden sm:inline">Logout</span>
+              </button>
+            ) : (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-amber-300 font-medium">
+                <ShieldCheck className="h-3.5 w-3.5 text-amber-400" />
+                <span>Verification Required</span>
+              </div>
+            )}
           </div>
         </div>
       </header>
 
       {/* ============================================================ */}
-      {/* MAIN TWO-COLUMN WIZARD LAYOUT                                */}
+      {/* CONDITIONAL CONTENT: SECURITY GATE OR 7-STEP WIZARD         */}
       {/* ============================================================ */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* ============================================================ */}
-          {/* LEFT SIDEBAR: 7-STEP VERTICAL PROGRESSION                    */}
-          {/* ============================================================ */}
-          <aside className="lg:col-span-4 xl:col-span-3 lg:sticky lg:top-24 space-y-4">
-            <div className="bg-white rounded-2xl border border-[#E5E7EB] p-5 shadow-xs">
-              {/* Header inside sidebar */}
-              <div className="border-b border-[#E5E7EB] pb-4 mb-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold font-mono uppercase tracking-widest text-[#F94001]">
-                    REGISTRATION STEPS
-                  </span>
-                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                    Step {currentStep} of 7
-                  </span>
+      {!isMobileVerified ? (
+        <div className="max-w-xl mx-auto px-4 py-12 sm:py-16">
+          <div className="bg-white rounded-3xl border border-[#CBD5E1] shadow-xl p-6 sm:p-10 space-y-6">
+            {/* Header Badge */}
+            <div className="flex items-center justify-between pb-4 border-b border-[#F1F5F9]">
+              <div className="flex items-center gap-2.5">
+                <div className="h-10 w-10 rounded-2xl bg-[#FFF1EC] text-[#F94001] flex items-center justify-center shrink-0 border border-[#F94001]/10 shadow-xs">
+                  <ShieldCheck className="h-5 w-5" />
                 </div>
-                <h3 className="text-base font-black text-[#021526] font-display mt-1">
-                  Partner Dossier
-                </h3>
-                {/* Visual Progress Bar */}
+                <div>
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#F94001] block">
+                    SECURITY AUTHENTICATION
+                  </span>
+                  <h2 className="text-base sm:text-lg font-black text-[#021526] font-display">
+                    Partner Portal Access
+                  </h2>
+                </div>
+              </div>
+              {applicationId && (
+                <span className="text-[11px] font-mono font-bold bg-[#F8F9FA] border border-[#CBD5E1] px-2.5 py-1 rounded-lg text-[#5F6368]">
+                  {applicationId}
+                </span>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs sm:text-sm text-[#5F6368] leading-relaxed">
+                For security and privacy, please verify your registered 10-digit mobile number with a one-time passcode (OTP) before accessing this partner onboarding dossier.
+              </p>
+              {venueName && (
+                <div className="p-3 bg-[#F8F9FA] rounded-xl border border-[#E5E7EB] flex items-center gap-2.5 text-xs text-[#021526]">
+                  <Building2 className="h-4 w-4 text-[#F94001] shrink-0" />
+                  <span>Venue Facility: <strong className="font-bold">{venueName}</strong></span>
+                </div>
+              )}
+            </div>
+
+            {loginError && (
+              <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-2.5 text-xs text-rose-800 font-medium">
+                <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+                <span>{loginError}</span>
+              </div>
+            )}
+
+            {loginSuccess && (
+              <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2.5 text-xs text-emerald-800 font-medium">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                <span>{loginSuccess}</span>
+              </div>
+            )}
+
+            <form onSubmit={loginOtpSent ? handleVerifyOtpAndAccess : handleSendVerificationOtp} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#021526] mb-1.5">
+                  Registered Mobile Number <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-xs font-bold text-slate-500">
+                    +91
+                  </div>
+                  <input
+                    type="tel"
+                    maxLength={10}
+                    value={loginMobile}
+                    onChange={(e) => {
+                      setLoginMobile(e.target.value.replace(/\D/g, ''));
+                      setLoginError(null);
+                    }}
+                    disabled={loginOtpSent || loginLoading}
+                    placeholder="9876543210"
+                    className="w-full pl-12 pr-4 py-3 rounded-xl border border-[#CBD5E1] bg-[#F8F9FA] text-[#021526] text-sm font-bold tracking-wider placeholder:text-slate-400 focus:bg-white focus:border-[#F94001] focus:ring-2 focus:ring-[#F94001]/20 focus:outline-none disabled:opacity-70 disabled:bg-slate-100 transition-all font-mono"
+                  />
+                </div>
+                <p className="text-[11px] text-[#5F6368] mt-1">
+                  Enter the registered mobile number associated with this partner request.
+                </p>
+              </div>
+
+              {loginOtpSent && (
+                <div className="space-y-2 animate-in fade-in duration-200">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-[#021526]">
+                      6-Digit Verification Code (OTP) <span className="text-rose-500">*</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLoginOtpSent(false);
+                        setLoginOtp('');
+                        setLoginError(null);
+                      }}
+                      className="text-[11px] font-bold text-[#F94001] hover:underline cursor-pointer"
+                    >
+                      Change Number
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={loginOtp}
+                    onChange={(e) => {
+                      setLoginOtp(e.target.value.replace(/\D/g, ''));
+                      setLoginError(null);
+                    }}
+                    disabled={loginLoading}
+                    placeholder="Enter 6-digit OTP"
+                    className="w-full px-4 py-3 rounded-xl border border-[#CBD5E1] bg-white text-center text-lg font-black tracking-widest text-[#021526] placeholder:text-slate-300 placeholder:text-sm placeholder:font-normal placeholder:tracking-normal focus:border-[#F94001] focus:ring-2 focus:ring-[#F94001]/20 focus:outline-none transition-all font-mono"
+                  />
+                  <div className="flex items-center justify-between text-[11px] text-[#5F6368] pt-1">
+                    <span>Code sent via WhatsApp / SMS</span>
+                    {loginCountdown > 0 ? (
+                      <span className="font-mono text-slate-500 font-medium">
+                        Resend in <strong className="text-[#021526]">{loginCountdown}s</strong>
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleSendVerificationOtp()}
+                        disabled={loginLoading}
+                        className="font-bold text-[#F94001] hover:underline cursor-pointer"
+                      >
+                        Resend OTP Code
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-2">
+                {loginOtpSent ? (
+                  <button
+                    type="submit"
+                    disabled={loginLoading || loginOtp.length < 4}
+                    className="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-[#F94001] to-[#FF6500] text-white text-xs font-bold uppercase tracking-wider shadow-md hover:shadow-lg hover:from-[#e03a00] hover:to-[#e65c00] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    {loginLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Verifying Passcode...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="h-4 w-4" />
+                        <span>Verify &amp; Unlock Onboarding Dossier</span>
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={loginLoading || (loginMobile || mobileNumber).replace(/\D/g, '').length !== 10}
+                    className="w-full py-3.5 px-6 rounded-xl bg-[#021526] text-white text-xs font-bold uppercase tracking-wider shadow-md hover:bg-[#06243f] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    {loginLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Dispatching OTP...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Phone className="h-4 w-4 text-[#F94001]" />
+                        <span>Send Verification Passcode &rarr;</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            {/* ============================================================ */}
+            {/* LEFT SIDEBAR: 7-STEP VERTICAL PROGRESSION                    */}
+            {/* ============================================================ */}
+            <aside className="lg:col-span-4 xl:col-span-3 lg:sticky lg:top-24 space-y-4">
+              <div className="bg-white rounded-2xl border border-[#E5E7EB] p-5 shadow-xs">
+                {/* Header inside sidebar */}
+                <div className="border-b border-[#E5E7EB] pb-4 mb-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold font-mono uppercase tracking-widest text-[#F94001]">
+                      REGISTRATION STEPS
+                    </span>
+                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      Step {currentStep} of 7
+                    </span>
+                  </div>
+                  <h3 className="text-base font-black text-[#021526] font-display mt-1">
+                    Partner Dossier
+                  </h3>
+                  {/* Visual Progress Bar */}
                 <div className="w-full bg-slate-100 rounded-full h-1.5 mt-3 overflow-hidden">
                   <div
                     className="bg-[#F94001] h-1.5 rounded-full transition-all duration-300"
@@ -3936,6 +4224,7 @@ export default function PartnerOnboardingWizard() {
           </main>
         </div>
       </div>
+      )}
 
       {/* ============================================================ */}
       {/* FLOATING BOTTOM-RIGHT TOAST NOTIFICATION POPUPS               */}
