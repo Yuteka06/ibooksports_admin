@@ -2857,8 +2857,10 @@ export default function VenueModularOverviewPage() {
                       const isStaffActive = staff.status === 'ACTIVE';
                       const initials =
                         (staff.name || 'Staff Member')
-                          .split(' ')
-                          .map((n) => n[0])
+                          .trim()
+                          .split(/\s+/)
+                          .map((n) => (n ? n[0] : ''))
+                          .filter(Boolean)
                           .join('')
                           .substring(0, 2)
                           .toUpperCase() || 'ST';

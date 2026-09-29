@@ -253,8 +253,34 @@ export default function WebsiteLeadForm() {
       });
     } catch (err: any) {
       console.error('Submission error:', err);
+      const respData = err?.response?.data;
+      const serverMessage = respData?.message || respData?.error || err?.message;
+
+      // If server confirms application was already created with Ref ID
+      const matchRef =
+        serverMessage && typeof serverMessage === 'string'
+          ? serverMessage.match(/Ref ID:\s*(APP\d+)/i)
+          : null;
+
+      if (matchRef && matchRef[1]) {
+        setSubmissionResult({
+          requestId: matchRef[1],
+          name: trimmedName,
+          email: trimmedEmail,
+          mobile_number: Number(formData.mobileNumber),
+          venue_name: trimmedVenueName,
+          venue_location_name: trimmedLocationUrl,
+          state: formData.state.trim(),
+          district: formData.district.trim(),
+          sports: primarySportString,
+          message: 'Your partner application is already recorded in the review queue.',
+        });
+        return;
+      }
+
       setFormError(
-        err?.message || 'Failed to submit application to the server. Please try again in a few moments.',
+        serverMessage ||
+          'Failed to submit application to the server. Please check your network connection and try again.',
       );
     } finally {
       setIsSubmitting(false);

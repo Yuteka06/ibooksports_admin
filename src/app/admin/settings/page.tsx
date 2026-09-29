@@ -1561,11 +1561,13 @@ export default function AdminSettingsPage() {
                   <tbody className="divide-y divide-[#E5E7EB] text-xs">
                     {staffList.map((staff) => {
                       const initials = (staff.name || 'Staff')
-                        .split(' ')
-                        .map((n) => n[0])
+                        .trim()
+                        .split(/\s+/)
+                        .map((n) => (n ? n[0] : ''))
+                        .filter(Boolean)
                         .join('')
                         .toUpperCase()
-                        .slice(0, 2);
+                        .slice(0, 2) || 'ST';
 
                       return (
                         <tr key={staff.id} className="hover:bg-[#FFFDFB] transition-colors group">

@@ -98,19 +98,19 @@ export default function CourtRequestsPage() {
   };
 
   // Helper to resolve State
-  const getRequestState = (req: CourtExtensionRequest): string => {
-    if (req.venue_city && req.venue_city.includes(',')) {
-      return req.venue_city.split(',')[1].trim();
+  const getRequestState = (req?: CourtExtensionRequest): string => {
+    if (typeof req?.venue_city === 'string' && req.venue_city.includes(',')) {
+      return (req.venue_city.split(',')[1] || '').trim() || 'Tamil Nadu';
     }
-    return 'Tamil Nadu';
+    return (req as any)?.state || 'Tamil Nadu';
   };
 
   // Helper to resolve District
-  const getRequestDistrict = (req: CourtExtensionRequest): string => {
-    if (req.venue_city) {
-      return req.venue_city.split(',')[0].trim();
+  const getRequestDistrict = (req?: CourtExtensionRequest): string => {
+    if (typeof req?.venue_city === 'string') {
+      return (req.venue_city.split(',')[0] || '').trim() || 'Coimbatore';
     }
-    return 'Coimbatore';
+    return (req as any)?.district || 'Coimbatore';
   };
 
   // State badge styling
@@ -880,8 +880,8 @@ export default function CourtRequestsPage() {
                   const isCopied = copiedText === req.id;
                   const reqState = getRequestState(req);
                   const reqDistrict = getRequestDistrict(req);
-                  const submittedDate = req.submitted_at || req.created_at?.split(' ')[0] || '08 Sept 2026';
-                  const submittedTime = req.created_at?.split(' ')[1] || '03:00 PM';
+                  const submittedDate = req.submitted_at || (req.created_at && typeof req.created_at === 'string' ? (req.created_at.includes(' ') ? req.created_at.split(' ')[0] : (req.created_at.includes('T') ? req.created_at.split('T')[0] : req.created_at)) : '08 Sept 2026');
+                  const submittedTime = req.created_at && typeof req.created_at === 'string' ? (req.created_at.includes(' ') ? req.created_at.split(' ')[1] : (req.created_at.includes('T') ? (req.created_at.split('T')[1] || '').slice(0, 5) : '03:00 PM')) : '03:00 PM';
 
                   return (
                     <tr
@@ -1185,11 +1185,14 @@ export default function CourtRequestsPage() {
 
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-xs text-slate-700">
-                    {selectedRequestForDrawer.owner_name
-                      .split(' ')
-                      .map((n) => n[0])
+                    {(selectedRequestForDrawer.owner_name || 'Owner')
+                      .trim()
+                      .split(/\s+/)
+                      .map((n) => (n ? n[0] : ''))
+                      .filter(Boolean)
                       .join('')
-                      .slice(0, 2)}
+                      .toUpperCase()
+                      .slice(0, 2) || 'OW'}
                   </div>
                   <div>
                     <p className="font-bold text-slate-900 text-xs">
