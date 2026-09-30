@@ -167,7 +167,7 @@ export default function AdminLoginPage() {
         verification_id: verificationId || undefined,
       });
 
-      if (res.data?.success || code === '123456') {
+      if (res.data?.success) {
         if (typeof window !== 'undefined') {
           localStorage.setItem(
             'ibooksports_admin_auth',
@@ -194,35 +194,9 @@ export default function AdminLoginPage() {
         setIsLoading(false);
       }
     } catch (err: any) {
-      // If development bypass code is entered
-      if (code === '123456') {
-        if (typeof window !== 'undefined') {
-          localStorage.setItem(
-            'ibooksports_admin_auth',
-            JSON.stringify({
-              authenticated: true,
-              phone: cleanPhone,
-              email: adminEmail,
-              role: 'SUPER_ADMIN',
-              token: `admin_tok_${Date.now()}`,
-              logged_at: new Date().toISOString(),
-            })
-          );
-        }
-        setSuccessMsg('Passcode verified! Directing to Super Admin Console...');
-        setTimeout(() => {
-          if (typeof window !== 'undefined') {
-            window.location.href = '/admin';
-          } else {
-            router.push('/admin');
-          }
-        }, 300);
-        return;
-      }
-
       const errMsg =
         err.response?.data?.message ||
-        'Incorrect OTP. Please check the 6-digit code received on your mobile.';
+        'Incorrect OTP. Please check the 6-digit code received on WhatsApp.';
       setError(errMsg);
       setIsLoading(false);
     }
