@@ -471,42 +471,20 @@ export default function PartnerOnboardingWizard() {
     let activeToken: string | undefined = urlToken;
     if (!activeToken && typeof window !== 'undefined') {
       activeToken = localStorage.getItem('ibooksports_onboarding_token') || undefined;
-      if (!activeToken || activeToken === 'onb_tok_demo_10231') {
-        try {
-          const storedRequests = localStorage.getItem('ibooksports_partner_requests');
-          if (storedRequests) {
-            const list = JSON.parse(storedRequests);
-            if (Array.isArray(list) && list.length > 0) {
-              const approvedReq = list.find((r: any) => r.request_status === 'APPROVED' && r.approval_access_link) || list[0];
-              const link = approvedReq?.approval_access_link;
-              if (typeof link === 'string' && link.includes('/onboarding/')) {
-                activeToken = link.split('/onboarding/')[1]?.trim();
-              } else if (approvedReq?.request_id) {
-                activeToken = approvedReq.request_id;
-              }
-            }
-          }
-        } catch {}
-      }
     }
 
     if (!activeToken) {
-      activeToken = 'APP10240';
-    }
-
-    if (activeToken) {
-      setToken(activeToken);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('ibooksports_onboarding_token', activeToken);
-      }
-      loadSession(activeToken).finally(() => {
-        clearTimeout(safetyTimer);
-        setInitializing(false);
-      });
-    } else {
       clearTimeout(safetyTimer);
       setInitializing(false);
+      router.replace('/onboarding/login');
+      return;
     }
+
+    setToken(activeToken);
+    loadSession(activeToken).finally(() => {
+      clearTimeout(safetyTimer);
+      setInitializing(false);
+    });
 
     return () => clearTimeout(safetyTimer);
   }, [urlToken]);
@@ -683,8 +661,9 @@ export default function PartnerOnboardingWizard() {
     } catch (err) {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('ibooksports_onboarding_token');
+        sessionStorage.removeItem('ibooksports_onboarding_authenticated');
       }
-      setCurrentStep(1);
+      router.replace('/onboarding/login');
     } finally {
       setInitializing(false);
     }
@@ -702,6 +681,7 @@ export default function PartnerOnboardingWizard() {
     setLoginOtp('');
     setLoginOtpSent(false);
     setSuccessMessage('Logged out from onboarding portal.');
+    router.replace('/onboarding/login');
   };
 
   // --- STEP 1: SAVE PARTNER DETAILS WITH STRICT VALIDATION ---

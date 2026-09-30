@@ -82,17 +82,22 @@ export default function PartnerLoginForm() {
 
     try {
       const cleanNumber = mobileNumber.replace(/\D/g, '');
-      const res = await onboardingApi.login(cleanNumber, cleanOtp, reqId || undefined);
+      const res: any = await onboardingApi.login(cleanNumber, cleanOtp, reqId || undefined);
       setSuccessMessage('Authentication successful. Redirecting to workspace...');
-      if (res.onboarding_token) {
-        localStorage.setItem(
-          'ibooksports_onboarding_token',
-          res.onboarding_token,
-        );
+      const authToken = res.accessToken || res.onboarding_token || res.application_id || res.session?.application_id;
+      if (authToken) {
+        localStorage.setItem('ibooksports_onboarding_token', authToken);
+        sessionStorage.setItem(`ibooksports_onboarding_verified_${authToken}`, 'true');
       }
+      sessionStorage.setItem('ibooksports_onboarding_authenticated', 'true');
       localStorage.setItem('ibooksports_partner_mobile', cleanNumber);
+      const targetAppId = res.application_id || res.session?.application_id;
       setTimeout(() => {
-        router.push('/onboarding');
+        if (targetAppId) {
+          router.push(`/onboarding/${targetAppId}`);
+        } else {
+          router.push('/onboarding');
+        }
       }, 500);
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } }; message?: string };
