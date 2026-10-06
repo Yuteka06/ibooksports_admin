@@ -57,7 +57,8 @@ export default function AdminLoginPage() {
         password: password,
       });
 
-      if (res.data?.success && res.data?.token) {
+      const token = res.data?.accessToken || res.data?.token;
+      if (res.data?.success && token) {
         const adminData = res.data.admin || {
           email: cleanEmail,
           name: 'Super Admin',
@@ -69,7 +70,7 @@ export default function AdminLoginPage() {
           email: adminData.email,
           name: adminData.name,
           role: adminData.role || 'SUPER_ADMIN',
-          token: res.data.token,
+          token: token,
           user: adminData,
           logged_at: new Date().toISOString(),
         };
