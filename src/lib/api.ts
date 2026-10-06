@@ -17,24 +17,38 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     if (typeof window !== 'undefined') {
-      let token =
-        localStorage.getItem('ibooksports_token') ||
-        localStorage.getItem('token') ||
-        localStorage.getItem('onboarding_token') ||
-        localStorage.getItem('ibooksports_onboarding_token');
+      const explicitAuth = config.headers?.Authorization || (config.headers as any)?.authorization;
+      if (!explicitAuth) {
+        let token: string | null = null;
+        const isUrlOnboarding = config.url?.includes('/onboarding');
 
-      if (!token) {
-        try {
-          const adminAuth = localStorage.getItem('ibooksports_admin_auth');
-          if (adminAuth) {
-            const parsed = JSON.parse(adminAuth);
-            token = parsed?.token;
-          }
-        } catch {}
-      }
+        if (isUrlOnboarding) {
+          token =
+            localStorage.getItem('ibooksports_onboarding_token') ||
+            localStorage.getItem('onboarding_token') ||
+            localStorage.getItem('ibooksports_token') ||
+            localStorage.getItem('token');
+        } else {
+          token =
+            localStorage.getItem('ibooksports_token') ||
+            localStorage.getItem('token') ||
+            localStorage.getItem('onboarding_token') ||
+            localStorage.getItem('ibooksports_onboarding_token');
+        }
 
-      if (token && config.headers) {
-        config.headers.Authorization = `Bearer ${token}`;
+        if (!token) {
+          try {
+            const adminAuth = localStorage.getItem('ibooksports_admin_auth');
+            if (adminAuth) {
+              const parsed = JSON.parse(adminAuth);
+              token = parsed?.token;
+            }
+          } catch {}
+        }
+
+        if (token && config.headers) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
       }
     }
     // Rule 19: Log API calls during development

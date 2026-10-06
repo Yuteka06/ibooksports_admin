@@ -1477,7 +1477,7 @@ export default function BookingManagementPage() {
                         <span className="text-[10px] font-bold text-slate-400 uppercase">Check-in Passcode</span>
                         <p className="font-mono font-black text-lg text-slate-900">
                           {typeof selectedBooking?.booking_code === 'string'
-                            ? selectedBooking.booking_code.split('-').pop()
+                            ? (typeof selectedBooking.booking_code === 'string' ? selectedBooking.booking_code.split('-').pop() : selectedBooking.id)
                             : (selectedBooking?.id ? String(selectedBooking.id).slice(-4) : '1001')}
                         </p>
                         <p className="text-[10px] text-slate-500">Player presents code at venue entry gate</p>

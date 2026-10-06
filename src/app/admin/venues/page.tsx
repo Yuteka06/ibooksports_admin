@@ -241,7 +241,7 @@ export default function VenuesManagementPage() {
     if (role.toLowerCase().includes('manager')) return 'Manager';
     if (role.toLowerCase().includes('supervisor')) return 'Supervisor';
     if (role.toLowerCase().includes('director')) return 'Director';
-    return role.trim().split(/\s+/)[0] || 'Staff';
+    return typeof role === 'string' && role.trim() ? role.trim().split(/\s+/)[0] : 'Staff';
   };
 
   const isAnyFilterActive = searchQuery || selectedState !== 'ALL' || selectedStatus !== 'ALL' || selectedSport !== 'ALL';

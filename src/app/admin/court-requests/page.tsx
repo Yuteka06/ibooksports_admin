@@ -100,7 +100,7 @@ export default function CourtRequestsPage() {
   // Helper to resolve State
   const getRequestState = (req?: CourtExtensionRequest): string => {
     if (typeof req?.venue_city === 'string' && req.venue_city.includes(',')) {
-      return (req.venue_city.split(',')[1] || '').trim() || 'Tamil Nadu';
+      return (typeof req?.venue_city === 'string' && req.venue_city.includes(',') ? (req.venue_city.split(',')[1] || '').trim() : 'Tamil Nadu');
     }
     return (req as any)?.state || 'Tamil Nadu';
   };
@@ -108,7 +108,7 @@ export default function CourtRequestsPage() {
   // Helper to resolve District
   const getRequestDistrict = (req?: CourtExtensionRequest): string => {
     if (typeof req?.venue_city === 'string') {
-      return (req.venue_city.split(',')[0] || '').trim() || 'Coimbatore';
+      return (typeof req?.venue_city === 'string' ? (req.venue_city.split(',')[0] || '').trim() : 'Coimbatore');
     }
     return (req as any)?.district || 'Coimbatore';
   };
@@ -289,7 +289,7 @@ export default function CourtRequestsPage() {
           ],
           created_at: r.created_at,
           submitted_at: (typeof r.created_at === 'string' && r.created_at.includes('T'))
-            ? r.created_at.split('T')[0]
+            ? typeof r.created_at === 'string' ? r.created_at.split('T')[0] : '2026-08-28'
             : (r.created_at ? String(r.created_at).slice(0, 10) : new Date().toISOString().split('T')[0]),
         }));
       } else {

@@ -315,9 +315,14 @@ export default function PartnerOnboardingWizard() {
     const activeToken =
       token ||
       (typeof window !== 'undefined'
-        ? localStorage.getItem('ibooksports_onboarding_token')
+        ? localStorage.getItem('ibooksports_onboarding_token') ||
+          localStorage.getItem('onboarding_token') ||
+          localStorage.getItem('ibooksports_token') ||
+          localStorage.getItem('token')
         : null) ||
-      'onb_tok_demo_10231';
+      urlToken ||
+      applicationId ||
+      '';
 
     setErrorMessage(null);
     setCourtPhotoUploading(true);
@@ -380,9 +385,14 @@ export default function PartnerOnboardingWizard() {
       const activeToken =
         token ||
         (typeof window !== 'undefined'
-          ? localStorage.getItem('ibooksports_onboarding_token')
+          ? localStorage.getItem('ibooksports_onboarding_token') ||
+            localStorage.getItem('onboarding_token') ||
+            localStorage.getItem('ibooksports_token') ||
+            localStorage.getItem('token')
           : null) ||
-        'onb_tok_demo_10231';
+        urlToken ||
+        applicationId ||
+        '';
 
       const previewUrl = URL.createObjectURL(file);
       const res = await onboardingApi.uploadDocument(activeToken, file, docType);
@@ -481,6 +491,10 @@ export default function PartnerOnboardingWizard() {
     }
 
     setToken(activeToken);
+    if (typeof window !== 'undefined' && activeToken) {
+      localStorage.setItem('ibooksports_onboarding_token', activeToken);
+      localStorage.setItem('onboarding_token', activeToken);
+    }
     loadSession(activeToken).finally(() => {
       clearTimeout(safetyTimer);
       setInitializing(false);
@@ -500,14 +514,19 @@ export default function PartnerOnboardingWizard() {
         if (data.rejection_reasons) setRejectionReasons(data.rejection_reasons);
         if (data.app_access_link) setAppAccessLink(data.app_access_link);
 
+        if (data.onboarding_token) {
+          setToken(data.onboarding_token);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('ibooksports_onboarding_token', data.onboarding_token);
+            localStorage.setItem('onboarding_token', data.onboarding_token);
+          }
+        }
+
         // Check if verified in this browser session
         if (typeof window !== 'undefined') {
-          const isVerified =
-            sessionStorage.getItem(`ibooksports_onboarding_verified_${sessionToken}`) === 'true' ||
-            sessionStorage.getItem('ibooksports_onboarding_authenticated') === 'true';
-          if (isVerified) {
-            setIsMobileVerified(true);
-          }
+          sessionStorage.setItem(`ibooksports_onboarding_verified_${sessionToken}`, 'true');
+          sessionStorage.setItem('ibooksports_onboarding_authenticated', 'true');
+          setIsMobileVerified(true);
         }
 
         // Pre-fill Partner Details

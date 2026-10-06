@@ -242,13 +242,18 @@ export default function PartnerOnboardingAdminTrackerPage() {
     if (!actionTargetApp) return;
     setActionLoading(true);
     try {
-      try {
-        await onboardingApi.reviewApplication(actionTargetApp.application_id, 'APPROVE', {
-          app_access_link: appLinkInput,
-        });
-      } catch (err) {
-        console.warn('API review failed or simulated', err);
-      }
+      const response = await onboardingApi.reviewApplication(actionTargetApp.application_id, 'APPROVE', {
+        app_access_link: appLinkInput,
+      });
+
+      // Update local state immediately
+      setApplications((prev) =>
+        prev.map((app) =>
+          app.application_id === actionTargetApp.application_id
+            ? { ...app, status: 'APPROVED' }
+            : app
+        )
+      );
 
       // Convert to Live Venue in localStorage ibooksports_live_venues
       if (typeof window !== 'undefined') {
@@ -267,7 +272,7 @@ export default function PartnerOnboardingAdminTrackerPage() {
             : (Array.isArray(rawSports) && rawSports.length > 0
                 ? rawSports
                 : (typeof rawSports === 'string' && rawSports.trim()
-                    ? rawSports.split(',').map((s: string) => s.trim()).filter(Boolean)
+                    ? (typeof rawSports === 'string' ? rawSports.split(',').map((s: string) => s.trim()).filter(Boolean) : (Array.isArray(rawSports) ? rawSports : []))
                     : ['Football', 'Cricket']));
 
           const courtsArr = (actionTargetApp.courts_config?.courts && actionTargetApp.courts_config.courts.length > 0)
@@ -386,11 +391,11 @@ export default function PartnerOnboardingAdminTrackerPage() {
         description: `Facility "${actionTargetApp.business_details?.venue_name || 'Venue'}" is now officially LIVE in Venue Management with full courts and slot configurations.`,
       });
       await fetchApplications();
-    } catch {
+    } catch (err: any) {
       setToastMessage({
         type: 'error',
         title: 'Approval Failed',
-        description: 'An error occurred while saving the approval decision.',
+        description: err?.response?.data?.message || err?.message || 'An error occurred while saving the approval decision.',
       });
     } finally {
       setActionLoading(false);
@@ -414,6 +419,16 @@ export default function PartnerOnboardingAdminTrackerPage() {
           { step: actionTargetApp.current_step || 1, section: 'GENERAL', field: 'application', reason: 'Application rejected by admin.' },
         ],
       });
+
+      // Update local state immediately
+      setApplications((prev) =>
+        prev.map((app) =>
+          app.application_id === actionTargetApp.application_id
+            ? { ...app, status: 'REJECTED' }
+            : app
+        )
+      );
+
       setReviewAction(null);
       setActionTargetApp(null);
       setSectionNotes({});
@@ -745,7 +760,7 @@ export default function PartnerOnboardingAdminTrackerPage() {
                   const isValidDate = !isNaN(dateObj.getTime());
                   const datePart = isValidDate 
                     ? dateObj.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) 
-                    : (typeof fullTimestamp === 'string' && fullTimestamp.includes(' ') ? fullTimestamp.split(' ')[0] : fullTimestamp);
+                    : (typeof fullTimestamp === 'string' && fullTimestamp.includes(' ') ? fullTimestamp.split(' ')[0] : (fullTimestamp || ''));
                   
                   const timePart = isValidDate
                     ? dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
@@ -927,21 +942,12 @@ export default function PartnerOnboardingAdminTrackerPage() {
                   <Check className="h-4 w-4" />
                   <span>Application Approved</span>
                 </div>
-              ) : drawerApp.status === 'REJECTED' ? (
-                <button
-                  type="button"
-                  disabled
-                  title="Rejected applications require partner resubmission before approval"
-                  className="px-5 py-2 rounded-xl border border-slate-700 bg-slate-900/50 text-slate-500 font-bold text-xs flex items-center gap-2 cursor-not-allowed opacity-50"
-                >
-                  <Check className="h-4 w-4 text-slate-600" />
-                  <span>Approve Application</span>
-                </button>
               ) : (
                 <button
                   type="button"
                   onClick={() => handleOpenApproveModal(drawerApp)}
                   className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer"
+                  title="Approve onboarding application and grant venue access"
                 >
                   <Check className="h-4 w-4" />
                   <span>Approve Application</span>

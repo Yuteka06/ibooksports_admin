@@ -63,20 +63,20 @@ export default function SettlementManagementPage() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  
+
   // Date & Month Filter in Top Right Corner (User Requirement)
   const [filterType, setFilterType] = useState<'ALL' | 'DATE' | 'MONTH'>('ALL');
   const [selectedDate, setSelectedDate] = useState<string>(''); // YYYY-MM-DD
 
   const [selectedMonth, setSelectedMonth] = useState<string>(''); // YYYY-MM
-  
+
   // Slide-out Drawer (Slide Bar) State
   const [selectedBatch, setSelectedBatch] = useState<SettlementBatchItem | null>(null);
   const [drawerTab, setDrawerTab] = useState<'summary' | 'bookings' | 'slip'>('summary');
-  
+
   // Interactive copy feedback
   const [copiedText, setCopiedText] = useState<string | null>(null);
-  
+
   // Toast Notification
   const [toastMessage, setToastMessage] = useState<{
     type: 'success' | 'info' | 'error';
@@ -221,12 +221,12 @@ export default function SettlementManagementPage() {
     const today = new Date();
     const dayT = new Date();
     dayT.setDate(today.getDate() - 2); // T-2 days (match day)
-    const dayTStr = dayT.toISOString().split('T')[0];
-    const todayStr = today.toISOString().split('T')[0];
+    const dayTStr = dayT.toISOString().slice(0, 10);
+    const todayStr = today.toISOString().slice(0, 10);
     const cycleMonth = todayStr.substring(0, 7);
 
     const batchNum = `STL-${todayStr.replace(/-/g, '').substring(0, 6)}-${String(settlements.length + 1).padStart(3, '0')}`;
-    
+
     // Standard T+2 model:
     // Actual Court Gross = ₹42,000 (30 slots)
     // 50% Online Advance Held = ₹21,000 (Razorpay)
@@ -370,11 +370,10 @@ export default function SettlementManagementPage() {
                 setSelectedDate('');
                 setSelectedMonth('');
               }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                filterType === 'ALL'
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${filterType === 'ALL'
                   ? 'bg-white text-[#021526] shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
-              }`}
+                }`}
             >
               All
             </button>
@@ -384,11 +383,10 @@ export default function SettlementManagementPage() {
                 setFilterType('DATE');
                 if (!selectedDate) setSelectedDate('2026-03-08');
               }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                filterType === 'DATE'
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${filterType === 'DATE'
                   ? 'bg-white text-[#F94001] shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
-              }`}
+                }`}
             >
               <Calendar className="h-3.5 w-3.5" />
               <span>Date</span>
@@ -399,11 +397,10 @@ export default function SettlementManagementPage() {
                 setFilterType('MONTH');
                 if (!selectedMonth) setSelectedMonth('2026-03');
               }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                filterType === 'MONTH'
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${filterType === 'MONTH'
                   ? 'bg-white text-[#F94001] shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
-              }`}
+                }`}
             >
               <CalendarDays className="h-3.5 w-3.5" />
               <span>Month</span>
@@ -454,11 +451,21 @@ export default function SettlementManagementPage() {
                 >
                   <option value="">All Months</option>
                   {availableMonths.map((m) => {
-                    if (!m || typeof m !== 'string' || !m.includes('-')) return null;
-                    const parts = m.split('-');
-                    const year = parts[0];
-                    const month = parts[1];
-                    const dateObj = new Date(parseInt(year, 10), parseInt(month, 10) - 1, 1);
+                    // cycle_month must be a valid YYYY-MM string before formatting it.
+                    // Avoid calling split() here so an unexpected API value can never
+                    // cause an undefined.split() production crash.
+                    if (typeof m !== 'string' || !/^\d{4}-\d{2}$/.test(m)) {
+                      return null;
+                    }
+
+                    const year = Number(m.slice(0, 4));
+                    const month = Number(m.slice(5, 7));
+
+                    if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) {
+                      return null;
+                    }
+
+                    const dateObj = new Date(year, month - 1, 1);
                     const label = isNaN(dateObj.getTime())
                       ? m
                       : dateObj.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
@@ -621,17 +628,15 @@ export default function SettlementManagementPage() {
                 key={tab.id}
                 type="button"
                 onClick={() => setStatusFilter(tab.id)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                  isActive
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${isActive
                     ? 'bg-[#021526] text-white shadow-xs'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
+                  }`}
               >
                 <span>{tab.label}</span>
                 <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded-md font-mono ${
-                    isActive ? 'bg-white/20 text-white' : 'bg-white text-slate-700'
-                  }`}
+                  className={`text-[10px] px-1.5 py-0.2 rounded-md font-mono ${isActive ? 'bg-white/20 text-white' : 'bg-white text-slate-700'
+                    }`}
                 >
                   {tab.count}
                 </span>
@@ -962,11 +967,10 @@ export default function SettlementManagementPage() {
                         key={tab.id}
                         type="button"
                         onClick={() => setDrawerTab(tab.id as any)}
-                        className={`px-3 py-1.5 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 cursor-pointer ${
-                          isActive
+                        className={`px-3 py-1.5 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 cursor-pointer ${isActive
                             ? 'border-[#F94001] text-[#F94001]'
                             : 'border-transparent text-slate-500 hover:text-slate-800'
-                        }`}
+                          }`}
                       >
                         <Icon className="h-3.5 w-3.5" />
                         <span>{tab.label}</span>

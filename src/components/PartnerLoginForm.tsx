@@ -19,6 +19,7 @@ import {
   Building,
 } from 'lucide-react';
 import { onboardingApi } from '@/lib/api';
+import { purgeAllVendorSessionStorage } from '@/lib/authStorage';
 
 export default function PartnerLoginForm() {
   const router = useRouter();
@@ -83,14 +84,24 @@ export default function PartnerLoginForm() {
     try {
       const cleanNumber = mobileNumber.replace(/\D/g, '');
       const res: any = await onboardingApi.login(cleanNumber, cleanOtp, reqId || undefined);
+      
+      // Completely wipe any stale vendor storage before storing new vendor identity
+      purgeAllVendorSessionStorage();
+
       setSuccessMessage('Authentication successful. Redirecting to workspace...');
       const authToken = res.accessToken || res.onboarding_token || res.application_id || res.session?.application_id;
       if (authToken) {
         localStorage.setItem('ibooksports_onboarding_token', authToken);
+        localStorage.setItem('accessToken', authToken);
         sessionStorage.setItem(`ibooksports_onboarding_verified_${authToken}`, 'true');
+        sessionStorage.setItem('accessToken', authToken);
       }
       sessionStorage.setItem('ibooksports_onboarding_authenticated', 'true');
       localStorage.setItem('ibooksports_partner_mobile', cleanNumber);
+      sessionStorage.setItem('ibooksports_partner_mobile', cleanNumber);
+      if (res.owner_name) {
+        sessionStorage.setItem('owner_name', res.owner_name);
+      }
       const targetAppId = res.application_id || res.session?.application_id;
       setTimeout(() => {
         if (targetAppId) {
