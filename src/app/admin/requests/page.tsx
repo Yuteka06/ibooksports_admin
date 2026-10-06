@@ -222,6 +222,21 @@ export default function PartnerRequestsPage() {
         description: `Onboarding invite generated for ${approvingRequest.venue_name}. Partner can now complete facility setup.`,
       });
 
+      // Update local state immediately so table, tabs, and metrics update dynamically
+      setRequests((prev) =>
+        prev.map((r) =>
+          r.request_id === approvingRequest.request_id
+            ? {
+                ...r,
+                request_status: 'APPROVED',
+                approval_access_link: customOnboardingLink.trim() || r.approval_access_link,
+                onboarding_token_expiry: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+                onboarding_link_sent_at: new Date().toISOString(),
+              }
+            : r
+        )
+      );
+
       if (activeRequest && activeRequest.request_id === approvingRequest.request_id) {
         setActiveRequest({
           ...activeRequest,
@@ -275,6 +290,22 @@ export default function PartnerRequestsPage() {
         title: 'Partner request rejected & email sent.',
         description: `Request ${rejectingRequest.request_id} marked as REJECTED. Notification sent to ${rejectingRequest.requester_email}.`,
       });
+
+      // Update local state immediately so table, tabs, and metrics update dynamically
+      setRequests((prev) =>
+        prev.map((r) =>
+          r.request_id === rejectingRequest.request_id
+            ? {
+                ...r,
+                request_status: 'REJECTED',
+                rejection_reason: rejectionReason as PartnerRequestItem['rejection_reason'],
+                rejection_note: rejectionNote.trim() || undefined,
+                rejected_at: new Date().toISOString(),
+                rejected_by_admin_id: 'admin_super_01',
+              }
+            : r
+        )
+      );
 
       if (activeRequest && activeRequest.request_id === rejectingRequest.request_id) {
         setActiveRequest({
