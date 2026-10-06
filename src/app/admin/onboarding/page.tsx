@@ -89,92 +89,43 @@ export default function PartnerOnboardingAdminTrackerPage() {
     extraDetails?: Record<string, string>;
   } | null>(null);
 
-  const handleDownloadProof = () => {
+  const handleDownloadProof = async () => {
     if (!selectedDocPreview) return;
     const docTitle = selectedDocPreview.title.replace(/[^a-zA-Z0-9_-]/g, '_');
-    const filename = `${docTitle}_${selectedDocPreview.docNumber || 'verified'}.html`;
+    const docNumber = selectedDocPreview.docNumber || 'verified';
+    const filename = `iBookSports_${docTitle}_${docNumber}.pdf`;
 
-    const htmlDoc = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>${selectedDocPreview.title} - iBookSports Verification</title>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0b1528; color: #0f172a; padding: 40px; margin: 0; }
-    .sheet { max-width: 800px; margin: 0 auto; background: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); border: 1px solid #e2e8f0; }
-    .header { background: #021526; color: white; padding: 24px 32px; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #f94001; }
-    .header h1 { margin: 0; font-size: 20px; font-weight: 800; }
-    .badge { background: #059669; color: white; font-size: 11px; font-weight: bold; padding: 4px 12px; border-radius: 9999px; text-transform: uppercase; }
-    .content { padding: 32px; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
-    .field { background: #f8fafc; border: 1px solid #e2e8f0; padding: 14px 18px; border-radius: 12px; }
-    .field.full { grid-column: span 2; }
-    .label { font-size: 11px; text-transform: uppercase; font-weight: 700; color: #64748b; margin-bottom: 4px; }
-    .value { font-size: 15px; font-weight: 700; color: #0f172a; word-break: break-all; }
-    .footer { background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 16px 32px; display: flex; justify-content: space-between; font-size: 12px; color: #64748b; }
-    .actions { padding: 0 32px 32px; text-align: right; }
-    .btn { background: #f94001; color: white; border: none; padding: 10px 22px; font-weight: 700; border-radius: 10px; cursor: pointer; font-size: 13px; }
-    @media print { body { background: white; padding: 0; } .sheet { box-shadow: none; border: none; } .actions { display: none; } }
-  </style>
-</head>
-<body>
-  <div class="sheet">
-    <div class="header">
-      <div>
-        <h1>${selectedDocPreview.title}</h1>
-        <p style="margin:4px 0 0;font-size:12px;opacity:0.75;">iBookSports Verified Partner Onboarding Document Proof</p>
-      </div>
-      <span class="badge">VERIFIED DOCUMENT</span>
-    </div>
-    <div class="content">
-      <div class="grid">
-        <div class="field">
-          <div class="label">Document Reference ID</div>
-          <div class="value" style="font-family:monospace;color:#f94001;">${selectedDocPreview.docNumber || 'DOC_RECORD_PENDING'}</div>
-        </div>
-        <div class="field">
-          <div class="label">Document Type</div>
-          <div class="value">${selectedDocPreview.docType}</div>
-        </div>
-        <div class="field">
-          <div class="label">Partner / Applicant Name</div>
-          <div class="value">${selectedDocPreview.applicantName || 'Partner'}</div>
-        </div>
-        ${selectedDocPreview.partnerMobile ? `<div class="field"><div class="label">Contact Mobile</div><div class="value">+91 ${selectedDocPreview.partnerMobile}</div></div>` : ''}
-        ${selectedDocPreview.venueName ? `<div class="field full"><div class="label">Associated Venue / Arena</div><div class="value">${selectedDocPreview.venueName}</div></div>` : ''}
-        ${selectedDocPreview.venueAddress ? `<div class="field full"><div class="label">Facility Address</div><div class="value">${selectedDocPreview.venueAddress}</div></div>` : ''}
-        ${selectedDocPreview.partnerAddress ? `<div class="field full"><div class="label">Residential Address</div><div class="value">${selectedDocPreview.partnerAddress}</div></div>` : ''}
-        ${selectedDocPreview.bankName ? `<div class="field"><div class="label">Settlement Bank</div><div class="value">${selectedDocPreview.bankName} (${selectedDocPreview.branchName || ''})</div></div>` : ''}
-        ${selectedDocPreview.accountNumber ? `<div class="field"><div class="label">Account Number</div><div class="value" style="font-family:monospace;">${selectedDocPreview.accountNumber}</div></div>` : ''}
-        ${selectedDocPreview.ifscCode ? `<div class="field"><div class="label">IFSC Code</div><div class="value" style="font-family:monospace;">${selectedDocPreview.ifscCode}</div></div>` : ''}
-        ${selectedDocPreview.accountType ? `<div class="field"><div class="label">Account Type</div><div class="value">${selectedDocPreview.accountType}</div></div>` : ''}
-      </div>
-      <div style="background:#ecfdf5;border:1px solid #a7f3d0;padding:12px 16px;border-radius:12px;font-size:12px;color:#065f46;">
-        ✓ Authenticated under iBookSports Partner Compliance Guidelines
-      </div>
-    </div>
-    <div class="actions">
-      <button class="btn" onclick="window.print()">Print / Save as PDF</button>
-    </div>
-    <div class="footer">
-      <span>Official Record &bull; iBookSports Technologies Private Limited</span>
-      <span>Exported: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</span>
-    </div>
-  </div>
-</body>
-</html>`;
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+      let downloadEndpoint = `${backendUrl}/onboarding/applications/${encodeURIComponent(docNumber)}/pdf`;
 
-    const blob = new Blob([htmlDoc], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+      if (selectedDocPreview.fileUrl && !selectedDocPreview.fileUrl.startsWith('data:') && !selectedDocPreview.fileUrl.startsWith('blob:')) {
+        downloadEndpoint = selectedDocPreview.fileUrl.startsWith('http')
+          ? selectedDocPreview.fileUrl
+          : `${backendUrl}${selectedDocPreview.fileUrl.startsWith('/') ? '' : '/'}${selectedDocPreview.fileUrl}`;
+      }
 
-    showToast('success', 'Document Downloaded', `Saved ${filename} to your Downloads folder.`);
+      const res = await fetch(downloadEndpoint);
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        showToast('success', 'PDF Downloaded', `Saved ${filename} to your Downloads folder.`);
+        return;
+      }
+    } catch (err) {
+      console.warn('Backend PDF download error:', err);
+    }
+
+    // Direct printable fallback
+    window.print();
+    showToast('info', 'Print Dialog Opened', 'You can save this verified document directly as PDF.');
   };
 
   // ─── Section-Level Rejection Notes ───────────────────────────────────────

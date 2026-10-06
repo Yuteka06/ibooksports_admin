@@ -1328,8 +1328,28 @@ export default function SettlementManagementPage() {
 
                       <button
                         type="button"
-                        onClick={() => {
-                          showToast('success', 'PDF Downloaded', `Settlement advice for ${selectedBatch.batch_number} saved.`);
+                        onClick={async () => {
+                          try {
+                            const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+                            const targetVenueId = selectedBatch.venue_id || selectedBatch.id;
+                            const res = await fetch(`${backendUrl}/onboarding/applications/${encodeURIComponent(targetVenueId)}/pdf`);
+                            if (res.ok) {
+                              const blob = await res.blob();
+                              const url = URL.createObjectURL(blob);
+                              const link = document.createElement('a');
+                              link.href = url;
+                              link.download = `Settlement_Advice_${selectedBatch.batch_number}.pdf`;
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                              URL.revokeObjectURL(url);
+                              showToast('success', 'PDF Downloaded', `Settlement advice for ${selectedBatch.batch_number} saved.`);
+                              return;
+                            }
+                          } catch (e) {
+                            console.warn('Backend PDF download error:', e);
+                          }
+                          handlePrintAdviceSlip();
                         }}
                         className="flex-1 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-2"
                       >
