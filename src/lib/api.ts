@@ -41,7 +41,7 @@ apiClient.interceptors.request.use(
             const adminAuth = localStorage.getItem('ibooksports_admin_auth');
             if (adminAuth) {
               const parsed = JSON.parse(adminAuth);
-              token = parsed?.token;
+              token = parsed?.accessToken || parsed?.token;
             }
           } catch {}
         }
