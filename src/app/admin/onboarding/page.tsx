@@ -153,14 +153,29 @@ export default function PartnerOnboardingAdminTrackerPage() {
     setToastMessage({ type, title, description });
   };
 
+  const [backendTotal, setBackendTotal] = useState<number | null>(null);
+
   const fetchApplications = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await onboardingApi.listAdminApplications();
-      setApplications(Array.isArray(data) ? data : []);
+      const res = await onboardingApi.listAdminApplications();
+      let appsList: OnboardingSessionData[] = [];
+      if (Array.isArray(res)) {
+        appsList = res;
+        setBackendTotal(res.length);
+      } else if (res && Array.isArray((res as any).data)) {
+        appsList = (res as any).data;
+        if (typeof (res as any).total === 'number') {
+          setBackendTotal((res as any).total);
+        } else {
+          setBackendTotal(appsList.length);
+        }
+      }
+      setApplications(appsList);
     } catch (err) {
       console.error('Error fetching onboarding applications from API:', err);
       setApplications([]);
+      setBackendTotal(0);
     } finally {
       setLoading(false);
     }
@@ -404,6 +419,26 @@ export default function PartnerOnboardingAdminTrackerPage() {
   };
 
 
+  const isDraftStatus = (status?: string) => {
+    const s = (status || 'DRAFT').toUpperCase();
+    return s === 'DRAFT';
+  };
+
+  const isPendingStatus = (status?: string) => {
+    const s = (status || '').toUpperCase();
+    return s === 'PENDING' || s === 'PENDING_REVIEW' || s === 'UNDER_REVIEW' || s === 'SUBMITTED';
+  };
+
+  const isApprovedStatus = (status?: string) => {
+    const s = (status || '').toUpperCase();
+    return s === 'APPROVED';
+  };
+
+  const isCorrectionStatus = (status?: string) => {
+    const s = (status || '').toUpperCase();
+    return ['REJECTED', 'NEEDS_CORRECTION', 'CORRECTIONS_REQUIRED', 'CORRECTION_REQUESTED', 'CORRECTION_REQUIRED', 'CHANGES_REQUESTED'].includes(s);
+  };
+
   const filteredApps = applications.filter((app) => {
     if (!app) return false;
     const query = (searchQuery || '').trim().toLowerCase();
@@ -420,48 +455,51 @@ export default function PartnerOnboardingAdminTrackerPage() {
 
     const matchesStatus =
       statusFilter === 'ALL' ||
-      (statusFilter === 'PENDING_REVIEW' && (app.status === 'PENDING_REVIEW' || app.status === 'SUBMITTED')) ||
-      (statusFilter === 'DRAFT' && (app.status === 'DRAFT' || !app.status)) ||
-      app.status === statusFilter;
+      (statusFilter === 'DRAFT' && isDraftStatus(app.status)) ||
+      (statusFilter === 'PENDING' && isPendingStatus(app.status)) ||
+      (statusFilter === 'APPROVED' && isApprovedStatus(app.status)) ||
+      (statusFilter === 'CORRECTIONS' && isCorrectionStatus(app.status)) ||
+      (statusFilter === 'PENDING_REVIEW' && isPendingStatus(app.status)) ||
+      (statusFilter === 'REJECTED' && isCorrectionStatus(app.status));
 
     return matchesSearch && matchesStatus;
   });
 
   // Calculate Metrics
-  const totalCount = applications.length;
-  const pendingCount = applications.filter((a) => a.status === 'PENDING_REVIEW' || a.status === 'SUBMITTED').length;
-  const approvedCount = applications.filter((a) => a.status === 'APPROVED').length;
-  const rejectedCount = applications.filter((a) => a.status === 'REJECTED').length;
-  const draftCount = applications.filter((a) => a.status === 'DRAFT' || !a.status).length;
+  const totalCount = backendTotal !== null ? backendTotal : applications.length;
+  const draftCount = applications.filter((a) => isDraftStatus(a.status)).length;
+  const pendingCount = applications.filter((a) => isPendingStatus(a.status)).length;
+  const approvedCount = applications.filter((a) => isApprovedStatus(a.status)).length;
+  const correctionsCount = applications.filter((a) => isCorrectionStatus(a.status)).length;
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'APPROVED':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono bg-emerald-50 text-emerald-800 border border-emerald-200">
-            <CheckCircle2 className="h-3 w-3 text-emerald-600" /> APPROVED
-          </span>
-        );
-      case 'PENDING_REVIEW':
-      case 'SUBMITTED':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono bg-amber-50 text-amber-800 border border-amber-200">
-            <Clock className="h-3 w-3 text-amber-600" /> PENDING_REVIEW
-          </span>
-        );
-      case 'REJECTED':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono bg-rose-50 text-rose-800 border border-rose-200">
-            <XCircle className="h-3 w-3 text-rose-600" /> REJECTED
-          </span>
-        );
-      default:
-        return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono bg-slate-100 text-slate-700 border border-slate-200">
-            <Layers className="h-3 w-3 text-slate-500" /> DRAFT
-          </span>
-        );
+  const getStatusBadge = (status?: string) => {
+    const normalized = (status || 'DRAFT').toUpperCase();
+    if (normalized === 'APPROVED') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono bg-emerald-50 text-emerald-800 border border-emerald-200">
+          <CheckCircle2 className="h-3 w-3 text-emerald-600" /> APPROVED
+        </span>
+      );
     }
+    if (['PENDING', 'PENDING_REVIEW', 'UNDER_REVIEW', 'SUBMITTED'].includes(normalized)) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono bg-amber-50 text-amber-800 border border-amber-200">
+          <Clock className="h-3 w-3 text-amber-600" /> {normalized === 'UNDER_REVIEW' ? 'UNDER_REVIEW' : 'PENDING_REVIEW'}
+        </span>
+      );
+    }
+    if (['REJECTED', 'NEEDS_CORRECTION', 'CORRECTIONS_REQUIRED', 'CORRECTION_REQUESTED', 'CORRECTION_REQUIRED', 'CHANGES_REQUESTED'].includes(normalized)) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono bg-rose-50 text-rose-800 border border-rose-200">
+          <XCircle className="h-3 w-3 text-rose-600" /> {normalized === 'REJECTED' ? 'REJECTED' : 'CORRECTIONS'}
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono bg-slate-100 text-slate-700 border border-slate-200">
+        <Layers className="h-3 w-3 text-slate-500" /> DRAFT
+      </span>
+    );
   };
 
   // ─── Helper: Render per-section note button + inline editor popup ──────────
@@ -632,10 +670,10 @@ export default function PartnerOnboardingAdminTrackerPage() {
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-full">
             {[
               { key: 'ALL', label: 'All', count: totalCount },
-              { key: 'PENDING_REVIEW', label: 'Pending', count: pendingCount },
-              { key: 'APPROVED', label: 'Approved', count: approvedCount },
-              { key: 'REJECTED', label: 'Corrections', count: rejectedCount },
               { key: 'DRAFT', label: 'Draft', count: draftCount },
+              { key: 'PENDING', label: 'Pending', count: pendingCount },
+              { key: 'APPROVED', label: 'Approved', count: approvedCount },
+              { key: 'CORRECTIONS', label: 'Corrections', count: correctionsCount },
             ].map(({ key, label, count }) => (
               <button
                 key={key}

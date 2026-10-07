@@ -20,9 +20,23 @@ apiClient.interceptors.request.use(
       const explicitAuth = config.headers?.Authorization || (config.headers as any)?.authorization;
       if (!explicitAuth) {
         let token: string | null = null;
-        const isUrlOnboarding = config.url?.includes('/onboarding');
+        const isAdminRequest =
+          config.url?.includes('/admin') ||
+          config.url?.includes('admin/') ||
+          (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin'));
 
-        if (isUrlOnboarding) {
+        if (isAdminRequest) {
+          try {
+            const adminAuth = localStorage.getItem('ibooksports_admin_auth');
+            if (adminAuth) {
+              const parsed = JSON.parse(adminAuth);
+              token = parsed?.accessToken || parsed?.token;
+            }
+          } catch {}
+          if (!token) {
+            token = localStorage.getItem('ibooksports_token') || localStorage.getItem('token');
+          }
+        } else if (config.url?.includes('/onboarding') && !config.url?.includes('/admin')) {
           token =
             localStorage.getItem('ibooksports_onboarding_token') ||
             localStorage.getItem('onboarding_token') ||
@@ -32,18 +46,16 @@ apiClient.interceptors.request.use(
           token =
             localStorage.getItem('ibooksports_token') ||
             localStorage.getItem('token') ||
-            localStorage.getItem('onboarding_token') ||
-            localStorage.getItem('ibooksports_onboarding_token');
-        }
-
-        if (!token) {
-          try {
-            const adminAuth = localStorage.getItem('ibooksports_admin_auth');
-            if (adminAuth) {
-              const parsed = JSON.parse(adminAuth);
-              token = parsed?.accessToken || parsed?.token;
-            }
-          } catch {}
+            localStorage.getItem('ibooksports_vendor_token');
+          if (!token) {
+            try {
+              const adminAuth = localStorage.getItem('ibooksports_admin_auth');
+              if (adminAuth) {
+                const parsed = JSON.parse(adminAuth);
+                token = parsed?.accessToken || parsed?.token;
+              }
+            } catch {}
+          }
         }
 
         if (token && config.headers) {
@@ -1089,7 +1101,7 @@ export const onboardingApi = {
 
   // Super Admin: List all onboarding applications
   listAdminApplications: async () => {
-    const response = await apiClient.get<OnboardingSessionData[]>('/onboarding/admin/applications');
+    const response = await apiClient.get<{ success?: boolean; total?: number; data: OnboardingSessionData[] } | OnboardingSessionData[]>('/onboarding/admin/applications');
     return response.data;
   },
 
