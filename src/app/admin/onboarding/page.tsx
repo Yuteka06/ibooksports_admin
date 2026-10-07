@@ -144,12 +144,12 @@ export default function PartnerOnboardingAdminTrackerPage() {
 
   // Toast Notification State
   const [toastMessage, setToastMessage] = useState<{
-    type: 'success' | 'error';
+    type: 'success' | 'error' | 'info';
     title: string;
     description: string;
   } | null>(null);
 
-  const showToast = (type: 'success' | 'error', title: string, description: string) => {
+  const showToast = (type: 'success' | 'error' | 'info', title: string, description: string) => {
     setToastMessage({ type, title, description });
   };
 

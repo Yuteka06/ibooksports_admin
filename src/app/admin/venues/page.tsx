@@ -265,13 +265,7 @@ export default function VenuesManagementPage() {
           </p>
         </div>
 
-        {/* Action button */}
-        <Link
-          href="/admin/onboarding"
-          className="inline-flex items-center gap-1.5 rounded-lg bg-[#F94001] hover:bg-[#E03800] text-white px-3.5 py-2 text-xs font-bold shadow-xs active:scale-98 transition-all shrink-0 self-start sm:self-auto"
-        >
-          <span>+ Onboard Partner Turf</span>
-        </Link>
+        
       </div>
 
       {/* STATUS NOTIFICATION TOAST */}
