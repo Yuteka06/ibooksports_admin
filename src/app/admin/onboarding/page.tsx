@@ -645,14 +645,15 @@ export default function PartnerOnboardingAdminTrackerPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Link
-              href="/onboarding"
+            <a
+              href="https://ibooksports.com/onboarding"
               target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#F94001] hover:bg-[#D93600] text-white text-xs font-bold transition-all"
             >
               <span>Open Partner Wizard</span>
               <ExternalLink className="h-3.5 w-3.5" />
-            </Link>
+            </a>
             <button
               type="button"
               onClick={fetchApplications}
