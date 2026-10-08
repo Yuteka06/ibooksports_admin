@@ -115,13 +115,13 @@ const NAV_SECTIONS: NavSectionConfig[] = [
         label: 'Customer Management',
         href: '/admin/customers',
         icon: Users,
-        badge: '6 Users',
+        badge: null,
       },
       {
         label: 'Booking Management',
         href: '/admin/bookings',
         icon: CalendarCheck,
-        badge: 'Live',
+        badge: null,
       },
       {
         label: 'Payment Management',
@@ -133,13 +133,13 @@ const NAV_SECTIONS: NavSectionConfig[] = [
         label: 'Settlement Management',
         href: '/admin/settlements',
         icon: Landmark,
-        badge: '2 Due',
+        badge: null,
       },
       {
         label: 'Support Helpdesk',
         href: '/admin/support',
         icon: Headphones,
-        badge: '2 Open',
+        badge: null,
       },
     ],
   },
@@ -150,13 +150,13 @@ const NAV_SECTIONS: NavSectionConfig[] = [
         label: 'Settings & Config',
         href: '/admin/settings',
         icon: Settings,
-        badge: '8 Tabs',
+        badge: null,
       },
       {
         label: 'CMS & Policies',
         href: '/admin/cms',
         icon: FileText,
-        badge: 'Live',
+        badge: null,
       },
     ],
   },
@@ -222,6 +222,8 @@ export default function AdminLayout({
                 badge: isNew ? 'New Request' : (r.request_status || 'Reviewed'),
               });
             });
+          } else {
+            setSubmittedCount(0);
           }
 
           let pendingCourtsList: any[] = [];
@@ -230,7 +232,7 @@ export default function AdminLayout({
               const s = String(c.status || c.request_status || '').toUpperCase();
               return s === 'PENDING' || s === 'NEW_REQUEST' || s === 'SUBMITTED' || s === 'NEW' || s === 'UNDER_REVIEW';
             });
-            setCourtRequestsCount(pendingCourtsList.length > 0 ? pendingCourtsList.length : 1);
+            setCourtRequestsCount(pendingCourtsList.length);
 
             // Add real court requests to notifications
             courtRequests.slice(0, 6).forEach((cr: any) => {
@@ -246,17 +248,17 @@ export default function AdminLayout({
               });
             });
           } else {
-            setCourtRequestsCount(1);
+            setCourtRequestsCount(0);
           }
 
           if (Array.isArray(venues) && venues.length > 0) {
             const active = venues.filter((v: any) => v.status === 'ACTIVE' || v.status === 'APPROVED' || !v.status);
             setActiveVenuesCount(active.length);
+          } else {
+            setActiveVenuesCount(0);
           }
 
-          if (liveNotifs.length > 0) {
-            setNotifications(liveNotifs);
-          }
+          setNotifications(liveNotifs);
         }
       } catch {
         // Silently retain current notifications during transient network lag
@@ -269,27 +271,27 @@ export default function AdminLayout({
 
   const getBadgeText = (item: NavItemConfig) => {
     if (!mounted) {
-      return item.badge || null;
+      return null;
     }
     if (item.href === '/admin/requests') {
       if (submittedCount !== null && submittedCount > 0) {
         return `${submittedCount} NEW`;
       }
-      return '11 NEW';
+      return null;
     }
     if (item.href === '/admin/court-requests') {
       if (courtRequestsCount !== null && courtRequestsCount > 0) {
         return `${courtRequestsCount} NEW`;
       }
-      return '1 NEW';
+      return null;
     }
     if (item.href === '/admin/venues') {
       if (activeVenuesCount !== null && activeVenuesCount > 0) {
         return `${activeVenuesCount} ACTIVE`;
       }
-      return '3 ACTIVE';
+      return null;
     }
-    return item.badge || null;
+    return null;
   };
 
   // Close notifications on outside click
