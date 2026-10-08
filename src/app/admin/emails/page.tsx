@@ -14,13 +14,21 @@ import {
 import { adminApi, EmailLogItem } from '@/lib/api';
 
 const TEMPLATE_TABS = [
-  { id: 'ALL', label: 'All Templates (6)' },
+  { id: 'ALL', label: 'All Templates (14)' },
   { id: 'SUBMITTED', label: '1. Request Received' },
   { id: 'APPROVED', label: '2. Request Approved' },
   { id: 'REJECTED', label: '3. Request Rejected' },
   { id: 'ONBOARDING_SUBMITTED', label: '4. Onboarding Dossier' },
   { id: 'VENUE_ACTIVATED', label: '5. Venue Live' },
   { id: 'ONBOARDING_REJECTED', label: '6. KYC Corrections' },
+  { id: 'VENDOR_REQUEST_SUBMITTED', label: '7. Change Request Received' },
+  { id: 'VENDOR_REQUEST_APPROVED', label: '8. Change Request Approved' },
+  { id: 'VENDOR_REQUEST_REJECTED', label: '9. Change Request Rejected' },
+  { id: 'SUPPORT_TICKET_SUBMITTED', label: '10. Support Ticket Acknowledged' },
+  { id: 'SUPPORT_TICKET_RESOLVED', label: '11. Support Ticket Resolved' },
+  { id: 'COURT_REQUEST_SUBMITTED', label: '12. Court Addition Request' },
+  { id: 'COURT_REQUEST_APPROVED', label: '13. Court Addition Approved' },
+  { id: 'COURT_REQUEST_REJECTED', label: '14. Court Addition Rejected' },
 ];
 
 export default function EmailNotificationLogsPage() {
@@ -68,7 +76,7 @@ export default function EmailNotificationLogsPage() {
       case 'SUBMITTED':
         return (
           <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200/60">
-            SUBMITTED
+            REQUEST RECEIVED
           </span>
         );
       case 'APPROVED':
@@ -101,6 +109,54 @@ export default function EmailNotificationLogsPage() {
             KYC CORRECTION
           </span>
         );
+      case 'VENDOR_REQUEST_SUBMITTED':
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/60">
+            CHANGE REQUESTED
+          </span>
+        );
+      case 'VENDOR_REQUEST_APPROVED':
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200/60">
+            CHANGE APPROVED
+          </span>
+        );
+      case 'VENDOR_REQUEST_REJECTED':
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-orange-50 text-orange-700 border border-orange-200/60">
+            CHANGE REJECTED
+          </span>
+        );
+      case 'SUPPORT_TICKET_SUBMITTED':
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-cyan-50 text-cyan-700 border border-cyan-200/60">
+            TICKET OPENED
+          </span>
+        );
+      case 'SUPPORT_TICKET_RESOLVED':
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-green-50 text-green-700 border border-green-200/60">
+            TICKET RESOLVED
+          </span>
+        );
+      case 'COURT_REQUEST_SUBMITTED':
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-yellow-50 text-yellow-700 border border-yellow-200/60">
+            COURT REQUESTED
+          </span>
+        );
+      case 'COURT_REQUEST_APPROVED':
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+            COURT APPROVED
+          </span>
+        );
+      case 'COURT_REQUEST_REJECTED':
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-pink-50 text-pink-700 border border-pink-200/60">
+            COURT REJECTED
+          </span>
+        );
       default:
         return (
           <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-gray-100 text-gray-700">
@@ -120,7 +176,7 @@ export default function EmailNotificationLogsPage() {
             Transactional Email Notification Outbox
           </h1>
           <p className="text-xs text-[#5F6368] mt-1">
-            Real-time inspection of all 6 automated HTML emails (Lead Submissions, Approvals, Corrections, and Venue Activation).
+            Real-time inspection of all 14 automated transactional HTML emails (Leads, Approvals, KYC, Live Credentials, Changes, Tickets, and Court Audits).
           </p>
         </div>
 
