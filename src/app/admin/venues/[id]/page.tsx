@@ -343,17 +343,9 @@ export default function VenueModularOverviewPage() {
 
     if (typeof window !== 'undefined') {
       try {
-        const stored = localStorage.getItem('ibooksports_live_venues');
-        if (stored) {
-          const parsed: VenueDetail[] = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            const existingIds = new Set(parsed.map((p) => p.id));
-            setVenues((prev) => [...parsed, ...prev.filter((v) => !existingIds.has(v.id))]);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to load live venues from local storage', err);
-      }
+        localStorage.removeItem('ibooksports_live_venues');
+        localStorage.removeItem('ibooksports_court_requests');
+      } catch {}
 
       const loadCourtRequests = async () => {
         let mergedReqs: CourtExtensionRequest[] = [];
@@ -407,25 +399,6 @@ export default function VenueModularOverviewPage() {
           }
         } catch (err) {
           console.warn('Failed to load court requests from backend API', err);
-        }
-
-        try {
-          const storedReqs = localStorage.getItem('ibooksports_court_requests');
-          if (storedReqs) {
-            const parsedReqs: CourtExtensionRequest[] = JSON.parse(storedReqs);
-            if (Array.isArray(parsedReqs)) {
-              parsedReqs.forEach((localReq) => {
-                const existingIdx = mergedReqs.findIndex((m) => m.id === localReq.id);
-                if (existingIdx === -1) {
-                  mergedReqs.unshift(localReq);
-                } else {
-                  mergedReqs[existingIdx] = { ...mergedReqs[existingIdx], ...localReq };
-                }
-              });
-            }
-          }
-        } catch (err) {
-          console.error('Failed to load court requests from localStorage', err);
         }
 
         setCourtRequests(mergedReqs);

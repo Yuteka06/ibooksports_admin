@@ -67,22 +67,15 @@ export default function VenuesManagementPage() {
           return;
         }
       } catch (err) {
-        console.warn('Failed to fetch live venues from backend, falling back to cache', err);
+        console.warn('Failed to fetch live venues from backend:', err);
       }
 
       if (typeof window !== 'undefined') {
         try {
-          const stored = localStorage.getItem('ibooksports_live_venues');
-          if (stored) {
-            const parsed: VenueDetail[] = JSON.parse(stored);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              setVenues(parsed);
-            }
-          }
-        } catch (err) {
-          console.error('Failed to load live venues from local storage', err);
-        }
+          localStorage.removeItem('ibooksports_live_venues');
+        } catch {}
       }
+      setVenues([]);
     };
 
     fetchVenues();
@@ -99,22 +92,12 @@ export default function VenuesManagementPage() {
 
   // Toggle venue status (Active <-> Inactive <-> Maintenance) with live Backend Sync
   const handleUpdateVenueStatus = async (venueId: string, newStatus: 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE') => {
-    setVenues((prev) => {
-      const updated = prev.map((v) => (v.id === venueId ? { ...v, status: newStatus } : v));
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.setItem('ibooksports_live_venues', JSON.stringify(updated));
-        } catch (e) {
-          console.error(e);
-        }
-      }
-      return updated;
-    });
+    setVenues((prev) => prev.map((v) => (v.id === venueId ? { ...v, status: newStatus } : v)));
 
     try {
       await apiClient.patch(`/venues/${venueId}/status`, { status: newStatus });
     } catch (err) {
-      console.warn('Backend status sync failed, local update retained', err);
+      console.warn('Backend status sync failed:', err);
     }
 
     const label = newStatus === 'ACTIVE' ? 'Active' : newStatus === 'INACTIVE' ? 'Inactive' : 'Maintenance';
