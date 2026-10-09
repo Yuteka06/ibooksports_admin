@@ -420,12 +420,18 @@ export default function VenueModularOverviewPage() {
     const fetchVenueRelatedData = async () => {
       try {
         const [bookingsRes, settlementsRes, supportRes] = await Promise.all([
-          apiClient.get<any[]>('/bookings').catch(() => ({ data: [] })),
-          apiClient.get<any[]>('/payments/settlements').catch(() => ({ data: [] })),
-          apiClient.get<any[]>('/support', { params: { venue_id: venueId } }).catch(() => ({ data: [] })),
+          apiClient.get<any>('/bookings').catch(() => ({ data: [] })),
+          apiClient.get<any>('/payments/settlements').catch(() => ({ data: [] })),
+          apiClient.get<any>('/support', { params: { venue_id: venueId } }).catch(() => ({ data: [] })),
         ]);
 
-        const rawBookings = bookingsRes.data || [];
+        const rawBookingsData = bookingsRes?.data;
+        const rawBookings: any[] = Array.isArray(rawBookingsData)
+          ? rawBookingsData
+          : Array.isArray(rawBookingsData?.data)
+          ? rawBookingsData.data
+          : [];
+
         const venueNameClean = currentVenue?.venue_name?.toLowerCase() || '';
         const vIdClean = venueId.toLowerCase();
 
@@ -466,7 +472,13 @@ export default function VenueModularOverviewPage() {
           }));
         setLiveVenueBookings(filteredB);
 
-        const rawSettlements = settlementsRes.data || [];
+        const rawSettlementsData = settlementsRes?.data;
+        const rawSettlements: any[] = Array.isArray(rawSettlementsData)
+          ? rawSettlementsData
+          : Array.isArray(rawSettlementsData?.data)
+          ? rawSettlementsData.data
+          : [];
+
         const filteredS: SettlementBatchItem[] = rawSettlements.filter((s: any) => {
           const sVenueId = String(s.venue_id || s.venueId || '').toLowerCase();
           const sVenueName = String(s.venue_name || s.venueName || '').toLowerCase();
@@ -478,9 +490,13 @@ export default function VenueModularOverviewPage() {
         });
         setLiveVenueSettlements(filteredS);
 
-        const rawSupport = supportRes.data || [];
-        const filteredT: SupportTicketItem[] = Array.isArray(rawSupport) ? rawSupport : [];
-        setLiveVenueSupportTickets(filteredT);
+        const rawSupportData = supportRes?.data;
+        const rawSupport: any[] = Array.isArray(rawSupportData)
+          ? rawSupportData
+          : Array.isArray(rawSupportData?.data)
+          ? rawSupportData.data
+          : [];
+        setLiveVenueSupportTickets(rawSupport);
       } catch (err) {
         console.warn('Failed to load venue-related live data', err);
       }
@@ -489,16 +505,8 @@ export default function VenueModularOverviewPage() {
     fetchVenueRelatedData();
   }, [venueId, currentVenue]);
 
-
   const saveCourtRequestsToStorage = (updatedList: CourtExtensionRequest[]) => {
     setCourtRequests(updatedList);
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('ibooksports_court_requests', JSON.stringify(updatedList));
-      } catch (err) {
-        console.error('Failed to save court requests to localStorage', err);
-      }
-    }
   };
 
   const venueCourtRequests = useMemo(() => {
