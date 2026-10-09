@@ -17,6 +17,10 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     if (typeof window !== 'undefined') {
+      const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      if (isLocalHost && config.baseURL?.includes('onrender.com')) {
+        config.baseURL = 'http://localhost:4000/api/v1';
+      }
       const explicitAuth = config.headers?.Authorization || (config.headers as any)?.authorization;
       if (!explicitAuth) {
         let token: string | null = null;

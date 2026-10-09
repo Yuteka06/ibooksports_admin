@@ -296,39 +296,11 @@ export default function CourtRequestsPage() {
         mapped = [];
       }
 
-      // Merge local storage court requests (e.g. from venue extension modal or prior admin reviews)
+      // Purge any stale legacy localStorage items so UI reflects 100% database state
       if (typeof window !== 'undefined') {
         try {
-          const stored = localStorage.getItem('ibooksports_court_requests');
-          if (stored) {
-            const localList: CourtExtensionRequest[] = JSON.parse(stored);
-            if (Array.isArray(localList)) {
-              localList.forEach((localReq) => {
-                const existingIdx = mapped.findIndex((m) => m.id === localReq.id);
-                if (existingIdx === -1) {
-                  mapped.unshift(localReq);
-                } else {
-                  const backendStatus = mapped[existingIdx].status;
-                  const localStatus = localReq.status;
-                  const finalStatus =
-                    localStatus === 'APPROVED' || backendStatus === 'APPROVED'
-                      ? 'APPROVED'
-                      : localStatus === 'REJECTED' || backendStatus === 'REJECTED'
-                      ? 'REJECTED'
-                      : (backendStatus || localStatus);
-                  mapped[existingIdx] = {
-                    ...mapped[existingIdx],
-                    ...localReq,
-                    status: finalStatus,
-                    court_id: localReq.court_id || mapped[existingIdx].court_id,
-                  };
-                }
-              });
-            }
-          }
-        } catch (e) {
-          console.warn('Could not read local court requests', e);
-        }
+          localStorage.removeItem('ibooksports_court_requests');
+        } catch {}
       }
 
       setRequests(mapped);
@@ -411,25 +383,6 @@ export default function CourtRequestsPage() {
       setSelectedRequestForDrawer(updated);
     }
 
-    // Persist to localStorage so refreshing never revokes back to Pending
-    if (typeof window !== 'undefined') {
-      try {
-        const stored = localStorage.getItem('ibooksports_court_requests');
-        let list: CourtExtensionRequest[] = stored ? JSON.parse(stored) : [];
-        if (!Array.isArray(list)) list = [];
-        const idx = list.findIndex((x) => x.id === req.id);
-        if (idx !== -1) {
-          list[idx] = { ...list[idx], ...updated, status: 'APPROVED' };
-        } else {
-          list.unshift(updated);
-        }
-        localStorage.setItem('ibooksports_court_requests', JSON.stringify(list));
-      } catch (e) {
-        console.warn('Could not update local court requests:', e);
-      }
-    }
-
-
     setToastMessage({
       type: 'success',
       title: 'Court Request Approved',
@@ -481,23 +434,6 @@ export default function CourtRequestsPage() {
       setSelectedRequestForDrawer(updated);
     }
 
-    // Persist to localStorage
-    if (typeof window !== 'undefined') {
-      try {
-        const stored = localStorage.getItem('ibooksports_court_requests');
-        let list: CourtExtensionRequest[] = stored ? JSON.parse(stored) : [];
-        if (!Array.isArray(list)) list = [];
-        const idx = list.findIndex((x) => x.id === req.id);
-        if (idx !== -1) {
-          list[idx] = { ...list[idx], ...updated, status: 'REJECTED' };
-        } else {
-          list.unshift(updated);
-        }
-        localStorage.setItem('ibooksports_court_requests', JSON.stringify(list));
-      } catch (e) {
-        console.warn('Could not update local court requests:', e);
-      }
-    }
     setIsRejectOpen(false);
     setRejectionNote('');
 
