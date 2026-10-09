@@ -730,6 +730,16 @@ export const adminApi = {
     const response = await apiClient.patch<CourtRequestItem>(`/court-requests/${id}/review`, payload);
     return response.data;
   },
+
+  deleteCourtRequest: async (id: string) => {
+    const response = await apiClient.delete<{ success: boolean; message: string }>(`/court-requests/${id}`);
+    return response.data;
+  },
+
+  deleteAllCourtRequests: async () => {
+    const response = await apiClient.delete<{ success: boolean; count: number }>('/court-requests');
+    return response.data;
+  },
 };
 
 export interface CourtRequestItem {

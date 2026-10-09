@@ -331,6 +331,41 @@ export default function CourtRequestsPage() {
     loadRequests(false);
   }, []);
 
+  const handleDeleteRequest = async (id: string) => {
+    try {
+      await adminApi.deleteCourtRequest(id);
+    } catch (err) {
+      console.warn('Backend delete error:', err);
+    }
+    setRequests((prev) => prev.filter((r) => r.id !== id));
+    if (selectedRequestForDrawer?.id === id) {
+      setSelectedRequestForDrawer(null);
+    }
+    setToastMessage({
+      type: 'info',
+      title: 'Court Request Deleted',
+      description: `Court request ${id} deleted successfully.`,
+    });
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleDeleteAllRequests = async () => {
+    if (!window.confirm('Are you sure you want to delete ALL court requests from the database?')) return;
+    try {
+      await adminApi.deleteAllCourtRequests();
+    } catch (err) {
+      console.warn('Backend deleteAll error:', err);
+    }
+    setRequests([]);
+    setSelectedRequestForDrawer(null);
+    setToastMessage({
+      type: 'info',
+      title: 'All Requests Cleared',
+      description: 'All court requests have been permanently removed.',
+    });
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
   const handleApprove = async (req: CourtExtensionRequest) => {
     let createdCourtId = req.court_id;
     try {
@@ -474,6 +509,15 @@ export default function CourtRequestsPage() {
           >
             <RefreshCw className="h-3.5 w-3.5 text-slate-500" />
             <span>Sync Queue</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleDeleteAllRequests}
+            className="h-9 px-3.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-xs font-semibold text-rose-700 flex items-center gap-2 shadow-2xs transition-all cursor-pointer"
+            title="Clear all court requests from database"
+          >
+            <XCircle className="h-3.5 w-3.5 text-rose-600" />
+            <span>Clear Queue</span>
           </button>
         </div>
       </div>
@@ -940,7 +984,6 @@ export default function CourtRequestsPage() {
                         )}
                       </td>
 
-                      {/* 7. ACTIONS (QUICK APPROVE, REJECT & DETAILS) */}
                       <td className="py-3.5 px-4 align-middle text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1.5">
                           {status === 'APPROVED' ? (
@@ -980,6 +1023,18 @@ export default function CourtRequestsPage() {
                               </button>
                             </>
                           )}
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteRequest(req.id);
+                            }}
+                            title="Delete Request"
+                            className="h-7 w-7 rounded-lg bg-slate-100 hover:bg-rose-600 text-slate-500 hover:text-white flex items-center justify-center transition-colors cursor-pointer border border-slate-200 shadow-2xs"
+                          >
+                            <Ban className="h-3.5 w-3.5" />
+                          </button>
 
                           <button
                             type="button"
@@ -1411,6 +1466,14 @@ export default function CourtRequestsPage() {
                     </button>
                   </>
                 )}
+                <button
+                  type="button"
+                  onClick={() => handleDeleteRequest(selectedRequestForDrawer.id)}
+                  className="px-4 py-2 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  <Ban className="h-3.5 w-3.5" />
+                  <span>Delete</span>
+                </button>
               </div>
             </div>
           </div>
