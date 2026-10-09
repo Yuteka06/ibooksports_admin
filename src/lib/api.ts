@@ -36,7 +36,7 @@ apiClient.interceptors.request.use(
               const parsed = JSON.parse(adminAuth);
               token = parsed?.accessToken || parsed?.token;
             }
-          } catch {}
+          } catch { }
           if (!token) {
             token = localStorage.getItem('ibooksports_token') || localStorage.getItem('token');
           }
@@ -58,7 +58,7 @@ apiClient.interceptors.request.use(
                 const parsed = JSON.parse(adminAuth);
                 token = parsed?.accessToken || parsed?.token;
               }
-            } catch {}
+            } catch { }
           }
         }
 
@@ -83,7 +83,7 @@ apiClient.interceptors.response.use(
   },
   async (error) => {
     const config = error.config;
-    
+
     // Automatic retry for idempotent GET requests on transient network glitches (ERR_NETWORK_CHANGED, ECONNABORTED, offline reconnects)
     if (config && (!config._retryCount || config._retryCount < 2) && (!error.response || error.code === 'ERR_NETWORK' || error.message?.includes('Network Error') || error.message?.includes('ERR_NETWORK_CHANGED'))) {
       config._retryCount = (config._retryCount || 0) + 1;
@@ -233,7 +233,7 @@ export interface PartnerRequestItem {
   district: string;
   sports: string[];
   number_of_courts: number;
-  request_status: 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+  request_status: 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'DRAFT' | 'PENDING_REVIEW';
   status_updated_at: string;
   created_at: string;
   approval_access_link?: string;
