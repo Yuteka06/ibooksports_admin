@@ -1400,14 +1400,26 @@ export default function CourtRequestsPage() {
             </div>
 
             {/* Sticky Action Footer */}
-            <div className="p-4 bg-slate-50 border-t border-[#E5E7EB] flex items-center justify-between gap-3 shrink-0">
-              <button
-                type="button"
-                onClick={() => setSelectedRequestForDrawer(null)}
-                className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
-              >
-                Close
-              </button>
+            <div className="p-4 bg-slate-50 border-t border-[#E5E7EB] flex flex-wrap items-center justify-between gap-2 shrink-0">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedRequestForDrawer(null)}
+                  className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
+                >
+                  Close
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleDeleteRequest(selectedRequestForDrawer.id)}
+                  className="px-3.5 py-2 rounded-xl border border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                  title="Delete Court Request Permanently"
+                >
+                  <Ban className="h-3.5 w-3.5" />
+                  <span>Delete Request</span>
+                </button>
+              </div>
 
               <div className="flex items-center gap-2">
                 {normStatus(selectedRequestForDrawer.status) === 'APPROVED' ? (
@@ -1415,17 +1427,17 @@ export default function CourtRequestsPage() {
                     <button
                       type="button"
                       disabled
-                      className="px-4 py-2 rounded-xl border border-slate-200 bg-slate-100 text-slate-400 font-bold text-xs opacity-50 cursor-not-allowed"
+                      className="px-3 py-2 rounded-xl border border-slate-200 bg-slate-100 text-slate-400 font-bold text-xs opacity-50 cursor-not-allowed"
                     >
                       Reject
                     </button>
                     <button
                       type="button"
                       disabled
-                      className="px-5 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-xs opacity-80 cursor-not-allowed flex items-center gap-1.5"
+                      className="px-4 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-xs opacity-80 cursor-not-allowed flex items-center gap-1.5"
                     >
                       <CheckCircle2 className="h-4 w-4" />
-                      <span>Approved &amp; Live</span>
+                      <span>Approved</span>
                     </button>
                   </>
                 ) : normStatus(selectedRequestForDrawer.status) === 'REJECTED' ? (
@@ -1433,7 +1445,7 @@ export default function CourtRequestsPage() {
                     <button
                       type="button"
                       disabled
-                      className="px-4 py-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 font-bold text-xs opacity-80 cursor-not-allowed flex items-center gap-1.5"
+                      className="px-3 py-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 font-bold text-xs opacity-80 cursor-not-allowed flex items-center gap-1.5"
                     >
                       <XCircle className="h-4 w-4" />
                       <span>Declined</span>
@@ -1441,10 +1453,10 @@ export default function CourtRequestsPage() {
                     <button
                       type="button"
                       disabled
-                      className="px-5 py-2 rounded-xl border border-slate-200 bg-slate-100 text-slate-400 font-bold text-xs opacity-50 cursor-not-allowed flex items-center gap-1.5"
+                      className="px-4 py-2 rounded-xl border border-slate-200 bg-slate-100 text-slate-400 font-bold text-xs opacity-50 cursor-not-allowed flex items-center gap-1.5"
                     >
                       <Check className="h-4 w-4" />
-                      <span>Approve &amp; Activate</span>
+                      <span>Approve</span>
                     </button>
                   </>
                 ) : (
@@ -1452,28 +1464,20 @@ export default function CourtRequestsPage() {
                     <button
                       type="button"
                       onClick={() => setIsRejectOpen(true)}
-                      className="px-4 py-2 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 text-rose-700 font-bold text-xs transition-colors cursor-pointer"
+                      className="px-3.5 py-2 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 text-rose-700 font-bold text-xs transition-colors cursor-pointer"
                     >
                       Reject
                     </button>
                     <button
                       type="button"
                       onClick={() => setPendingApprovalRequest(selectedRequestForDrawer)}
-                      className="px-5 py-2 rounded-xl bg-[#00875A] hover:bg-[#007048] text-white font-bold text-xs shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                      className="px-4 py-2 rounded-xl bg-[#00875A] hover:bg-[#007048] text-white font-bold text-xs shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
                     >
                       <Check className="h-4 w-4" />
                       <span>Approve &amp; Activate</span>
                     </button>
                   </>
                 )}
-                <button
-                  type="button"
-                  onClick={() => handleDeleteRequest(selectedRequestForDrawer.id)}
-                  className="px-4 py-2 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs transition-colors cursor-pointer flex items-center gap-1.5"
-                >
-                  <Ban className="h-3.5 w-3.5" />
-                  <span>Delete</span>
-                </button>
               </div>
             </div>
           </div>
