@@ -125,7 +125,7 @@ export default function BookingManagementPage() {
             customer_name: r.customer_name || r.customerName || 'Player',
             customer_phone: r.customer_phone || r.customerPhone || '',
             venue_id: r.venue_id || r.venueId || 'APP10236',
-            venue_name: r.venue_name || r.venueName || (r.venue_id === 'APP10236' ? 'Rex Sports Arena' : (r.venue_id === 'APP10238' ? 'Sky Sports Arena' : 'Fast and Furious Sports')),
+            venue_name: r.venue_name || r.venueName || (r.venue_id === 'APP10236' ? 'Rex Sports Arena' : (r.venue_id === 'APP10238' ? 'Sky Sports Arena' : (r.venue_id || 'Sports Arena'))),
             court_id: r.court_id || r.courtId || 'court-1',
             court_name: r.court_name || r.courtName || 'Main Arena Court',
             sport: r.sport || 'FOOTBALL',

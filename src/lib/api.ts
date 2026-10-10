@@ -683,8 +683,15 @@ export const adminApi = {
   // Court Requests Management
   getCourtRequests: async (status?: string) => {
     try {
-      const params = status && status !== 'ALL' ? { status } : {};
-      const response = await apiClient.get<CourtRequestItem[]>('/court-requests', { params });
+      const params = status && status !== 'ALL' ? { status, _t: Date.now() } : { _t: Date.now() };
+      const response = await apiClient.get<CourtRequestItem[]>('/court-requests', {
+        params,
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      });
       return response.data || [];
     } catch (e) {
       console.warn('Could not fetch court requests:', (e as Error).message);
