@@ -179,7 +179,7 @@ export default function BookingManagementPage() {
 
   // New Booking / 15-Minute Hold Creation Modal State
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [createVenue, setCreateVenue] = useState('Sky Sports Arena & Box Turf');
+  const [createVenue, setCreateVenue] = useState('Rex Arena');
   const [createSport, setCreateSport] = useState('Football');
   const [createCourt, setCreateCourt] = useState('Turf A (Camp Nou 7v7)');
   const [createDate, setCreateDate] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -1899,9 +1899,10 @@ export default function BookingManagementPage() {
                     onChange={(e) => setCreateVenue(e.target.value)}
                     className="w-full bg-[#F8F9FA] border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#F94001]"
                   >
-                    <option value="Sky Sports Arena & Box Turf">Sky Sports Arena &amp; Box Turf</option>
-                    <option value="Green Field Sports Park">Green Field Sports Park</option>
-                    <option value="Apex Arena & Sports Club">Apex Arena &amp; Sports Club</option>
+                    <option value="Rex Arena">Rex Arena</option>
+                    <option value="Snow White">Snow White</option>
+                    <option value="Peedi Raayappan">Peedi Raayappan</option>
+                    <option value="Amithap Mama">Amithap Mama</option>
                   </select>
                 </div>
               </div>
