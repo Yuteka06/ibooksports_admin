@@ -22,6 +22,7 @@ import {
   MapPin,
   Phone,
   Layers,
+  ChevronLeft,
   ChevronRight,
   Link2,
   X,
@@ -49,8 +50,10 @@ export default function PartnerRequestsPage() {
   const [requests, setRequests] = useState<PartnerRequestItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
-  const [selectedSport, setSelectedSport] = useState<string>('ALL');
-  const [selectedCity, setSelectedCity] = useState<string>('ALL');
+  const [selectedState, setSelectedState] = useState<string>('ALL');
+  const [selectedDistrict, setSelectedDistrict] = useState<string>('ALL');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -90,6 +93,9 @@ export default function PartnerRequestsPage() {
     title: string;
     description: string;
   } | null>(null);
+
+  // 4. Location Pop-up Modal State
+  const [locationModalData, setLocationModalData] = useState<PartnerRequestItem | null>(null);
 
   const onboardingLinkId = useId();
   const reasonSelectId = useId();
@@ -328,18 +334,36 @@ export default function PartnerRequestsPage() {
     }
   };
 
-  // Extract all unique sports
-  const uniqueSports = useMemo(() => {
+  // Dynamic extraction of unique States and Districts
+  const uniqueStates = useMemo(() => {
     const set = new Set<string>();
     requests.forEach((r) => {
-      if (r.sports && Array.isArray(r.sports)) {
-        r.sports.forEach((s) => {
-          if (typeof s === 'string' && s.trim()) set.add(s.trim());
-        });
+      const s = r.state || (r as any).venue_state || '';
+      if (typeof s === 'string' && s.trim()) set.add(s.trim());
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [requests]);
+
+  const uniqueDistricts = useMemo(() => {
+    const set = new Set<string>();
+    requests.forEach((r) => {
+      const stateMatch =
+        selectedState === 'ALL' ||
+        (r.state || '').toLowerCase() === selectedState.toLowerCase() ||
+        ((r as any).venue_state || '').toLowerCase() === selectedState.toLowerCase();
+
+      if (stateMatch) {
+        const d = r.district || (r as any).venue_location || '';
+        if (typeof d === 'string' && d.trim()) set.add(d.trim());
       }
     });
-    return Array.from(set).sort();
-  }, [requests]);
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [requests, selectedState]);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedStatus, selectedState, selectedDistrict, searchQuery]);
 
   // KPI Calculations
   const totalCount = requests.length;
@@ -352,17 +376,13 @@ export default function PartnerRequestsPage() {
     if (selectedStatus !== 'ALL' && r.request_status !== selectedStatus) {
       return false;
     }
-    if (selectedSport !== 'ALL') {
-      const rawSports: any = r.sports || (r as any).sports_offered || [];
-      const sportsList: string[] = Array.isArray(rawSports)
-        ? rawSports
-        : (typeof rawSports === 'string' ? (rawSports as string).split(',') : []);
-      const hasSport = sportsList.some((s) => typeof s === 'string' && s.toLowerCase().includes(selectedSport.toLowerCase()));
-      if (!hasSport) return false;
+    if (selectedState !== 'ALL') {
+      const state = (r.state || (r as any).venue_state || '').toLowerCase();
+      if (!state.includes(selectedState.toLowerCase())) return false;
     }
-    if (selectedCity !== 'ALL') {
-      const district = (r.district || '').toLowerCase();
-      if (!district.includes(selectedCity.toLowerCase())) return false;
+    if (selectedDistrict !== 'ALL') {
+      const district = (r.district || (r as any).venue_location || '').toLowerCase();
+      if (!district.includes(selectedDistrict.toLowerCase())) return false;
     }
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
@@ -383,6 +403,12 @@ export default function PartnerRequestsPage() {
     return true;
   });
 
+  // Pagination Calculations
+  const totalItems = filteredRequests.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedRequests = filteredRequests.slice(startIndex, startIndex + pageSize);
+
   const getSportBadgeStyle = (sport: string) => {
     const s = sport.toLowerCase();
     if (s.includes('cricket')) return 'bg-emerald-50 text-emerald-800 border-emerald-200/80';
@@ -398,23 +424,12 @@ export default function PartnerRequestsPage() {
       {/* 1. PAGE HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E5E7EB] pb-5">
         <div>
-          <div className="inline-flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wider text-[#F94001] bg-[#FFF1EC] border border-[#F94001]/20 px-3 py-1 rounded-full mb-2">
-            <Building2 className="h-3.5 w-3.5 text-[#F94001]" />
-            <span>Partner Onboarding Queue &bull; Inbound Facility Network</span>
-          </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#021526] font-display">
             Partner Requests
           </h1>
           <p className="text-xs sm:text-sm text-[#5F6368] mt-1 font-medium">
             Inbound facility applications, owner contact verification, court capacity evaluations, and onboarding review.
           </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="px-3.5 py-2 rounded-xl bg-white border border-[#E5E7EB] shadow-xs flex items-center gap-2 text-xs font-bold text-slate-700">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>{totalCount} Partner Requests</span>
-          </div>
         </div>
       </div>
 
@@ -617,54 +632,56 @@ export default function PartnerRequestsPage() {
             )}
           </div>
 
-          {/* Sports Selector */}
-          <div className="relative min-w-[130px]">
+          {/* State Selector (Dynamic) */}
+          <div className="relative min-w-[135px]">
             <select
               suppressHydrationWarning={true}
-              value={selectedSport}
-              onChange={(e) => setSelectedSport(e.target.value)}
+              value={selectedState}
+              onChange={(e) => {
+                setSelectedState(e.target.value);
+                setSelectedDistrict('ALL');
+              }}
               className="w-full appearance-none pl-8 pr-7 py-2 rounded-xl border border-[#E5E7EB] bg-slate-50 text-xs font-bold text-[#021526] focus:outline-none focus:border-[#F94001] focus:ring-1 focus:ring-[#F94001] transition-colors cursor-pointer"
             >
-              <option value="ALL">All Sports</option>
-              <option value="Cricket">Cricket</option>
-              <option value="Football">Football</option>
-              <option value="Badminton">Badminton</option>
-              <option value="Tennis">Tennis</option>
-              <option value="Pickleball">Pickleball</option>
+              <option value="ALL">All States</option>
+              {uniqueStates.map((st) => (
+                <option key={st} value={st}>
+                  {st}
+                </option>
+              ))}
             </select>
-            <Trophy className="h-3.5 w-3.5 absolute left-2.5 top-2.5 text-amber-500 pointer-events-none" />
+            <MapPin className="h-3.5 w-3.5 absolute left-2.5 top-2.5 text-[#F94001] pointer-events-none" />
           </div>
 
-          {/* Region / District Selector */}
+          {/* District Selector (Dynamic based on selected state) */}
           <div className="relative min-w-[140px]">
             <select
               suppressHydrationWarning={true}
-              value={selectedCity}
-              onChange={(e) => setSelectedCity(e.target.value)}
+              value={selectedDistrict}
+              onChange={(e) => setSelectedDistrict(e.target.value)}
               className="w-full appearance-none pl-8 pr-7 py-2 rounded-xl border border-[#E5E7EB] bg-slate-50 text-xs font-bold text-[#021526] focus:outline-none focus:border-[#F94001] focus:ring-1 focus:ring-[#F94001] transition-colors cursor-pointer"
             >
-              <option value="ALL">All Regions</option>
-              <option value="Coimbatore">Coimbatore</option>
-              <option value="Bengaluru">Bengaluru</option>
-              <option value="Chennai">Chennai</option>
-              <option value="Hyderabad">Hyderabad</option>
-              <option value="Kochi">Kochi</option>
-              <option value="Madurai">Madurai</option>
+              <option value="ALL">All Districts</option>
+              {uniqueDistricts.map((dist) => (
+                <option key={dist} value={dist}>
+                  {dist}
+                </option>
+              ))}
             </select>
             <MapPin className="h-3.5 w-3.5 absolute left-2.5 top-2.5 text-slate-500 pointer-events-none" />
           </div>
 
           {/* Reset Filters */}
           {(searchQuery ||
-            selectedCity !== 'ALL' ||
-            selectedSport !== 'ALL' ||
+            selectedDistrict !== 'ALL' ||
+            selectedState !== 'ALL' ||
             selectedStatus !== 'ALL') && (
             <button
               type="button"
               onClick={() => {
                 setSearchQuery('');
-                setSelectedCity('ALL');
-                setSelectedSport('ALL');
+                setSelectedState('ALL');
+                setSelectedDistrict('ALL');
                 setSelectedStatus('ALL');
               }}
               className="px-3 py-2 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 shrink-0"
@@ -683,26 +700,27 @@ export default function PartnerRequestsPage() {
           <table className="w-full text-left text-xs border-collapse" suppressHydrationWarning>
             <thead>
               <tr className="border-b border-slate-200/90 bg-slate-50/75 text-slate-500 font-semibold tracking-wider text-[11px] uppercase select-none">
+                <th className="py-3 px-3 w-[50px] text-center">#</th>
                 <th className="py-3 px-4 w-[125px]">Request ID</th>
                 <th className="py-3 px-4 min-w-[200px]">Applicant Details</th>
                 <th className="py-3 px-4 min-w-[220px]">Venue &amp; Location</th>
                 <th className="py-3 px-4 min-w-[150px]">Courts &amp; Sports</th>
                 <th className="py-3 px-4 min-w-[140px]">Submitted Date</th>
                 <th className="py-3 px-4 min-w-[120px]">Status</th>
-                <th className="py-3 px-4 text-center w-[130px]">Actions</th>
+                <th className="py-3 px-4 text-center w-[80px]">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-14 text-center text-[#5F6368]">
+                  <td colSpan={8} className="py-14 text-center text-[#5F6368]">
                     <Loader2 className="h-7 w-7 animate-spin mx-auto text-[#F94001] mb-2" />
                     <p className="font-bold text-xs text-[#021526]">Loading partner requests...</p>
                   </td>
                 </tr>
               ) : filteredRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-14 text-center text-slate-400">
+                  <td colSpan={8} className="py-14 text-center text-slate-400">
                     <Inbox className="h-9 w-9 mx-auto text-slate-300 mb-2" />
                     <p className="font-bold text-sm text-[#021526]">No partner requests found</p>
                     <p className="text-[11px] text-slate-400 mt-0.5">
@@ -711,7 +729,7 @@ export default function PartnerRequestsPage() {
                   </td>
                 </tr>
               ) : (
-                filteredRequests.map((req) => {
+                paginatedRequests.map((req, index) => {
                   const reqDate = req.created_at ? new Date(req.created_at) : new Date();
                   const formattedDate = !isNaN(reqDate.getTime())
                     ? reqDate.toLocaleDateString('en-IN', {
@@ -742,6 +760,11 @@ export default function PartnerRequestsPage() {
                       className="hover:bg-slate-50/70 transition-colors group cursor-pointer"
                       onClick={() => handleOpenDetails(req)}
                     >
+                      {/* 0. SERIAL NUMBER */}
+                      <td className="py-3.5 px-3 text-center font-mono text-[11px] text-slate-500 font-medium">
+                        {startIndex + index + 1}
+                      </td>
+
                       {/* 1. REQUEST ID */}
                       <td className="py-3.5 px-4 align-middle whitespace-nowrap">
                         <div className="inline-flex items-center gap-1.5">
@@ -789,12 +812,20 @@ export default function PartnerRequestsPage() {
                           <p className="font-bold text-slate-900 text-xs tracking-tight group-hover:text-[#F94001] transition-colors line-clamp-1">
                             {req.venue_name}
                           </p>
-                          <div className="flex items-center gap-1 text-[11px] text-slate-500 font-medium">
-                            <MapPin className="h-3 w-3 text-slate-400 shrink-0" />
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setLocationModalData(req);
+                            }}
+                            className="flex items-center gap-1 text-[11px] text-slate-600 hover:text-[#F94001] font-medium transition-colors text-left cursor-pointer"
+                            title="Click to view location map"
+                          >
+                            <MapPin className="h-3 w-3 text-[#F94001] shrink-0" />
                             <span className="truncate max-w-[200px]">
                               {req.district || 'Coimbatore'}, {req.state || 'Tamil Nadu'}
                             </span>
-                          </div>
+                          </button>
                         </div>
                       </td>
 
@@ -847,64 +878,19 @@ export default function PartnerRequestsPage() {
                       </td>
 
                       {/* 7. ACTIONS (QUICK APPROVE, REJECT & DETAILS BUTTON) */}
+                      {/* ACTION COLUMN */}
                       <td className="py-3.5 px-4 align-middle text-center whitespace-nowrap">
-                        <div className="flex items-center justify-center gap-1.5">
-                          {req.request_status === 'SUBMITTED' ? (
-                            <>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleOpenApprove(req);
-                                }}
-                                title="Quick Approve"
-                                className="h-7 w-7 rounded-lg bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white flex items-center justify-center transition-colors cursor-pointer border border-emerald-200 shadow-2xs"
-                              >
-                                <Check className="h-3.5 w-3.5" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleOpenReject(req);
-                                }}
-                                title="Reject Application"
-                                className="h-7 w-7 rounded-lg bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white flex items-center justify-center transition-colors cursor-pointer border border-rose-200 shadow-2xs"
-                              >
-                                <X className="h-3.5 w-3.5" />
-                              </button>
-                            </>
-                          ) : req.request_status === 'APPROVED' ? (
-                            <button
-                              type="button"
-                              disabled
-                              title="Already Approved"
-                              className="h-7 w-7 rounded-lg bg-slate-100 text-slate-300 flex items-center justify-center border border-slate-200 cursor-not-allowed opacity-60"
-                            >
-                              <Check className="h-3.5 w-3.5" />
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              disabled
-                              title="Already Rejected"
-                              className="h-7 w-7 rounded-lg bg-slate-100 text-slate-300 flex items-center justify-center border border-slate-200 cursor-not-allowed opacity-60"
-                            >
-                              <X className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-
+                        <div className="flex items-center justify-center">
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleOpenDetails(req);
                             }}
-                            className="h-7 px-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-[#F94001] hover:border-[#F94001]/40 hover:bg-[#FFF1EC] text-xs font-semibold inline-flex items-center gap-1 shadow-2xs transition-all cursor-pointer active:scale-95"
+                            className="h-8 w-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 hover:text-[#F94001] hover:border-[#F94001]/40 hover:bg-[#FFF1EC] inline-flex items-center justify-center shadow-2xs transition-all cursor-pointer active:scale-95"
                             title="Open Partner Request Dossier"
                           >
-                            <Eye className="h-3 w-3 text-slate-500" />
-                            <span>Details &gt;</span>
+                            <Eye className="h-4 w-4 text-slate-600 hover:text-[#F94001]" />
                           </button>
                         </div>
                       </td>
@@ -914,6 +900,97 @@ export default function PartnerRequestsPage() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* PAGINATION CONTROLS */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3.5 border-t border-slate-200/90 bg-slate-50/50 text-xs text-slate-600 select-none">
+          <div className="flex items-center gap-4">
+            <span>
+              Showing{' '}
+              <strong className="text-slate-900 font-semibold">
+                {totalItems === 0 ? 0 : startIndex + 1}
+              </strong>{' '}
+              to{' '}
+              <strong className="text-slate-900 font-semibold">
+                {Math.min(startIndex + pageSize, totalItems)}
+              </strong>{' '}
+              of <strong className="text-slate-900 font-semibold">{totalItems}</strong> entries
+            </span>
+
+            <div className="flex items-center gap-1.5">
+              <span className="text-slate-400 text-[11px]">Rows per page:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="h-7 px-2 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:border-slate-300 focus:outline-none focus:border-[#F94001] cursor-pointer"
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              disabled={currentPage <= 1}
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              className="h-8 px-2.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 text-xs font-semibold transition-all shadow-2xs"
+              title="Previous Page"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+              <span>Prev</span>
+            </button>
+
+            <div className="flex items-center gap-1 px-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter((p) => {
+                  return (
+                    p === 1 ||
+                    p === totalPages ||
+                    Math.abs(p - currentPage) <= 1
+                  );
+                })
+                .map((p, idx, arr) => {
+                  const prevPageNum = arr[idx - 1];
+                  const showEllipsis = prevPageNum && p - prevPageNum > 1;
+                  return (
+                    <React.Fragment key={p}>
+                      {showEllipsis && (
+                        <span className="px-1 text-slate-400 text-xs">...</span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage(p)}
+                        className={`h-8 min-w-[32px] px-2 rounded-lg text-xs font-bold transition-all shadow-2xs ${
+                          currentPage === p
+                            ? 'bg-[#F94001] text-white border border-[#F94001]'
+                            : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    </React.Fragment>
+                  );
+                })}
+            </div>
+
+            <button
+              type="button"
+              disabled={currentPage >= totalPages}
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              className="h-8 px-2.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 text-xs font-semibold transition-all shadow-2xs"
+              title="Next Page"
+            >
+              <span>Next</span>
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -998,17 +1075,17 @@ export default function PartnerRequestsPage() {
                           {activeRequest.district || 'Coimbatore'}, {activeRequest.state || 'Tamil Nadu'}
                         </p>
                       </div>
-                      {activeRequest.venue_location && (
-                        <a
-                          href={activeRequest.venue_location}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="p-1.5 rounded-lg bg-white border border-[#E5E7EB] hover:border-[#F94001] text-slate-400 hover:text-[#F94001] transition-colors"
-                          title="View on Google Maps"
-                        >
-                          <MapPin className="h-4 w-4" />
-                        </a>
-                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLocationModalData(activeRequest);
+                        }}
+                        className="p-1.5 rounded-lg bg-[#FFF1EC] border border-[#F94001]/30 text-[#F94001] transition-all cursor-pointer shadow-2xs hover:bg-[#FFE5DC] active:scale-95"
+                        title="View Location Details"
+                      >
+                        <MapPin className="h-4 w-4 text-[#F94001]" />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1167,7 +1244,7 @@ export default function PartnerRequestsPage() {
                         </strong>
                       </div>
                       <div>
-                        Token Expiry:{' '}
+                        Link Expiry:{' '}
                         <strong>
                           {activeRequest.onboarding_token_expiry
                             ? new Date(activeRequest.onboarding_token_expiry).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -1188,7 +1265,7 @@ export default function PartnerRequestsPage() {
                           <button
                             type="button"
                             onClick={() => handleCopyOnboardingLink(activeRequest.approval_access_link!)}
-                            className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs transition-all flex items-center gap-1 shrink-0 shadow-xs active:scale-95"
+                            className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs transition-all flex items-center gap-1 shrink-0 shadow-xs active:scale-95 cursor-pointer"
                           >
                             {copiedLink ? (
                               <>
@@ -1205,14 +1282,17 @@ export default function PartnerRequestsPage() {
                     )}
 
                     <div className="flex items-center justify-between pt-2 border-t border-emerald-200/60">
-                      <span className="text-[10px] text-emerald-800">
-                        Generate fresh token &amp; re-send:
-                      </span>
+                      <div className="flex items-center gap-1.5 text-xs text-emerald-900">
+                        <span className="text-[11px] font-medium text-emerald-800">Application ID:</span>
+                        <span className="font-mono font-bold text-[#021526] bg-white px-2 py-0.5 rounded border border-emerald-300 text-xs">
+                          {activeRequest.request_id}
+                        </span>
+                      </div>
                       <button
                         type="button"
                         disabled={isResendingLink}
                         onClick={() => handleResendLinkFromDetails(activeRequest)}
-                        className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 hover:text-emerald-950 underline disabled:opacity-50"
+                        className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 hover:text-emerald-950 underline disabled:opacity-50 cursor-pointer"
                       >
                         {isResendingLink ? (
                           <>
@@ -1506,10 +1586,9 @@ export default function PartnerRequestsPage() {
                   <input
                     id={onboardingLinkId}
                     type="text"
+                    readOnly
                     value={customOnboardingLink}
-                    onChange={(e) => setCustomOnboardingLink(e.target.value)}
-                    placeholder="https://ibooksports-admin.vercel.app/onboarding/752bca5f7e68c4c3540d0dec4df796ae13b907c0a12ff68ec9684afbc0bdd416"
-                    className="w-full rounded-xl border border-[#E5E7EB] bg-[#F8F9FA] px-3.5 py-2.5 text-xs font-mono text-[#021526] focus:border-[#F94001] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#F94001] transition-all shadow-xs"
+                    className="w-full rounded-xl border border-[#E5E7EB] bg-[#F8F9FA] px-3.5 py-2.5 text-xs font-mono text-[#021526] select-all cursor-default focus:outline-none shadow-xs"
                   />
                   <p className="text-[11px] text-[#5F6368]">
                     A cryptographically hashed SHA-256 token will be generated and dispatched automatically via HTML email.
@@ -1561,6 +1640,111 @@ export default function PartnerRequestsPage() {
                     <Mail className="h-4 w-4" /> Confirm Approval &amp; Send Email
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ========================================================================= */}
+      {/* 3. LOCATION POP-UP MODAL (TOP-LEVEL OVERLAY z-[10001]) */}
+      {/* ========================================================================= */}
+      {mounted && locationModalData && typeof document !== 'undefined' && createPortal(
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="location-modal-title"
+          className="fixed inset-0 z-[10001] top-0 left-0 right-0 bottom-0 w-screen h-screen bg-[#021526]/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-150"
+        >
+          <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl overflow-hidden border border-[#E5E7EB] animate-in fade-in zoom-in-95 flex flex-col">
+            {/* Header */}
+            <div className="p-5 border-b border-[#E5E7EB] flex items-center justify-between bg-white">
+              <div className="flex items-center gap-2.5">
+                <div className="h-9 w-9 rounded-xl bg-[#FFF1EC] text-[#F94001] flex items-center justify-center border border-[#F94001]/20 shrink-0">
+                  <MapPin className="h-5 w-5 text-[#F94001]" />
+                </div>
+                <div className="min-w-0">
+                  <h3 id="location-modal-title" className="text-base font-black text-[#021526] font-display truncate">
+                    {locationModalData.venue_name}
+                  </h3>
+                  <p className="text-[11px] text-[#5F6368] font-medium truncate">
+                    {locationModalData.district || 'Coimbatore'}, {locationModalData.state || 'Tamil Nadu'} &bull; <span className="font-mono text-slate-700">{locationModalData.request_id}</span>
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLocationModalData(null)}
+                className="text-slate-400 hover:text-slate-700 font-bold p-1.5 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+                title="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-5 space-y-4 text-xs">
+              {/* Facility Location Details Card */}
+              <div className="rounded-xl bg-slate-50 border border-slate-200/90 p-3.5 space-y-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                      Facility Location
+                    </span>
+                    <p className="text-xs font-semibold text-[#021526] mt-0.5">
+                      {locationModalData.venue_name}, {locationModalData.district || 'Coimbatore'}, {locationModalData.state || 'Tamil Nadu'}
+                    </p>
+                    {locationModalData.venue_location && (
+                      <p className="text-[11px] font-mono text-slate-500 mt-1 truncate max-w-[380px]">
+                        {locationModalData.venue_location}
+                      </p>
+                    )}
+                  </div>
+                  <span className="px-2 py-0.5 rounded-md bg-[#FFF1EC] text-[#F94001] border border-[#F94001]/30 font-bold text-[10px] shrink-0">
+                    Location Pin
+                  </span>
+                </div>
+              </div>
+
+              {/* Embedded Google Maps View */}
+              <div className="rounded-xl overflow-hidden border border-slate-200 bg-slate-100 aspect-video w-full relative shadow-inner">
+                <iframe
+                  title={`Map location for ${locationModalData.venue_name}`}
+                  src={`https://maps.google.com/maps?q=${encodeURIComponent(
+                    locationModalData.venue_location && !locationModalData.venue_location.startsWith('http')
+                      ? locationModalData.venue_location
+                      : `${locationModalData.venue_name}, ${locationModalData.district || ''}, ${locationModalData.state || ''}`
+                  )}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                  className="w-full h-full border-0"
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-slate-50/70 border-t border-[#E5E7EB] flex items-center justify-between gap-2">
+              {locationModalData.venue_location ? (
+                <a
+                  href={locationModalData.venue_location}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#F94001] hover:underline cursor-pointer"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  <span>Open in Google Maps App</span>
+                </a>
+              ) : (
+                <span className="text-[11px] text-slate-400">Map centered on venue coordinates</span>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setLocationModalData(null)}
+                className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer"
+              >
+                Close
               </button>
             </div>
           </div>

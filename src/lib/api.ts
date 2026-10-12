@@ -16,6 +16,14 @@ export const apiClient = axios.create({
 // Rule 11 & Rule 8: Request Interceptor for Auth & Debug Logging
 apiClient.interceptors.request.use(
   (config) => {
+    // Strip unwanted caching headers so preflight OPTIONS requests are not rejected by Render
+    if (config.headers) {
+      delete (config.headers as any)['Cache-Control'];
+      delete (config.headers as any)['cache-control'];
+      delete (config.headers as any)['Pragma'];
+      delete (config.headers as any)['pragma'];
+    }
+
     if (typeof window !== 'undefined') {
       const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
       if (isLocalHost && config.baseURL?.includes('onrender.com')) {
@@ -686,11 +694,6 @@ export const adminApi = {
       const params = status && status !== 'ALL' ? { status, _t: Date.now() } : { _t: Date.now() };
       const response = await apiClient.get<CourtRequestItem[]>('/court-requests', {
         params,
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0',
-        },
       });
       return response.data || [];
     } catch (e) {

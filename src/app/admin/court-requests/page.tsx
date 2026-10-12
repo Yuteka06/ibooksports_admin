@@ -20,6 +20,7 @@ import {
   Clock,
   MapPin,
   Copy,
+  ChevronLeft,
   ChevronRight,
   Filter,
   Sparkles,
@@ -61,6 +62,8 @@ export default function CourtRequestsPage() {
   const [selectedDistrict, setSelectedDistrict] = useState<string>('ALL');
   const [selectedSport, setSelectedSport] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
   const [sortBy, setSortBy] = useState<'date' | 'rate' | 'court' | 'id'>('date');
 
 
@@ -236,6 +239,17 @@ export default function CourtRequestsPage() {
         return dateB.localeCompare(dateA);
       });
   }, [baseFilteredRequests, selectedStatus, sortBy]);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedState, selectedDistrict, selectedSport, pageSize]);
+
+  // Pagination Calculations
+  const totalItems = filteredRequests.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedRequests = filteredRequests.slice(startIndex, startIndex + pageSize);
 
   // Drawer handlers
   const handleOpenDrawer = (req: CourtExtensionRequest) => {
@@ -482,43 +496,15 @@ export default function CourtRequestsPage() {
 
   return (
     <div className="animate-in fade-in duration-300 space-y-6">
-      {/* 1. PAGE HEADER (MATCHING CUSTOMER MANAGEMENT DESIGN) */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#E5E7EB] pb-5">
+      {/* 1. PAGE HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E5E7EB] pb-5">
         <div>
-          <div className="inline-flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wider text-[#F94001] bg-[#FFF1EC] border border-[#F94001]/20 px-3 py-1 rounded-full mb-2">
-            <Layers className="h-3.5 w-3.5 text-[#F94001]" />
-            <span>Court Extension Requests &bull; Venue Expansion Network</span>
-          </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#021526] font-display">
             Court Requests
           </h1>
           <p className="text-xs sm:text-sm text-[#5F6368] mt-1 font-medium">
             Inbound court creation requests, venue details, ground specifications, player app display names, and approval reviews.
           </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="px-3.5 py-2 rounded-xl bg-white border border-[#E5E7EB] shadow-xs flex items-center gap-2 text-xs font-bold text-slate-700">
-            <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-            <span>{requests.length} Court Requests</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => loadRequests(true)}
-            className="h-9 px-3.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 flex items-center gap-2 shadow-2xs transition-all cursor-pointer"
-          >
-            <RefreshCw className="h-3.5 w-3.5 text-slate-500" />
-            <span>Sync Queue</span>
-          </button>
-          <button
-            type="button"
-            onClick={handleDeleteAllRequests}
-            className="h-9 px-3.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-xs font-semibold text-rose-700 flex items-center gap-2 shadow-2xs transition-all cursor-pointer"
-            title="Clear all court requests from database"
-          >
-            <XCircle className="h-3.5 w-3.5 text-rose-600" />
-            <span>Clear Queue</span>
-          </button>
         </div>
       </div>
 
@@ -650,116 +636,68 @@ export default function CourtRequestsPage() {
       </div>
 
       {/* 3. MULTI-STATE FINDER TABS */}
-      <div className="bg-white rounded-2xl border border-[#E5E7EB] p-3 shadow-xs space-y-3">
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-[#F94001]" />
-            <span className="text-xs font-black uppercase tracking-wider text-[#021526]">
-              Filter by State:
-            </span>
-          </div>
-          <span className="text-[11px] font-semibold text-slate-500">
-            {selectedState === 'ALL'
-              ? `All ${uniqueStates.length} states`
-              : `Active State: ${selectedState}`}
-          </span>
-        </div>
-
-        {/* State Pills Bar */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
-          <button
-            type="button"
-            onClick={() => setSelectedState('ALL')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${selectedState === 'ALL'
-              ? 'bg-[#021526] text-white shadow-sm'
-              : 'bg-[#F8F9FA] text-[#5F6368] hover:bg-slate-200 border border-[#E5E7EB]'
-              }`}
-          >
-            <span>All States</span>
-            <span
-              className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${selectedState === 'ALL' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
-                }`}
-            >
-              {requests.length}
-            </span>
-          </button>
-
-          {uniqueStates.map((st) => (
+      {/* 3. SEARCH & DYNAMIC DROPDOWN FILTERS */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-[#E5E7EB] shadow-xs">
+        {/* Live Search Input */}
+        <div className="relative min-w-[260px] flex-1">
+          <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-[#5F6368]" />
+          <input
+            type="text"
+            placeholder="Search request ID, venue, court, display name..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full rounded-xl bg-slate-50 border border-[#E5E7EB] pl-10 pr-9 py-2 text-xs text-[#021526] placeholder-[#5F6368] focus:bg-white focus:border-[#F94001] focus:ring-2 focus:ring-[#F94001]/10 transition-all outline-none font-medium"
+          />
+          {searchQuery && (
             <button
-              key={st}
               type="button"
-              onClick={() => setSelectedState(st)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${selectedState === st
-                ? 'bg-[#F94001] text-white shadow-sm shadow-[#F94001]/30'
-                : 'bg-[#F8F9FA] text-[#5F6368] hover:bg-slate-200 border border-[#E5E7EB]'
-                }`}
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
             >
-              <span>{st}</span>
-              <span
-                className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${selectedState === st ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
-                  }`}
-              >
-                {stateCounts[st]}
-              </span>
+              <X className="h-4 w-4" />
             </button>
-          ))}
-        </div>
-      </div>
-
-      {/* 4. SEARCH, STATUS PILLS & DROPDOWN FILTERS */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-[#E5E7EB] shadow-xs">
-        {/* Left: Status Filter Pills */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {[
-            { id: 'ALL', label: 'All', count: totalCount },
-            { id: 'PENDING', label: 'Pending', count: pendingCount },
-            { id: 'APPROVED', label: 'Approved', count: approvedCount },
-            { id: 'REJECTED', label: 'Declined', count: rejectedCount },
-          ].map((tab) => {
-            const isActive = selectedStatus === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setSelectedStatus(tab.id)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${isActive
-                  ? 'bg-[#021526] text-white shadow-xs'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-              >
-                <span>{tab.label}</span>
-                <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded-md font-mono ${isActive ? 'bg-white/20 text-white' : 'bg-white text-slate-700'
-                    }`}
-                >
-                  {tab.count}
-                </span>
-              </button>
-            );
-          })}
+          )}
         </div>
 
-        {/* Right: Search, Sports, Districts & Sort */}
-        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5">
-          {/* Live Search Input */}
-          <div className="relative min-w-[240px] flex-1">
-            <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-[#5F6368]" />
-            <input
-              type="text"
-              placeholder="Search request ID, venue, court, display name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-xl bg-slate-50 border border-[#E5E7EB] pl-10 pr-9 py-2 text-xs text-[#021526] placeholder-[#5F6368] focus:bg-white focus:border-[#F94001] focus:ring-2 focus:ring-[#F94001]/10 transition-all outline-none font-medium"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
+        {/* Right: States, Districts, Sports & Reset */}
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+          {/* Dynamic States Selector */}
+          <div className="relative min-w-[140px]">
+            <select
+              suppressHydrationWarning={true}
+              value={selectedState}
+              onChange={(e) => {
+                setSelectedState(e.target.value);
+                setSelectedDistrict('ALL');
+              }}
+              className="w-full appearance-none pl-8 pr-7 py-2 rounded-xl border border-[#E5E7EB] bg-slate-50 text-xs font-bold text-[#021526] focus:outline-none focus:border-[#F94001] focus:ring-1 focus:ring-[#F94001] transition-colors cursor-pointer"
+            >
+              <option value="ALL">All States ({requests.length})</option>
+              {uniqueStates.map((st) => (
+                <option key={st} value={st}>
+                  {st} ({stateCounts[st] || 0})
+                </option>
+              ))}
+            </select>
+            <MapPin className="h-3.5 w-3.5 absolute left-2.5 top-2.5 text-[#F94001] pointer-events-none" />
+          </div>
+
+          {/* Dynamic District Selector */}
+          <div className="relative min-w-[140px]">
+            <select
+              suppressHydrationWarning={true}
+              value={selectedDistrict}
+              onChange={(e) => setSelectedDistrict(e.target.value)}
+              className="w-full appearance-none pl-8 pr-7 py-2 rounded-xl border border-[#E5E7EB] bg-slate-50 text-xs font-bold text-[#021526] focus:outline-none focus:border-[#F94001] focus:ring-1 focus:ring-[#F94001] transition-colors cursor-pointer"
+            >
+              <option value="ALL">All Districts</option>
+              {availableDistricts.map((dst) => (
+                <option key={dst} value={dst}>
+                  {dst}
+                </option>
+              ))}
+            </select>
+            <MapPin className="h-3.5 w-3.5 absolute left-2.5 top-2.5 text-slate-500 pointer-events-none" />
           </div>
 
           {/* Sports Selector */}
@@ -780,46 +718,27 @@ export default function CourtRequestsPage() {
             <Trophy className="h-3.5 w-3.5 absolute left-2.5 top-2.5 text-amber-500 pointer-events-none" />
           </div>
 
-          {/* District Selector */}
-          <div className="relative min-w-[140px]">
-            <select
-              suppressHydrationWarning={true}
-              value={selectedDistrict}
-              onChange={(e) => setSelectedDistrict(e.target.value)}
-              className="w-full appearance-none pl-8 pr-7 py-2 rounded-xl border border-[#E5E7EB] bg-slate-50 text-xs font-bold text-[#021526] focus:outline-none focus:border-[#F94001] focus:ring-1 focus:ring-[#F94001] transition-colors cursor-pointer"
-            >
-              <option value="ALL">All Districts</option>
-              {availableDistricts.map((dst) => (
-                <option key={dst} value={dst}>
-                  {dst}
-                </option>
-              ))}
-            </select>
-            <MapPin className="h-3.5 w-3.5 absolute left-2.5 top-2.5 text-slate-500 pointer-events-none" />
-          </div>
-
           {/* Reset Filters */}
           {(searchQuery ||
             selectedState !== 'ALL' ||
             selectedDistrict !== 'ALL' ||
-            selectedSport !== 'ALL' ||
-            selectedStatus !== 'ALL') && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchQuery('');
-                  setSelectedState('ALL');
-                  setSelectedDistrict('ALL');
-                  setSelectedSport('ALL');
-                  setSelectedStatus('ALL');
-                }}
-                className="px-3 py-2 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 shrink-0"
-                title="Reset all filters"
-              >
-                <X className="h-3.5 w-3.5" />
-                <span>Reset</span>
-              </button>
-            )}
+            selectedSport !== 'ALL') && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery('');
+                setSelectedState('ALL');
+                setSelectedDistrict('ALL');
+                setSelectedSport('ALL');
+                setSelectedStatus('ALL');
+              }}
+              className="px-3 py-2 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 shrink-0"
+              title="Reset all filters"
+            >
+              <X className="h-3.5 w-3.5" />
+              <span>Reset</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -836,6 +755,7 @@ export default function CourtRequestsPage() {
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="border-b border-slate-200/90 bg-slate-50/75 text-slate-500 font-semibold tracking-wider text-[11px] uppercase select-none">
+                <th className="py-3 px-3 w-[50px] text-center">#</th>
                 <th className="py-3 px-4 w-[115px]">Request ID</th>
                 <th className="py-3 px-4 min-w-[210px]">Venue Details</th>
                 <th className="py-3 px-4 min-w-[240px]">Court &amp; Sport</th>
@@ -848,7 +768,7 @@ export default function CourtRequestsPage() {
             <tbody className="divide-y divide-slate-100">
               {filteredRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-14 text-center text-slate-400">
+                  <td colSpan={8} className="py-14 text-center text-slate-400">
                     <Inbox className="h-9 w-9 mx-auto text-slate-300 mb-2" />
                     <p className="font-bold text-sm text-[#021526]">No court requests found</p>
                     <p className="text-[11px] text-slate-400 mt-0.5">
@@ -857,7 +777,7 @@ export default function CourtRequestsPage() {
                   </td>
                 </tr>
               ) : (
-                filteredRequests.map((req) => {
+                paginatedRequests.map((req, index) => {
                   const status = normStatus(req.status);
                   const isCopied = copiedText === req.id;
                   const reqState = getRequestState(req);
@@ -871,6 +791,11 @@ export default function CourtRequestsPage() {
                       onClick={() => handleOpenDrawer(req)}
                       className="hover:bg-slate-50/70 transition-colors group cursor-pointer"
                     >
+                      {/* 0. SERIAL NUMBER */}
+                      <td className="py-3.5 px-3 text-center font-mono text-[11px] text-slate-500 font-medium">
+                        {startIndex + index + 1}
+                      </td>
+
                       {/* 1. REQUEST ID */}
                       <td className="py-3.5 px-4 align-middle whitespace-nowrap">
                         <div className="inline-flex items-center gap-1.5">
@@ -1055,6 +980,97 @@ export default function CourtRequestsPage() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* PAGINATION CONTROLS */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3.5 border-t border-slate-200/90 bg-slate-50/50 text-xs text-slate-600 select-none">
+          <div className="flex items-center gap-4">
+            <span>
+              Showing{' '}
+              <strong className="text-slate-900 font-semibold">
+                {totalItems === 0 ? 0 : startIndex + 1}
+              </strong>{' '}
+              to{' '}
+              <strong className="text-slate-900 font-semibold">
+                {Math.min(startIndex + pageSize, totalItems)}
+              </strong>{' '}
+              of <strong className="text-slate-900 font-semibold">{totalItems}</strong> entries
+            </span>
+
+            <div className="flex items-center gap-1.5">
+              <span className="text-slate-400 text-[11px]">Rows per page:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="h-7 px-2 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:border-slate-300 focus:outline-none focus:border-[#F94001] cursor-pointer"
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              disabled={currentPage <= 1}
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              className="h-8 px-2.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 text-xs font-semibold transition-all shadow-2xs"
+              title="Previous Page"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+              <span>Prev</span>
+            </button>
+
+            <div className="flex items-center gap-1 px-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter((p) => {
+                  return (
+                    p === 1 ||
+                    p === totalPages ||
+                    Math.abs(p - currentPage) <= 1
+                  );
+                })
+                .map((p, idx, arr) => {
+                  const prevPageNum = arr[idx - 1];
+                  const showEllipsis = prevPageNum && p - prevPageNum > 1;
+                  return (
+                    <React.Fragment key={p}>
+                      {showEllipsis && (
+                        <span className="px-1 text-slate-400 text-xs">...</span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage(p)}
+                        className={`h-8 min-w-[32px] px-2 rounded-lg text-xs font-bold transition-all shadow-2xs ${
+                          currentPage === p
+                            ? 'bg-[#F94001] text-white border border-[#F94001]'
+                            : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    </React.Fragment>
+                  );
+                })}
+            </div>
+
+            <button
+              type="button"
+              disabled={currentPage >= totalPages}
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              className="h-8 px-2.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 text-xs font-semibold transition-all shadow-2xs"
+              title="Next Page"
+            >
+              <span>Next</span>
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       </div>
 

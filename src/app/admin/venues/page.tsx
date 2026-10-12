@@ -25,6 +25,9 @@ import {
   Power,
   Wrench,
   ChevronDown,
+  ShieldAlert,
+  ShieldCheck,
+  AlertTriangle,
 } from 'lucide-react';
 import { VenueDetail } from '@/lib/mockData';
 import { apiClient } from '@/lib/api';
@@ -35,12 +38,16 @@ export default function VenuesManagementPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedState, setSelectedState] = useState('ALL');
   const [selectedStatus, setSelectedStatus] = useState('ALL');
+  const [selectedDistrict, setSelectedDistrict] = useState('ALL');
   const [selectedSport, setSelectedSport] = useState('ALL');
-  const [sortBy, setSortBy] = useState<'bookings' | 'revenue' | 'courts' | 'name' | 'id'>('bookings');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [statusNotification, setStatusNotification] = useState<string | null>(null);
-  const [openDropdown, setOpenDropdown] = useState<'state' | 'status' | 'sport' | 'sort' | null>(null);
-  const [rowStatusMenuVenueId, setRowStatusMenuVenueId] = useState<string | null>(null);
+  const [openDropdown, setOpenDropdown] = useState<'state' | 'status' | 'sport' | 'district' | null>(null);
+  const [selectedGpsVenue, setSelectedGpsVenue] = useState<VenueDetail | null>(null);
+  const [selectedBlockVenue, setSelectedBlockVenue] = useState<VenueDetail | null>(null);
+  const [blockPresetReason, setBlockPresetReason] = useState('Policy violation & non-compliance');
+  const [blockReason, setBlockReason] = useState('');
+  const [selectedUnblockVenue, setSelectedUnblockVenue] = useState<VenueDetail | null>(null);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -48,9 +55,6 @@ export default function VenuesManagementPage() {
       const target = e.target as HTMLElement;
       if (!target.closest('[data-dropdown-container]')) {
         setOpenDropdown(null);
-      }
-      if (!target.closest('[data-status-menu-container]')) {
-        setRowStatusMenuVenueId(null);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -119,6 +123,32 @@ export default function VenuesManagementPage() {
     return Object.keys(stateCounts).sort();
   }, [stateCounts]);
 
+  // Extract all unique districts dynamically (optionally filtered by selectedState)
+  const availableDistricts = useMemo(() => {
+    const districtsSet = new Set<string>();
+    venues.forEach((v) => {
+      const st = v.state || 'Other';
+      if (selectedState === 'ALL' || selectedState.toLowerCase() === st.toLowerCase()) {
+        if (v.district && v.district.trim()) {
+          districtsSet.add(v.district.trim());
+        }
+      }
+    });
+    return Array.from(districtsSet).sort();
+  }, [venues, selectedState]);
+
+  const districtCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    venues.forEach((v) => {
+      const st = v.state || 'Other';
+      if (selectedState === 'ALL' || selectedState.toLowerCase() === st.toLowerCase()) {
+        const d = v.district ? v.district.trim() : 'Other';
+        counts[d] = (counts[d] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [venues, selectedState]);
+
   // Extract status counts
   const statusCounts = useMemo(() => {
     const counts = { ACTIVE: 0, INACTIVE: 0, MAINTENANCE: 0, ALL: venues.length };
@@ -167,6 +197,9 @@ export default function VenuesManagementPage() {
 
         const matchesState = selectedState === 'ALL' || v.state.toLowerCase() === selectedState.toLowerCase();
         
+        const matchesDistrict =
+          selectedDistrict === 'ALL' || (v.district || '').toLowerCase() === selectedDistrict.toLowerCase();
+
         const matchesStatus =
           selectedStatus === 'ALL' ||
           (selectedStatus === 'ACTIVE' && (v.status === 'ACTIVE' || !v.status)) ||
@@ -178,27 +211,10 @@ export default function VenuesManagementPage() {
           (v.sports_list && v.sports_list.some((s) => s.toLowerCase() === selectedSport.toLowerCase())) ||
           (v.sports && v.sports.toLowerCase().includes(selectedSport.toLowerCase()));
 
-        return matchesQuery && matchesState && matchesStatus && matchesSport;
+        return matchesQuery && matchesState && matchesDistrict && matchesStatus && matchesSport;
       })
-      .sort((a, b) => {
-        if (sortBy === 'bookings') {
-          return (b.today_bookings_count || 0) - (a.today_bookings_count || 0);
-        }
-        if (sortBy === 'revenue') {
-          return (b.today_booking_revenue || 0) - (a.today_booking_revenue || 0);
-        }
-        if (sortBy === 'courts') {
-          return (b.courts || 0) - (a.courts || 0);
-        }
-        if (sortBy === 'name') {
-          return a.venue_name.localeCompare(b.venue_name);
-        }
-        if (sortBy === 'id') {
-          return a.id.localeCompare(b.id);
-        }
-        return 0;
-      });
-  }, [venues, searchQuery, selectedState, selectedStatus, selectedSport, sortBy]);
+      .sort((a, b) => a.venue_name.localeCompare(b.venue_name));
+  }, [venues, searchQuery, selectedState, selectedDistrict, selectedStatus, selectedSport]);
 
   // Global KPIs calculated from all venues
   const totalLiveVenues = venues.length;
@@ -227,7 +243,7 @@ export default function VenuesManagementPage() {
     return typeof role === 'string' && role.trim() ? role.trim().split(/\s+/)[0] : 'Staff';
   };
 
-  const isAnyFilterActive = searchQuery || selectedState !== 'ALL' || selectedStatus !== 'ALL' || selectedSport !== 'ALL';
+  const isAnyFilterActive = searchQuery || selectedState !== 'ALL' || selectedDistrict !== 'ALL' || selectedStatus !== 'ALL' || selectedSport !== 'ALL';
 
   return (
     <div className="animate-in fade-in duration-200 space-y-4 max-w-[1600px] mx-auto">
@@ -324,31 +340,9 @@ export default function VenuesManagementPage() {
 
       {/* 3. BEST STATE & STATUS DROPDOWNS & FILTER TOOLBAR */}
       <div className="bg-white rounded-2xl border border-slate-200/90 p-3.5 shadow-2xs space-y-3">
-        {/* Row 1: Search & Quick Status Switcher Segmented Pills */}
+        {/* Row 1: Quick Status Switcher Segmented Pills (LEFT) & Live Search Input (RIGHT) */}
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-          {/* Live Search Input - fixed icon position with proper padding */}
-          <div className="relative flex-1 min-w-[260px]">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search venue ID, name, city, district, owner, phone..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-10 rounded-xl bg-slate-50/70 border border-slate-200 pl-10 pr-9 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-[#F94001] focus:ring-1 focus:ring-[#F94001] transition-all outline-none"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
-                title="Clear search"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-
-          {/* Quick 1-Click Status Segmented Filter Pills */}
+          {/* Quick 1-Click Status Segmented Filter Pills (LEFT SIDE) */}
           <div className="flex items-center gap-1 p-1 bg-slate-100/90 rounded-xl border border-slate-200/70 self-start md:self-auto shrink-0 overflow-x-auto max-w-full">
             <button
               type="button"
@@ -397,6 +391,28 @@ export default function VenuesManagementPage() {
               <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
               Maintenance ({statusCounts.MAINTENANCE})
             </button>
+          </div>
+
+          {/* Live Search Input (RIGHT SIDE) */}
+          <div className="relative flex-1 md:max-w-md min-w-[260px] md:ml-auto">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search venue ID, name, city, district, owner, phone..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-10 rounded-xl bg-slate-50/70 border border-slate-200 pl-10 pr-9 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-[#F94001] focus:ring-1 focus:ring-[#F94001] transition-all outline-none"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                title="Clear search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -621,51 +637,68 @@ export default function VenuesManagementPage() {
               </div>
             )}
           </div>
-
-          {/* SORT DROPDOWN */}
+          {/* DYNAMIC DISTRICT DROPDOWN */}
           <div className="relative min-w-[170px]" data-dropdown-container>
             <button
               type="button"
-              onClick={() => setOpenDropdown(openDropdown === 'sort' ? null : 'sort')}
-              className="w-full h-9.5 px-3 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 hover:border-slate-300 flex items-center justify-between gap-2 transition-all cursor-pointer shadow-2xs"
+              onClick={() => setOpenDropdown(openDropdown === 'district' ? null : 'district')}
+              className={`w-full h-9.5 px-3 rounded-xl border text-xs font-semibold flex items-center justify-between gap-2 transition-all cursor-pointer shadow-2xs ${
+                selectedDistrict !== 'ALL'
+                  ? 'border-[#F94001] bg-[#FFF8F5] text-[#F94001] ring-1 ring-[#F94001]/20'
+                  : 'border-slate-200 bg-white text-slate-800 hover:border-slate-300'
+              }`}
             >
               <div className="flex items-center gap-1.5 truncate">
-                <ArrowUpDown className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                <MapPin className={`h-3.5 w-3.5 shrink-0 ${selectedDistrict !== 'ALL' ? 'text-[#F94001]' : 'text-slate-400'}`} />
                 <span className="truncate">
-                  {sortBy === 'bookings'
-                    ? 'Sort: Bookings'
-                    : sortBy === 'revenue'
-                    ? 'Sort: Revenue'
-                    : sortBy === 'courts'
-                    ? 'Sort: Courts Count'
-                    : sortBy === 'name'
-                    ? 'Sort: Name (A-Z)'
-                    : 'Sort: Venue ID'}
+                  {selectedDistrict === 'ALL' ? 'District: All Districts' : selectedDistrict}
                 </span>
               </div>
-              <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform shrink-0 ${openDropdown === 'sort' ? 'rotate-180' : ''}`} />
+              <div className="flex items-center gap-1 shrink-0">
+                <span className="px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold">
+                  {selectedDistrict === 'ALL' ? availableDistricts.length : districtCounts[selectedDistrict] || 0}
+                </span>
+                <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform ${openDropdown === 'district' ? 'rotate-180' : ''}`} />
+              </div>
             </button>
 
-            {openDropdown === 'sort' && (
-              <div className="absolute left-0 top-full mt-1.5 w-52 rounded-xl border border-slate-200 bg-white shadow-xl z-50 p-1.5 text-xs animate-in fade-in slide-in-from-top-1">
-                <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Order by</div>
-                {[
-                  { key: 'bookings', label: "Today's Bookings" },
-                  { key: 'revenue', label: "Today's Revenue" },
-                  { key: 'courts', label: 'Courts Count' },
-                  { key: 'name', label: 'Venue Name (A-Z)' },
-                  { key: 'id', label: 'Venue ID' },
-                ].map((item) => (
+            {openDropdown === 'district' && (
+              <div className="absolute left-0 top-full mt-1.5 w-60 max-h-72 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl z-50 p-1.5 text-xs animate-in fade-in slide-in-from-top-1">
+                <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Filter by District</div>
+                <button
+                  type="button"
+                  onClick={() => { setSelectedDistrict('ALL'); setOpenDropdown(null); }}
+                  className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-left transition-colors cursor-pointer ${
+                    selectedDistrict === 'ALL' ? 'bg-[#FFF1EC] text-[#F94001] font-bold' : 'hover:bg-slate-50 text-slate-700'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-slate-300" />
+                    All Districts
+                  </span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 font-semibold text-slate-600">{availableDistricts.length}</span>
+                </button>
+
+                <div className="my-1 border-t border-slate-100" />
+
+                {availableDistricts.map((d) => (
                   <button
-                    key={item.key}
+                    key={d}
                     type="button"
-                    onClick={() => { setSortBy(item.key as any); setOpenDropdown(null); }}
+                    onClick={() => { setSelectedDistrict(d); setOpenDropdown(null); }}
                     className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors cursor-pointer ${
-                      sortBy === item.key ? 'bg-slate-100 font-bold text-slate-900' : 'hover:bg-slate-50 text-slate-700'
+                      selectedDistrict.toLowerCase() === d.toLowerCase()
+                        ? 'bg-[#FFF1EC] text-[#F94001] font-bold'
+                        : 'hover:bg-slate-50 text-slate-700'
                     }`}
                   >
-                    <span>{item.label}</span>
-                    {sortBy === item.key && <Check className="h-3 w-3 text-[#F94001]" />}
+                    <span className="flex items-center gap-2 truncate">
+                      <MapPin className="h-3 w-3 text-slate-400 shrink-0" />
+                      <span className="truncate">{d}</span>
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 font-semibold text-slate-600 shrink-0">
+                      {districtCounts[d] || 0}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -679,6 +712,7 @@ export default function VenuesManagementPage() {
               onClick={() => {
                 setSearchQuery('');
                 setSelectedState('ALL');
+                setSelectedDistrict('ALL');
                 setSelectedStatus('ALL');
                 setSelectedSport('ALL');
               }}
@@ -712,6 +746,14 @@ export default function VenuesManagementPage() {
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#FFF1EC] text-[#F94001] text-[11px] font-semibold border border-[#F94001]/20">
                 State: {selectedState}
                 <button type="button" onClick={() => setSelectedState('ALL')} className="hover:text-rose-600 cursor-pointer">
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            )}
+            {selectedDistrict !== 'ALL' && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#FFF1EC] text-[#F94001] text-[11px] font-semibold border border-[#F94001]/20">
+                District: {selectedDistrict}
+                <button type="button" onClick={() => setSelectedDistrict('ALL')} className="hover:text-rose-600 cursor-pointer">
                   <X className="h-3 w-3" />
                 </button>
               </span>
@@ -842,15 +884,17 @@ export default function VenuesManagementPage() {
                               {v.state}
                             </span>
                             {v.venue_location_name && (
-                              <a
-                                href={v.venue_location_name}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-slate-400 hover:text-[#F94001] transition-colors"
-                                title="Open GPS Map"
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedGpsVenue(v);
+                                }}
+                                className="text-[#F94001] hover:text-[#E03800] transition-colors p-0.5 cursor-pointer"
+                                title="Open GPS Map in Pop-up"
                               >
                                 <ExternalLink className="h-2.5 w-2.5" />
-                              </a>
+                              </button>
                             )}
                           </div>
                         </div>
@@ -914,7 +958,7 @@ export default function VenuesManagementPage() {
                         ) : isInactive ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200/60 text-[10px] font-semibold">
                             <span className="h-1 w-1 rounded-full bg-rose-500" />
-                            Offline &bull; Inactive
+                            Blocked &bull; Login Restricted
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200/60 text-[10px] font-semibold">
@@ -924,74 +968,48 @@ export default function VenuesManagementPage() {
                         )}
                       </td>
 
-                      {/* 6. STATUS (INTERACTIVE BADGE BEFORE ACTION) */}
-                      <td className="py-3 px-3.5 align-middle whitespace-nowrap" data-status-menu-container>
-                        <div className="relative inline-block text-left">
-                          <button
-                            type="button"
-                            onClick={() => setRowStatusMenuVenueId(rowStatusMenuVenueId === v.id ? null : v.id)}
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-all cursor-pointer shadow-2xs ${
-                              isLiveActive
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80 hover:bg-emerald-100/70'
-                                : isInactive
-                                ? 'bg-rose-50 text-rose-700 border-rose-200/80 hover:bg-rose-100/70'
-                                : 'bg-amber-50 text-amber-700 border-amber-200/80 hover:bg-amber-100/70'
-                            }`}
-                            title="Click to change status"
-                          >
-                            <span
-                              className={`h-1.5 w-1.5 rounded-full ${
-                                isLiveActive ? 'bg-emerald-500 animate-pulse' : isInactive ? 'bg-rose-500' : 'bg-amber-500'
-                              }`}
-                            />
-                            <span>{isLiveActive ? 'Active' : isInactive ? 'Inactive' : 'Maintenance'}</span>
-                            <ChevronDown className="h-2.5 w-2.5 opacity-60 ml-0.5" />
-                          </button>
-
-                          {/* Quick Row Status Popover */}
-                          {rowStatusMenuVenueId === v.id && (
-                            <div className="absolute right-0 top-full mt-1 w-36 rounded-xl border border-slate-200 bg-white shadow-xl z-40 p-1 text-xs animate-in fade-in slide-in-from-top-1">
-                              <div className="px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-slate-400">Set Status</div>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  handleUpdateVenueStatus(v.id, 'ACTIVE');
-                                  setRowStatusMenuVenueId(null);
-                                }}
-                                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left text-[11px] font-semibold transition-colors cursor-pointer ${
-                                  isLiveActive ? 'bg-emerald-50 text-emerald-700 font-bold' : 'hover:bg-slate-50 text-slate-700'
-                                }`}
-                              >
-                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      {/* 6. STATUS & BLOCK/UNBLOCK ACTION */}
+                      <td className="py-3 px-3.5 align-middle whitespace-nowrap">
+                        <div className="flex items-center gap-1.5">
+                          {isLiveActive ? (
+                            <>
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border bg-emerald-50 text-emerald-700 border-emerald-200/80">
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                 <span>Active</span>
-                              </button>
+                              </span>
                               <button
                                 type="button"
-                                onClick={() => {
-                                  handleUpdateVenueStatus(v.id, 'INACTIVE');
-                                  setRowStatusMenuVenueId(null);
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedBlockVenue(v);
+                                  setBlockReason('');
                                 }}
-                                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left text-[11px] font-semibold transition-colors cursor-pointer ${
-                                  isInactive ? 'bg-rose-50 text-rose-700 font-bold' : 'hover:bg-slate-50 text-slate-700'
-                                }`}
+                                className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200/80 hover:bg-rose-600 hover:text-white transition-all cursor-pointer inline-flex items-center gap-1 shadow-2xs"
+                                title="Block Venue & Restrict Login"
                               >
+                                <ShieldAlert className="h-2.5 w-2.5" />
+                                <span>Block</span>
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border bg-rose-50 text-rose-700 border-rose-200/80">
                                 <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
-                                <span>Inactive</span>
-                              </button>
+                                <span>Blocked</span>
+                              </span>
                               <button
                                 type="button"
-                                onClick={() => {
-                                  handleUpdateVenueStatus(v.id, 'MAINTENANCE');
-                                  setRowStatusMenuVenueId(null);
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedUnblockVenue(v);
                                 }}
-                                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left text-[11px] font-semibold transition-colors cursor-pointer ${
-                                  isMaintenance ? 'bg-amber-50 text-amber-700 font-bold' : 'hover:bg-slate-50 text-slate-700'
-                                }`}
+                                className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80 hover:bg-emerald-600 hover:text-white transition-all cursor-pointer inline-flex items-center gap-1 shadow-2xs"
+                                title="Unblock Venue & Restore Login Access"
                               >
-                                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                                <span>Maintenance</span>
+                                <ShieldCheck className="h-2.5 w-2.5" />
+                                <span>Unblock</span>
                               </button>
-                            </div>
+                            </>
                           )}
                         </div>
                       </td>
@@ -1014,6 +1032,207 @@ export default function VenuesManagementPage() {
           </table>
         </div>
       </div>
+
+      {/* GPS MAP POPUP MODAL */}
+      {selectedGpsVenue && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-5 shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-200 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="h-9 w-9 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center text-[#F94001]">
+                  <MapPin className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">{selectedGpsVenue.venue_name}</h3>
+                  <p className="text-xs text-slate-500">
+                    {selectedGpsVenue.district}, {selectedGpsVenue.state}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedGpsVenue(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Embed Map Preview */}
+            <div className="rounded-xl overflow-hidden border border-slate-200 bg-slate-100 aspect-video relative">
+              <iframe
+                title="Venue GPS Location"
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                loading="lazy"
+                allowFullScreen
+                src={`https://maps.google.com/maps?q=${encodeURIComponent(
+                  selectedGpsVenue.venue_location_name && selectedGpsVenue.venue_location_name.includes('q=')
+                    ? selectedGpsVenue.venue_location_name.split('q=')[1]
+                    : `${selectedGpsVenue.venue_name}, ${selectedGpsVenue.district || ''}, ${selectedGpsVenue.state || ''}`
+                )}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+              />
+            </div>
+
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Address</span>
+              <p className="text-slate-700 font-medium">
+                {selectedGpsVenue.address || `${selectedGpsVenue.venue_name}, ${selectedGpsVenue.district}, ${selectedGpsVenue.state}`}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setSelectedGpsVenue(null)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+              {selectedGpsVenue.venue_location_name && (
+                <a
+                  href={selectedGpsVenue.venue_location_name}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-4 py-2 rounded-xl bg-[#F94001] hover:bg-[#E03800] text-white text-xs font-bold transition-colors inline-flex items-center gap-1.5 shadow-xs"
+                >
+                  <span>Open in Google Maps</span>
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* BLOCK VENUE MODAL */}
+      {selectedBlockVenue && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-200 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="h-10 w-10 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 shrink-0">
+                <ShieldAlert className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-slate-900">Block Venue & Restrict Login</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Blocking <strong className="text-slate-800">{selectedBlockVenue.venue_name}</strong> will strictly restrict the owner from logging in.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-amber-50 border border-amber-200/80 rounded-xl text-xs text-amber-800 space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-amber-900">
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
+                <span>Strict Owner Login Restriction</span>
+              </div>
+              <p className="text-[11px] leading-relaxed text-amber-800">
+                When the venue owner attempts to log in, their login will be blocked with instructions to contact the iBookSports Support Team.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">Reason for Blocking</label>
+              <select
+                value={blockPresetReason}
+                onChange={(e) => setBlockPresetReason(e.target.value)}
+                className="w-full h-9 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs text-slate-800 focus:bg-white focus:border-rose-500 focus:ring-1 focus:ring-rose-500 outline-none"
+              >
+                <option value="Policy violation & non-compliance">Policy violation & non-compliance</option>
+                <option value="Payment or settlement dispute">Payment or settlement dispute</option>
+                <option value="Document verification failure / Suspicious activity">Document verification failure / Suspicious activity</option>
+                <option value="Owner requested temporary hold">Owner requested temporary hold</option>
+                <option value="Other administrative reason">Other administrative reason</option>
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">Additional Notes / Remarks</label>
+              <textarea
+                rows={3}
+                value={blockReason}
+                onChange={(e) => setBlockReason(e.target.value)}
+                placeholder="Provide specific details for support records..."
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs text-slate-800 focus:bg-white focus:border-rose-500 focus:ring-1 focus:ring-rose-500 outline-none resize-none"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedBlockVenue(null);
+                  setBlockReason('');
+                }}
+                className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await handleUpdateVenueStatus(selectedBlockVenue.id, 'INACTIVE');
+                  setStatusNotification(`Venue "${selectedBlockVenue.venue_name}" blocked. Owner login strictly restricted.`);
+                  setSelectedBlockVenue(null);
+                  setBlockReason('');
+                }}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+              >
+                <ShieldAlert className="h-3.5 w-3.5" />
+                <span>Confirm & Block Venue</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* UNBLOCK VENUE CONFIRMATION MODAL */}
+      {selectedUnblockVenue && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-200 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="h-10 w-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shrink-0">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-slate-900">Unblock Venue & Restore Access</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Are you sure you want to unblock <strong className="text-slate-800">{selectedUnblockVenue.venue_name}</strong>?
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-xl text-xs text-emerald-800 space-y-1">
+              <p className="text-[11px] leading-relaxed">
+                The venue owner will immediately regain full login access to their vendor application, and court listings will be re-enabled.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setSelectedUnblockVenue(null)}
+                className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await handleUpdateVenueStatus(selectedUnblockVenue.id, 'ACTIVE');
+                  setStatusNotification(`Venue "${selectedUnblockVenue.venue_name}" unblocked. Owner login access restored.`);
+                  setSelectedUnblockVenue(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+              >
+                <ShieldCheck className="h-3.5 w-3.5" />
+                <span>Confirm & Unblock Venue</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

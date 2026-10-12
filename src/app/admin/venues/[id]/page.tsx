@@ -28,7 +28,11 @@ import {
   Wrench,
   Clock,
   ShieldCheck,
+  ShieldAlert,
+  AlertTriangle,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Calendar,
   Layers,
   FileText,
@@ -55,7 +59,6 @@ import {
   Sparkles,
   RotateCcw,
   History,
-  AlertTriangle,
   Download,
 } from 'lucide-react';
 import {
@@ -164,6 +167,28 @@ export default function VenueModularOverviewPage() {
   const [newStaffShift, setNewStaffShift] = useState('Standard (06:00 AM - 02:00 PM)');
   const [isSubmittingStaff, setIsSubmittingStaff] = useState(false);
 
+  // Staff Pagination & Slide Bar Drawer State
+  const [staffCurrentPage, setStaffCurrentPage] = useState<number>(1);
+  const [staffPageSize, setStaffPageSize] = useState<number>(10);
+  const [selectedStaffForDrawer, setSelectedStaffForDrawer] = useState<VenueStaffMember | null>(null);
+  const [staffCopiedText, setStaffCopiedText] = useState<string | null>(null);
+
+  const handleCopyStaffText = (text: string, id: string) => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setStaffCopiedText(id);
+      setTimeout(() => setStaffCopiedText(null), 2000);
+    }
+  };
+
+  // Staff pagination computations
+  const staffTotalItems = staffMembers.length;
+  const staffTotalPages = Math.max(1, Math.ceil(staffTotalItems / staffPageSize));
+  const staffStartIndex = (staffCurrentPage - 1) * staffPageSize;
+  const paginatedStaff = useMemo(() => {
+    return staffMembers.slice(staffStartIndex, staffStartIndex + staffPageSize);
+  }, [staffMembers, staffStartIndex, staffPageSize]);
+
   // Courts state (view only)
   const [courtsList, setCourtsList] = useState<EnhancedCourtItem[]>([]);
 
@@ -197,6 +222,13 @@ export default function VenueModularOverviewPage() {
   const [drawerRejectionNote, setDrawerRejectionNote] = useState('');
   const [drawerActionError, setDrawerActionError] = useState<string | null>(null);
   const [deleteConfirmReqId, setDeleteConfirmReqId] = useState<string | null>(null);
+
+  // Block & Unblock Modal State (Restricts Vendor App Login with Support Notice)
+  const [blockModalOpen, setBlockModalOpen] = useState(false);
+  const [blockPresetReason, setBlockPresetReason] = useState('Policy violation & non-compliance');
+  const [blockReason, setBlockReason] = useState('');
+  const [unblockModalOpen, setUnblockModalOpen] = useState(false);
+  const [gpsModalOpen, setGpsModalOpen] = useState(false);
 
   // Overview Form Fields State
   const [ownerFullName, setOwnerFullName] = useState('');
@@ -1144,58 +1176,65 @@ export default function VenueModularOverviewPage() {
             </div>
           </div>
 
-          {/* Quick Status Changers & Action Buttons */}
+          {/* Quick Status Action Buttons: Block / Unblock & GPS Map in Pop-up */}
           <div className="flex items-center gap-2 flex-wrap self-start lg:self-auto">
-            {/* Set Active Button */}
-            {!isLiveActive && (
+            {isInactive ? (
               <button
                 type="button"
-                onClick={() => handleUpdateVenueStatus('ACTIVE')}
+                onClick={() => setUnblockModalOpen(true)}
                 className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+                title="Unblock Venue & Restore Login Access"
               >
-                <Power className="h-3.5 w-3.5" />
-                <span>Set Live Active</span>
+                <ShieldCheck className="h-3.5 w-3.5" />
+                <span>Unblock Venue</span>
               </button>
-            )}
-
-            {/* Set Inactive Button */}
-            {!isInactive && (
+            ) : (
               <button
                 type="button"
-                onClick={() => handleUpdateVenueStatus('INACTIVE')}
-                className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200 hover:border-rose-300 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                onClick={() => {
+                  setBlockModalOpen(true);
+                  setBlockReason('');
+                }}
+                className="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200 hover:border-rose-600 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                title="Block Venue & Restrict Owner Login"
               >
-                <Power className="h-3.5 w-3.5" />
-                <span>Set Inactive</span>
-              </button>
-            )}
-
-            {/* Set Maintenance Button */}
-            {!isMaintenance && (
-              <button
-                type="button"
-                onClick={() => handleUpdateVenueStatus('MAINTENANCE')}
-                className="px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
-              >
-                <Wrench className="h-3.5 w-3.5" />
-                <span>Maintenance</span>
+                <ShieldAlert className="h-3.5 w-3.5" />
+                <span>Block Venue</span>
               </button>
             )}
 
             {currentVenue.venue_location_name && (
-              <a
-                href={currentVenue.venue_location_name}
-                target="_blank"
-                rel="noreferrer"
-                className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold inline-flex items-center gap-1 transition-all"
-                title="Open GPS Google Map"
+              <button
+                type="button"
+                onClick={() => setGpsModalOpen(true)}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold inline-flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                title="Open GPS Google Map in Pop-up"
               >
+                <MapPin className="h-3.5 w-3.5 text-[#F94001]" />
                 <span>GPS Map</span>
-                <ExternalLink className="h-3 w-3 text-slate-400" />
-              </a>
+              </button>
             )}
           </div>
         </div>
+
+        {/* Strict Blocked Login Notice Banner */}
+        {isInactive && (
+          <div className="mt-3 p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 font-medium flex items-center justify-between shadow-2xs">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0" />
+              <span>
+                <strong>Venue Blocked (Strict Login Restriction Active):</strong> Venue owner cannot log in to the vendor portal. They must contact the iBookSports support team to restore access.
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setUnblockModalOpen(true)}
+              className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-[11px] transition-colors cursor-pointer shrink-0"
+            >
+              Unblock Venue
+            </button>
+          </div>
+        )}
       </div>
 
       {/* STATUS NOTIFICATION TOAST */}
@@ -1366,15 +1405,15 @@ export default function VenueModularOverviewPage() {
                       <h3 className="text-base font-black text-slate-900 tracking-tight">{venueNameInput}</h3>
                       <p className="text-xs text-slate-500 font-medium mt-0.5">{cityRegionInput}</p>
                     </div>
-                    <a
-                      href={googleMapsLinkInput}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-2xs shrink-0 self-start sm:self-auto"
+                    <button
+                      type="button"
+                      onClick={() => setGpsModalOpen(true)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-2xs shrink-0 self-start sm:self-auto cursor-pointer"
+                      title="Open Venue GPS Map in Pop-up"
                     >
                       <MapPin className="h-3 w-3 text-[#F94001]" />
-                      <span>Open Map ↗</span>
-                    </a>
+                      <span>Open Map</span>
+                    </button>
                   </div>
 
                   {/* Physical Address */}
@@ -1899,32 +1938,32 @@ export default function VenueModularOverviewPage() {
                 </div>
               </div>
 
-              {/* 2. Bank Settlement Account Card */}
-              <div className="bg-[#071322] text-white rounded-2xl border border-slate-800/80 shadow-xl overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 bg-white/[0.03]">
+              {/* 2. Bank Settlement Account Card (Pure White Design) */}
+              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/70">
                   <div className="flex items-center gap-2">
-                    <div className="h-6 w-6 rounded-lg bg-white/10 border border-white/10 flex items-center justify-center">
-                      <Landmark className="h-3 w-3 text-white" />
+                    <div className="h-6 w-6 rounded-lg bg-emerald-50 border border-emerald-200/60 flex items-center justify-center">
+                      <Landmark className="h-3 w-3 text-emerald-700" />
                     </div>
-                    <span className="text-[11px] font-black text-white tracking-wider uppercase">Settlement Bank</span>
+                    <span className="text-[11px] font-black text-slate-800 tracking-wider uppercase">Settlement Bank</span>
                   </div>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-950/70 text-emerald-400 text-[10px] font-bold border border-emerald-500/30">
-                    <CheckCircle2 className="h-2.5 w-2.5" /> Verified
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200/80">
+                    <CheckCircle2 className="h-2.5 w-2.5 text-emerald-600" /> Verified
                   </span>
                 </div>
 
                 <div className="p-4 space-y-3 text-xs">
                   {/* Bank & Account Number */}
-                  <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                     <div>
                       <span className="text-slate-400 text-[10px] uppercase font-semibold tracking-wider">Bank Name</span>
-                      <h4 className="text-lg font-black text-white mt-0.5 tracking-tight">
+                      <h4 className="text-lg font-black text-slate-900 mt-0.5 tracking-tight">
                         {currentVenue?.bank?.bank_name || 'HDFC Bank'}
                       </h4>
                     </div>
                     <div className="text-right">
                       <span className="text-slate-400 text-[10px] uppercase font-semibold tracking-wider">Account</span>
-                      <p className="text-sm font-mono font-bold text-white mt-0.5 tracking-wider">
+                      <p className="text-sm font-mono font-bold text-slate-900 mt-0.5 tracking-wider">
                         {currentVenue?.bank?.account_number_masked || '•••• 4512'}
                       </p>
                     </div>
@@ -1932,41 +1971,41 @@ export default function VenueModularOverviewPage() {
 
                   {/* IFSC & Account Type */}
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="bg-white/5 rounded-xl p-2 border border-white/5">
+                    <div className="bg-slate-50/80 rounded-xl p-2.5 border border-slate-100">
                       <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider block">IFSC Code</span>
-                      <span className="font-mono font-bold text-white text-xs mt-0.5 block">
+                      <span className="font-mono font-bold text-slate-900 text-xs mt-0.5 block">
                         {currentVenue?.bank?.ifsc_code || 'HDFC0000123'}
                       </span>
                     </div>
-                    <div className="bg-white/5 rounded-xl p-2 border border-white/5">
+                    <div className="bg-slate-50/80 rounded-xl p-2.5 border border-slate-100">
                       <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider block">Branch / UPI</span>
-                      <span className="font-bold text-white text-xs mt-0.5 block truncate">
+                      <span className="font-bold text-slate-900 text-xs mt-0.5 block truncate">
                         {currentVenue?.bank?.branch_name || currentVenue?.bank?.upi_id || 'Coimbatore Branch'}
                       </span>
                     </div>
                   </div>
 
-                  <div className="bg-white/5 rounded-xl p-2 border border-white/5">
+                  <div className="bg-slate-50/80 rounded-xl p-2.5 border border-slate-100">
                     <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider block">Account Holder</span>
-                    <span className="font-bold text-white text-xs mt-0.5 block">
+                    <span className="font-bold text-slate-900 text-xs mt-0.5 block">
                       {currentVenue?.bank?.account_holder_name || ownerFullName || currentVenue?.name}
                     </span>
                   </div>
 
                   {/* Cheque / Passbook View */}
-                  <div className="flex items-center justify-between p-2 rounded-xl bg-white/5 border border-white/5">
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/80 border border-slate-100">
                     <div className="flex items-center gap-2">
-                      <FileText className="h-3.5 w-3.5 text-emerald-400" />
-                      <span className="text-[11px] font-semibold text-slate-300">Bank Verification Status</span>
+                      <FileText className="h-3.5 w-3.5 text-emerald-600" />
+                      <span className="text-[11px] font-semibold text-slate-700">Bank Verification Status</span>
                     </div>
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold border border-emerald-500/30">
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200/80">
                       Penny Drop Success
                     </span>
                   </div>
 
                   {/* Payout note */}
-                  <div className="flex items-center gap-1.5 text-emerald-400 text-[11px] font-medium pt-1">
-                    <CheckCircle2 className="h-3 w-3 shrink-0" />
+                  <div className="flex items-center gap-1.5 text-emerald-700 text-[11px] font-medium pt-1">
+                    <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-600" />
                     <span>T+0 Auto IMPS Direct Settlement</span>
                   </div>
                 </div>
@@ -2753,53 +2792,21 @@ export default function VenueModularOverviewPage() {
       )}
 
       {/* ========================================================
-          TAB 5: STAFF (SCREENSHOT 2 EXACT REPLICA)
+          TAB 5: STAFF
       ======================================================== */}
       {activeTab === 'staff' && (
         <div className="space-y-4 animate-in fade-in duration-150">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs">
-            <div>
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-[#F94001]" />
-                <h2 className="text-sm font-bold text-slate-900">Arena Staff &amp; Team Directory</h2>
-              </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Authorized ground personnel, shift managers &amp; role hierarchy &bull; View-only (Managed via Venue Owner App)
-              </p>
-            </div>
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200">
-                {staffMembers.filter((s) => s.status === 'ACTIVE').length} Active
-              </span>
-              <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
-                {staffMembers.filter((s) => s.status === 'INACTIVE').length} Inactive
-              </span>
-
-              {/* Sync Live Button */}
-              <button
-                type="button"
-                onClick={fetchLiveStaff}
-                disabled={isRefreshingStaff}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-colors cursor-pointer"
-                title="Sync Live with Supabase"
-              >
-                <RefreshCw className={`h-3.5 w-3.5 ${isRefreshingStaff ? 'animate-spin text-[#F94001]' : 'text-slate-500'}`} />
-                <span>{isRefreshingStaff ? 'Syncing...' : 'Sync Live'}</span>
-              </button>
-
-              {/* Add Staff Button */}
-              <button
-                type="button"
-                onClick={() => setIsAddStaffOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-[#F94001] hover:bg-[#e03900] rounded-xl shadow-2xs transition-colors cursor-pointer"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span>Add Staff</span>
-              </button>
+              <Users className="h-4 w-4 text-[#F94001]" />
+              <h2 className="text-sm font-bold text-slate-900">Arena Staff &amp; Team Directory</h2>
             </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Authorized ground personnel, shift managers &amp; role hierarchy &bull; View-only (Managed via Venue Owner App)
+            </p>
           </div>
 
-          {/* Minimal View-Only Staff Table */}
+          {/* View-Only Staff Table */}
           <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
             {staffMembers.length === 0 ? (
               <div className="py-12 px-4 text-center">
@@ -2810,34 +2817,26 @@ export default function VenueModularOverviewPage() {
                 <p className="text-[11px] text-slate-400 max-w-sm mx-auto mt-1">
                   Ground personnel, shift managers, and duty officers added by the venue partner via the mobile or web app will appear here automatically from Supabase.
                 </p>
-                <div className="mt-4">
-                  <button
-                    type="button"
-                    onClick={() => setIsAddStaffOpen(true)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-[#F94001] hover:bg-[#e03900] rounded-xl shadow-2xs cursor-pointer"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    <span>Add First Staff Member</span>
-                  </button>
-                </div>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="border-b border-slate-200/90 bg-slate-50/75 text-slate-500 font-semibold tracking-wider text-[10px] uppercase select-none">
+                      <th className="py-3 px-3 text-center w-12">#</th>
                       <th className="py-3 px-4">Staff ID</th>
                       <th className="py-3 px-4">Member Name</th>
                       <th className="py-3 px-4">Designation / Role</th>
                       <th className="py-3 px-4">Mobile Number</th>
                       <th className="py-3 px-4">Email Address</th>
                       <th className="py-3 px-4 text-center">Account Status</th>
-                      <th className="py-3 px-4 text-right">Actions</th>
+                      <th className="py-3 px-4 text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {staffMembers.map((staff) => {
+                    {paginatedStaff.map((staff, index) => {
                       const isStaffActive = staff.status === 'ACTIVE';
+                      const serialNo = staffStartIndex + index + 1;
                       const initials =
                         (staff.name || 'Staff Member')
                           .trim()
@@ -2849,22 +2848,35 @@ export default function VenueModularOverviewPage() {
                           .toUpperCase() || 'ST';
 
                       return (
-                        <tr key={staff.id} className="hover:bg-slate-50/60 transition-colors">
+                        <tr
+                          key={staff.id}
+                          onClick={() => setSelectedStaffForDrawer(staff)}
+                          className="hover:bg-slate-50/70 transition-colors cursor-pointer group"
+                        >
+                          {/* # Serial No */}
+                          <td className="py-3 px-3 text-center align-middle whitespace-nowrap">
+                            <span className="font-mono text-xs font-semibold text-slate-500">
+                              {serialNo}
+                            </span>
+                          </td>
+
                           {/* Staff ID */}
-                          <td className="py-3 px-4 whitespace-nowrap">
+                          <td className="py-3 px-4 whitespace-nowrap align-middle">
                             <span className="px-2 py-1 rounded-md bg-slate-100 font-mono font-bold text-slate-700 text-[11px] border border-slate-200/60">
-                              {staff.staff_id || staff.display_id || (staff.id?.length > 10 ? 'STF-01' : staff.id)}
+                              {staff.staff_id || staff.display_id || (staff.id?.length > 10 ? `STF-0${serialNo}` : staff.id)}
                             </span>
                           </td>
 
                           {/* Name + Mini Avatar */}
-                          <td className="py-3 px-4">
+                          <td className="py-3 px-4 align-middle">
                             <div className="flex items-center gap-2.5">
                               <div className="w-8 h-8 rounded-xl bg-[#091522] text-white font-black text-xs flex items-center justify-center shrink-0 tracking-tight shadow-2xs">
                                 {initials}
                               </div>
                               <div>
-                                <div className="font-extrabold text-slate-900 text-xs">{staff.name}</div>
+                                <div className="font-extrabold text-slate-900 text-xs group-hover:text-[#F94001] transition-colors">
+                                  {staff.name}
+                                </div>
                                 {staff.shift_hours && (
                                   <div className="text-[10px] text-slate-400 font-mono flex items-center gap-1 mt-0.5">
                                     <Clock className="h-2.5 w-2.5" />
@@ -2875,19 +2887,20 @@ export default function VenueModularOverviewPage() {
                             </div>
                           </td>
 
-                          {/* Role */}
-                          <td className="py-3 px-4 whitespace-nowrap">
+                          {/* Designation / Role */}
+                          <td className="py-3 px-4 whitespace-nowrap align-middle">
                             <span className="inline-block px-2.5 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200/70 font-bold text-[10px] tracking-wider uppercase font-mono">
                               {staff.role}
                             </span>
                           </td>
 
                           {/* Mobile Number */}
-                          <td className="py-3 px-4 whitespace-nowrap">
+                          <td className="py-3 px-4 whitespace-nowrap align-middle">
                             <div className="flex items-center gap-1.5">
                               <Phone className="h-3.5 w-3.5 text-[#F94001] shrink-0" />
                               <a
                                 href={`tel:${staff.mobile_number}`}
+                                onClick={(e) => e.stopPropagation()}
                                 className="text-slate-800 hover:text-[#F94001] font-semibold text-xs transition-colors font-sans"
                               >
                                 {staff.mobile_number}
@@ -2895,12 +2908,13 @@ export default function VenueModularOverviewPage() {
                             </div>
                           </td>
 
-                          {/* Email */}
-                          <td className="py-3 px-4">
+                          {/* Email Address */}
+                          <td className="py-3 px-4 align-middle">
                             <div className="flex items-center gap-1.5">
                               <Mail className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                               <a
                                 href={`mailto:${staff.email}`}
+                                onClick={(e) => e.stopPropagation()}
                                 className="text-slate-600 hover:text-slate-900 font-medium text-xs truncate max-w-[200px] block transition-colors"
                                 title={staff.email}
                               >
@@ -2909,8 +2923,8 @@ export default function VenueModularOverviewPage() {
                             </div>
                           </td>
 
-                          {/* Status Active / Inactive */}
-                          <td className="py-3 px-4 text-center whitespace-nowrap">
+                          {/* Account Status */}
+                          <td className="py-3 px-4 text-center whitespace-nowrap align-middle">
                             <span
                               className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${
                                 isStaffActive
@@ -2927,31 +2941,19 @@ export default function VenueModularOverviewPage() {
                             </span>
                           </td>
 
-                          {/* Actions: Toggle Status (PATCH) & Delete (DELETE) */}
-                          <td className="py-3 px-4 text-right whitespace-nowrap">
-                            <div className="flex items-center justify-end gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => handleToggleStaffStatus(staff)}
-                                className={`px-2.5 py-1 rounded-lg text-[10.5px] font-bold border transition-colors cursor-pointer ${
-                                  isStaffActive
-                                    ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
-                                    : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
-                                }`}
-                                title={isStaffActive ? 'Deactivate staff account in Supabase' : 'Activate staff account in Supabase'}
-                              >
-                                {isStaffActive ? 'Deactivate' : 'Activate'}
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteStaff(staff)}
-                                className="p-1 rounded-lg text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-colors cursor-pointer"
-                                title="Delete staff permanently from Supabase"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
+                          {/* Actions: Details Button */}
+                          <td className="py-3 px-4 text-center whitespace-nowrap align-middle">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedStaffForDrawer(staff);
+                              }}
+                              className="h-7 px-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-[#F94001] hover:border-[#F94001]/40 hover:bg-[#FFF1EC] text-xs font-semibold inline-flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
+                            >
+                              <Eye className="h-3 w-3 text-slate-500" />
+                              <span>Details &gt;</span>
+                            </button>
                           </td>
                         </tr>
                       );
@@ -2961,13 +2963,95 @@ export default function VenueModularOverviewPage() {
               </div>
             )}
 
-            {/* Table Footer */}
-            <div className="p-3 bg-slate-50/60 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400 font-medium">
-              <span>Showing {staffMembers.length} authorized staff accounts from Supabase</span>
-              <span className="flex items-center gap-1 text-slate-500">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                Live PostgreSQL synchronized &bull; Changes persist to Supabase venue_staff table
-              </span>
+            {/* Pagination Bar */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3.5 border-t border-slate-200/90 bg-slate-50/50 text-xs text-slate-600 select-none">
+              <div className="flex items-center gap-4">
+                <span>
+                  Showing{' '}
+                  <strong className="text-slate-900 font-semibold">
+                    {staffTotalItems === 0 ? 0 : staffStartIndex + 1}
+                  </strong>{' '}
+                  to{' '}
+                  <strong className="text-slate-900 font-semibold">
+                    {Math.min(staffStartIndex + staffPageSize, staffTotalItems)}
+                  </strong>{' '}
+                  of <strong className="text-slate-900 font-semibold">{staffTotalItems}</strong> entries
+                </span>
+
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-400 text-[11px]">Rows per page:</span>
+                  <select
+                    value={staffPageSize}
+                    onChange={(e) => {
+                      setStaffPageSize(Number(e.target.value));
+                      setStaffCurrentPage(1);
+                    }}
+                    className="h-7 px-2 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:border-slate-300 focus:outline-none focus:border-[#F94001] cursor-pointer"
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  disabled={staffCurrentPage <= 1}
+                  onClick={() => setStaffCurrentPage((prev) => Math.max(1, prev - 1))}
+                  className="h-8 px-2.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 text-xs font-semibold transition-all shadow-2xs cursor-pointer"
+                  title="Previous Page"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                  <span>Prev</span>
+                </button>
+
+                <div className="flex items-center gap-1 px-1">
+                  {Array.from({ length: staffTotalPages }, (_, i) => i + 1)
+                    .filter((p) => {
+                      return (
+                        p === 1 ||
+                        p === staffTotalPages ||
+                        Math.abs(p - staffCurrentPage) <= 1
+                      );
+                    })
+                    .map((p, idx, arr) => {
+                      const prevPageNum = arr[idx - 1];
+                      const showEllipsis = prevPageNum && p - prevPageNum > 1;
+                      return (
+                        <React.Fragment key={p}>
+                          {showEllipsis && (
+                            <span className="px-1 text-slate-400 text-xs">...</span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setStaffCurrentPage(p)}
+                            className={`h-8 min-w-[32px] px-2 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer ${
+                              staffCurrentPage === p
+                                ? 'bg-[#F94001] text-white border border-[#F94001]'
+                                : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        </React.Fragment>
+                      );
+                    })}
+                </div>
+
+                <button
+                  type="button"
+                  disabled={staffCurrentPage >= staffTotalPages}
+                  onClick={() => setStaffCurrentPage((prev) => Math.min(staffTotalPages, prev + 1))}
+                  className="h-8 px-2.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 text-xs font-semibold transition-all shadow-2xs cursor-pointer"
+                  title="Next Page"
+                >
+                  <span>Next</span>
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -4291,6 +4375,503 @@ export default function VenueModularOverviewPage() {
                 className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors cursor-pointer shadow-xs"
               >
                 Confirm Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          GPS MAP POPUP MODAL (No redirect to another page)
+      ======================================================== */}
+      {gpsModalOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={() => setGpsModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="h-9 w-9 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center text-[#F94001]">
+                  <MapPin className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">{currentVenue.venue_name}</h3>
+                  <p className="text-xs text-slate-500">
+                    {currentVenue.district}, {currentVenue.state}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setGpsModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Embed Map Preview */}
+            <div className="rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 aspect-video relative shadow-inner">
+              <iframe
+                title="Venue GPS Location"
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                loading="lazy"
+                allowFullScreen
+                src={`https://maps.google.com/maps?q=${encodeURIComponent(
+                  (googleMapsLinkInput || currentVenue.venue_location_name) && (googleMapsLinkInput || currentVenue.venue_location_name).includes('q=')
+                    ? (googleMapsLinkInput || currentVenue.venue_location_name).split('q=')[1]
+                    : `${currentVenue.venue_name}, ${currentVenue.district || ''}, ${currentVenue.state || ''}`
+                )}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+              />
+            </div>
+
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Address</span>
+              <p className="text-slate-700 font-medium">
+                {currentVenue.address || physicalAddressInput || `${currentVenue.venue_name}, ${currentVenue.district}, ${currentVenue.state}`}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setGpsModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+              {(googleMapsLinkInput || currentVenue.venue_location_name) && (
+                <a
+                  href={googleMapsLinkInput || currentVenue.venue_location_name}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-4 py-2 rounded-xl bg-[#F94001] hover:bg-[#E03800] text-white text-xs font-bold transition-colors inline-flex items-center gap-1.5 shadow-xs"
+                >
+                  <span>Open in Google Maps</span>
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          BLOCK VENUE MODAL (Strict Owner Login Restriction)
+      ======================================================== */}
+      {blockModalOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={() => setBlockModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <div className="h-11 w-11 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 shrink-0 shadow-2xs">
+                <ShieldAlert className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-slate-900 font-display">Block Venue &amp; Restrict Login</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Blocking <strong className="text-slate-800">{currentVenue.venue_name}</strong> will strictly restrict the venue owner from logging in.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-amber-50 border border-amber-200/80 rounded-xl text-xs text-amber-800 space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-amber-900">
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
+                <span>Strict Owner Login Restriction</span>
+              </div>
+              <p className="text-[11px] leading-relaxed text-amber-800">
+                When the venue owner attempts to log in to the vendor portal, their access will be blocked and they will see a notice instructing them to contact the iBookSports Support Team.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">Reason for Blocking</label>
+              <select
+                value={blockPresetReason}
+                onChange={(e) => setBlockPresetReason(e.target.value)}
+                className="w-full h-9.5 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs text-slate-800 focus:bg-white focus:border-rose-500 focus:ring-1 focus:ring-rose-500 outline-none cursor-pointer"
+              >
+                <option value="Policy violation & non-compliance">Policy violation & non-compliance</option>
+                <option value="Payment or settlement dispute">Payment or settlement dispute</option>
+                <option value="Document verification failure / Suspicious activity">Document verification failure / Suspicious activity</option>
+                <option value="Owner requested temporary hold">Owner requested temporary hold</option>
+                <option value="Other administrative reason">Other administrative reason</option>
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">Additional Notes / Remarks</label>
+              <textarea
+                rows={3}
+                value={blockReason}
+                onChange={(e) => setBlockReason(e.target.value)}
+                placeholder="Provide specific reason or details for records..."
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs text-slate-800 focus:bg-white focus:border-rose-500 focus:ring-1 focus:ring-rose-500 outline-none resize-none"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setBlockModalOpen(false);
+                  setBlockReason('');
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await handleUpdateVenueStatus('INACTIVE');
+                  setStatusNotification(`Venue "${currentVenue.venue_name}" is blocked. Owner login strictly restricted.`);
+                  setBlockModalOpen(false);
+                  setBlockReason('');
+                }}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+              >
+                <ShieldAlert className="h-3.5 w-3.5" />
+                <span>Confirm &amp; Block Venue</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          UNBLOCK VENUE CONFIRMATION MODAL
+      ======================================================== */}
+      {unblockModalOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={() => setUnblockModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <div className="h-11 w-11 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shrink-0 shadow-2xs">
+                <ShieldCheck className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-slate-900 font-display">Unblock Venue &amp; Restore Access</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Are you sure you want to unblock <strong className="text-slate-800">{currentVenue.venue_name}</strong>?
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-xl text-xs text-emerald-800 space-y-1">
+              <p className="text-[11px] leading-relaxed">
+                The venue owner will immediately regain full login access to their vendor application, and court listings will be re-enabled for active customer bookings.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setUnblockModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await handleUpdateVenueStatus('ACTIVE');
+                  setStatusNotification(`Venue "${currentVenue.venue_name}" successfully unblocked. Owner login access restored.`);
+                  setUnblockModalOpen(false);
+                }}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+              >
+                <ShieldCheck className="h-3.5 w-3.5" />
+                <span>Confirm &amp; Unblock Venue</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          SLIDE BAR (DRAWER) FOR STAFF MEMBER DETAILS
+      ======================================================== */}
+      {selectedStaffForDrawer && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex justify-end animate-in fade-in duration-150"
+          onClick={() => setSelectedStaffForDrawer(null)}
+        >
+          <div
+            className="w-full max-w-lg bg-white h-full shadow-2xl flex flex-col border-l border-slate-200 animate-in slide-in-from-right duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Drawer Header */}
+            <div className="p-5 border-b border-slate-200 flex items-center justify-between shrink-0 bg-slate-50/70">
+              <div className="space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-widest text-[#F94001]">
+                  ARENA STAFF MEMBER DOSSIER
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-md bg-slate-200 font-mono text-[11px] font-bold text-slate-800">
+                    {selectedStaffForDrawer.staff_id || selectedStaffForDrawer.display_id || selectedStaffForDrawer.id}
+                  </span>
+                  <h3 className="font-extrabold text-base text-slate-900 tracking-tight">
+                    {selectedStaffForDrawer.name}
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-500 font-medium">
+                  {currentVenue.venue_name} &bull; {currentVenue.district || currentVenue.state}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedStaffForDrawer(null)}
+                className="h-8 w-8 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 flex items-center justify-center cursor-pointer transition-colors"
+                title="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Drawer Body */}
+            <div className="p-5 overflow-y-auto flex-1 space-y-4 text-xs">
+              {/* CARD 1: Profile & Designation */}
+              <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-[#F94001]" />
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-900">
+                      Personnel Profile
+                    </span>
+                  </div>
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                      selectedStaffForDrawer.status === 'ACTIVE'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : 'bg-slate-100 text-slate-500 border-slate-200'
+                    }`}
+                  >
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        selectedStaffForDrawer.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-slate-400'
+                      }`}
+                    />
+                    <span>{selectedStaffForDrawer.status === 'ACTIVE' ? 'Active Account' : 'Inactive'}</span>
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-[#091522] text-white font-black text-sm flex items-center justify-center shrink-0 tracking-tight shadow-2xs">
+                    {(selectedStaffForDrawer.name || 'Staff')
+                      .trim()
+                      .split(/\s+/)
+                      .map((n) => (n ? n[0] : ''))
+                      .filter(Boolean)
+                      .join('')
+                      .substring(0, 2)
+                      .toUpperCase() || 'ST'}
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-slate-900 text-sm">
+                      {selectedStaffForDrawer.name}
+                    </h4>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="inline-block px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200/70 font-bold text-[10px] tracking-wider uppercase font-mono">
+                        {selectedStaffForDrawer.role}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {selectedStaffForDrawer.shift_hours && (
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase">Assigned Shift</span>
+                    <span className="text-slate-700 font-mono font-medium flex items-center gap-1">
+                      <Clock className="h-3 w-3 text-slate-400" />
+                      {selectedStaffForDrawer.shift_hours}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* CARD 2: Direct Contact */}
+              <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-emerald-600" />
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-900">
+                      Contact Information
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    Verified
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="flex items-center gap-2.5">
+                      <div className="h-8 w-8 rounded-lg bg-orange-50 text-[#F94001] flex items-center justify-center shrink-0">
+                        <Phone className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase block">Mobile Number</span>
+                        <a
+                          href={`tel:${selectedStaffForDrawer.mobile_number}`}
+                          className="font-bold text-slate-900 hover:text-[#F94001] text-xs font-mono"
+                        >
+                          {selectedStaffForDrawer.mobile_number}
+                        </a>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyStaffText(selectedStaffForDrawer.mobile_number, 'drawer_mobile')}
+                      className="px-2 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 text-[10px] font-bold flex items-center gap-1 cursor-pointer"
+                      title="Copy phone"
+                    >
+                      {staffCopiedText === 'drawer_mobile' ? (
+                        <>
+                          <Check className="h-3 w-3 text-emerald-600" />
+                          <span className="text-emerald-600">Copied</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3 w-3" />
+                          <span>Copy</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="flex items-center gap-2.5 truncate mr-2">
+                      <div className="h-8 w-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                        <Mail className="h-4 w-4" />
+                      </div>
+                      <div className="truncate">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase block">Email Address</span>
+                        <a
+                          href={`mailto:${selectedStaffForDrawer.email}`}
+                          className="font-bold text-slate-900 hover:text-[#F94001] text-xs truncate block"
+                          title={selectedStaffForDrawer.email}
+                        >
+                          {selectedStaffForDrawer.email || 'Not provided'}
+                        </a>
+                      </div>
+                    </div>
+                    {selectedStaffForDrawer.email && (
+                      <button
+                        type="button"
+                        onClick={() => handleCopyStaffText(selectedStaffForDrawer.email, 'drawer_email')}
+                        className="px-2 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 text-[10px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
+                        title="Copy email"
+                      >
+                        {staffCopiedText === 'drawer_email' ? (
+                          <>
+                            <Check className="h-3 w-3 text-emerald-600" />
+                            <span className="text-emerald-600">Copied</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-3 w-3" />
+                            <span>Copy</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* CARD 3: Venue & Operational Scope */}
+              <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-purple-600" />
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-900">
+                      Facility &amp; Operational Assignment
+                    </span>
+                  </div>
+                  <span className="font-mono text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                    {(currentVenue as any).app_id || currentVenue.id}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block">Assigned Arena</span>
+                    <p className="font-bold text-slate-900 text-xs mt-0.5">{currentVenue.venue_name}</p>
+                    <p className="text-[11px] text-slate-500">{currentVenue.district}, {currentVenue.state}</p>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block">Venue Owner</span>
+                    <p className="font-bold text-slate-900 text-xs mt-0.5">{currentVenue.name || ownerFullName || 'Venue Owner'}</p>
+                    <p className="text-[11px] font-mono text-slate-500">{currentVenue.mobile_number || ownerPhone || ''}</p>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-[11px] text-slate-600 space-y-1">
+                  <span className="font-bold text-slate-800 text-[10px] uppercase tracking-wider block">Access Scope &amp; Responsibilities</span>
+                  <p className="leading-relaxed">
+                    Authorized ground personnel managed via Venue Owner App. Responsible for pitch readiness, player check-in verification, lighting coordination, and court maintenance.
+                  </p>
+                </div>
+              </div>
+
+              {/* CARD 4: System Record */}
+              <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2.5">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-900">
+                      Database &amp; Sync Status
+                    </span>
+                  </div>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    Live Supabase Synchronized
+                  </span>
+                </div>
+
+                <div className="space-y-1.5 text-xs">
+                  <div className="flex items-center justify-between text-slate-500">
+                    <span className="text-[11px]">Database Record ID:</span>
+                    <span className="font-mono text-slate-800 text-[11px] font-semibold">
+                      {selectedStaffForDrawer.db_id || selectedStaffForDrawer.id}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-slate-500">
+                    <span className="text-[11px]">Target Table:</span>
+                    <span className="font-mono text-slate-800 text-[11px]">public.venue_staff</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Drawer Footer */}
+            <div className="p-4 border-t border-slate-200 bg-slate-50 shrink-0 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedStaffForDrawer(null)}
+                className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs transition-colors cursor-pointer"
+              >
+                Close Dossier
               </button>
             </div>
           </div>
