@@ -136,7 +136,7 @@ export default function CourtRequestsPage() {
 
   // Status mapping
   const normStatus = (st: string): 'NEW' | 'RESUBMITTED' | 'APPROVED' | 'REJECTED' => {
-    if (st === 'NEW_REQUEST' || st === 'SUBMITTED' || st === 'NEW') return 'NEW';
+    if (st === 'NEW_REQUEST' || st === 'SUBMITTED' || st === 'NEW' || st === 'PENDING') return 'NEW';
     if (st === 'RESUBMITTED') return 'RESUBMITTED';
     if (st === 'APPROVED') return 'APPROVED';
     return 'REJECTED';
@@ -268,7 +268,7 @@ export default function CourtRequestsPage() {
         mapped = backendData.map((r) => ({
           id: r.id,
           court_id: r.court_id,
-          venue_id: r.vendor_mobile ? `ven_${r.vendor_mobile.slice(-4)}` : 'APP10235',
+          venue_id: r.venue_id || (r.vendor_mobile ? `ven_${r.vendor_mobile.slice(-4)}` : 'APP10235'),
           venue_name: r.venue_name,
           venue_city: r.venue_city || 'Coimbatore, Tamil Nadu',
           owner_name: r.vendor_name || 'Venue Owner',
