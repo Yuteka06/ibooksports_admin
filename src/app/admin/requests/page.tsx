@@ -415,16 +415,6 @@ export default function PartnerRequestsPage() {
             <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
             <span>{totalCount} Partner Requests</span>
           </div>
-          <button
-            type="button"
-            onClick={loadRequests}
-            className="h-9 px-3.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 flex items-center gap-2 shadow-2xs transition-all cursor-pointer"
-            title="Refresh Inbound Queue"
-            suppressHydrationWarning
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin text-[#F94001]' : 'text-slate-600'}`} />
-            <span>Sync Queue</span>
-          </button>
         </div>
       </div>
 
@@ -452,15 +442,24 @@ export default function PartnerRequestsPage() {
         document.body
       )}
 
-      {/* 2. OPERATIONAL KPI METRICS ROW (MATCHING CUSTOMER MANAGEMENT DESIGN) */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3.5">
-        {/* Total Applications */}
-        <div className="bg-white rounded-2xl p-4 border border-[#E5E7EB] shadow-xs hover:border-[#F94001]/40 transition-all">
+      {/* 2. OPERATIONAL KPI METRICS ROW (INTERACTIVE FILTER CARDS) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+        {/* Total Applications - Filters by ALL */}
+        <button
+          type="button"
+          onClick={() => setSelectedStatus('ALL')}
+          className={`text-left w-full rounded-2xl p-4 border transition-all cursor-pointer relative ${
+            selectedStatus === 'ALL'
+              ? 'bg-[#FFF8F5] border-[#F94001] ring-2 ring-[#F94001] shadow-xs'
+              : 'bg-white border-[#E5E7EB] shadow-xs hover:border-[#F94001]/50 hover:shadow-xs'
+          }`}
+          title="Filter table by all applications"
+        >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-[#5F6368] uppercase tracking-wider">
+            <span className={`text-[11px] font-bold uppercase tracking-wider ${selectedStatus === 'ALL' ? 'text-[#F94001]' : 'text-[#5F6368]'}`}>
               Total Applications
             </span>
-            <div className="h-8 w-8 rounded-xl bg-[#FFF1EC] text-[#F94001] flex items-center justify-center">
+            <div className={`h-8 w-8 rounded-xl flex items-center justify-center transition-colors ${selectedStatus === 'ALL' ? 'bg-[#F94001] text-white' : 'bg-[#FFF1EC] text-[#F94001]'}`}>
               <Building2 className="h-4 w-4" />
             </div>
           </div>
@@ -471,15 +470,24 @@ export default function PartnerRequestsPage() {
             </span>
           </div>
           <p className="text-[11px] text-[#5F6368] mt-1">100% verified partner contacts</p>
-        </div>
+        </button>
 
-        {/* Pending Review */}
-        <div className="bg-white rounded-2xl p-4 border border-[#E5E7EB] shadow-xs hover:border-amber-400/50 transition-all">
+        {/* Pending Review - Filters by SUBMITTED */}
+        <button
+          type="button"
+          onClick={() => setSelectedStatus('SUBMITTED')}
+          className={`text-left w-full rounded-2xl p-4 border transition-all cursor-pointer relative ${
+            selectedStatus === 'SUBMITTED'
+              ? 'bg-amber-50/50 border-amber-500 ring-2 ring-amber-500 shadow-xs'
+              : 'bg-white border-[#E5E7EB] shadow-xs hover:border-amber-400/50 hover:shadow-xs'
+          }`}
+          title="Filter table by pending reviews"
+        >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-[#5F6368] uppercase tracking-wider">
+            <span className={`text-[11px] font-bold uppercase tracking-wider ${selectedStatus === 'SUBMITTED' ? 'text-amber-700' : 'text-[#5F6368]'}`}>
               Pending Review
             </span>
-            <div className="h-8 w-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+            <div className={`h-8 w-8 rounded-xl flex items-center justify-center transition-colors ${selectedStatus === 'SUBMITTED' ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-600'}`}>
               <Clock className="h-4 w-4" />
             </div>
           </div>
@@ -490,15 +498,24 @@ export default function PartnerRequestsPage() {
             </span>
           </div>
           <p className="text-[11px] text-[#5F6368] mt-1">Inbound onboarding queue</p>
-        </div>
+        </button>
 
-        {/* Approved Partners */}
-        <div className="bg-white rounded-2xl p-4 border border-[#E5E7EB] shadow-xs hover:border-emerald-400/50 transition-all">
+        {/* Approved Partners - Filters by APPROVED */}
+        <button
+          type="button"
+          onClick={() => setSelectedStatus('APPROVED')}
+          className={`text-left w-full rounded-2xl p-4 border transition-all cursor-pointer relative ${
+            selectedStatus === 'APPROVED'
+              ? 'bg-emerald-50/50 border-emerald-500 ring-2 ring-emerald-500 shadow-xs'
+              : 'bg-white border-[#E5E7EB] shadow-xs hover:border-emerald-400/50 hover:shadow-xs'
+          }`}
+          title="Filter table by approved partners"
+        >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-[#5F6368] uppercase tracking-wider">
+            <span className={`text-[11px] font-bold uppercase tracking-wider ${selectedStatus === 'APPROVED' ? 'text-emerald-700' : 'text-[#5F6368]'}`}>
               Approved Partners
             </span>
-            <div className="h-8 w-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <div className={`h-8 w-8 rounded-xl flex items-center justify-center transition-colors ${selectedStatus === 'APPROVED' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-600'}`}>
               <CheckCircle2 className="h-4 w-4" />
             </div>
           </div>
@@ -509,15 +526,24 @@ export default function PartnerRequestsPage() {
             </span>
           </div>
           <p className="text-[11px] text-[#5F6368] mt-1">Access tokens dispatched</p>
-        </div>
+        </button>
 
-        {/* Declined */}
-        <div className="bg-white rounded-2xl p-4 border border-[#E5E7EB] shadow-xs hover:border-rose-400/50 transition-all">
+        {/* Declined - Filters by REJECTED */}
+        <button
+          type="button"
+          onClick={() => setSelectedStatus('REJECTED')}
+          className={`text-left w-full rounded-2xl p-4 border transition-all cursor-pointer relative ${
+            selectedStatus === 'REJECTED'
+              ? 'bg-rose-50/50 border-rose-500 ring-2 ring-rose-500 shadow-xs'
+              : 'bg-white border-[#E5E7EB] shadow-xs hover:border-rose-400/50 hover:shadow-xs'
+          }`}
+          title="Filter table by declined requests"
+        >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-[#5F6368] uppercase tracking-wider">
+            <span className={`text-[11px] font-bold uppercase tracking-wider ${selectedStatus === 'REJECTED' ? 'text-rose-700' : 'text-[#5F6368]'}`}>
               Declined
             </span>
-            <div className="h-8 w-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+            <div className={`h-8 w-8 rounded-xl flex items-center justify-center transition-colors ${selectedStatus === 'REJECTED' ? 'bg-rose-600 text-white' : 'bg-rose-50 text-rose-600'}`}>
               <XCircle className="h-4 w-4" />
             </div>
           </div>
@@ -528,26 +554,7 @@ export default function PartnerRequestsPage() {
             </span>
           </div>
           <p className="text-[11px] text-[#5F6368] mt-1">Feedback notice sent</p>
-        </div>
-
-        {/* Sports Covered */}
-        <div className="bg-white rounded-2xl p-4 border border-[#E5E7EB] shadow-xs hover:border-blue-400/50 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-[#5F6368] uppercase tracking-wider">
-              Active Sports
-            </span>
-            <div className="h-8 w-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-              <Trophy className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-blue-700 font-mono">{uniqueSports.length || 5}</span>
-            <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
-              Multi-Sport
-            </span>
-          </div>
-          <p className="text-[11px] text-[#5F6368] mt-1">Cricket, Football, Badminton...</p>
-        </div>
+        </button>
       </div>
 
       {/* 3. SEARCH, STATUS PILLS & DROPDOWN FILTERS */}
