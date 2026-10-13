@@ -538,10 +538,19 @@ export default function CourtRequestsPage() {
         </div>
       )}
 
-      {/* 2. OPERATIONAL KPI METRICS ROW (MATCHING CUSTOMER MANAGEMENT DESIGN) */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3.5">
+      {/* 2. OPERATIONAL KPI METRICS ROW (INTERACTIVE FILTERS) */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3.5 select-none">
         {/* Total Requests */}
-        <div className="bg-white rounded-2xl p-4 border border-[#E5E7EB] shadow-xs hover:border-[#F94001]/40 transition-all">
+        <button
+          type="button"
+          onClick={() => setSelectedStatus('ALL')}
+          className={`bg-white rounded-2xl p-4 border text-left shadow-xs transition-all cursor-pointer ${
+            selectedStatus === 'ALL'
+              ? 'border-[#F94001] ring-2 ring-[#F94001]/20 bg-orange-50/10'
+              : 'border-[#E5E7EB] hover:border-[#F94001]/40'
+          }`}
+          title="Filter: All Requests"
+        >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-[#5F6368] uppercase tracking-wider">
               Total Requests
@@ -557,10 +566,19 @@ export default function CourtRequestsPage() {
             </span>
           </div>
           <p className="text-[10px] text-slate-400 mt-1 font-medium">Inbound facility court additions</p>
-        </div>
+        </button>
 
         {/* Pending Review */}
-        <div className="bg-white rounded-2xl p-4 border border-[#E5E7EB] shadow-xs hover:border-amber-300 transition-all">
+        <button
+          type="button"
+          onClick={() => setSelectedStatus(selectedStatus === 'PENDING' ? 'ALL' : 'PENDING')}
+          className={`bg-white rounded-2xl p-4 border text-left shadow-xs transition-all cursor-pointer ${
+            selectedStatus === 'PENDING'
+              ? 'border-amber-500 ring-2 ring-amber-400/30 bg-amber-50/20'
+              : 'border-[#E5E7EB] hover:border-amber-300'
+          }`}
+          title="Filter: Pending Review"
+        >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-[#5F6368] uppercase tracking-wider">
               Pending Review
@@ -576,10 +594,19 @@ export default function CourtRequestsPage() {
             </span>
           </div>
           <p className="text-[10px] text-slate-400 mt-1 font-medium">Awaiting admin evaluation</p>
-        </div>
+        </button>
 
         {/* Approved Courts */}
-        <div className="bg-white rounded-2xl p-4 border border-[#E5E7EB] shadow-xs hover:border-emerald-300 transition-all">
+        <button
+          type="button"
+          onClick={() => setSelectedStatus(selectedStatus === 'APPROVED' ? 'ALL' : 'APPROVED')}
+          className={`bg-white rounded-2xl p-4 border text-left shadow-xs transition-all cursor-pointer ${
+            selectedStatus === 'APPROVED'
+              ? 'border-emerald-500 ring-2 ring-emerald-400/30 bg-emerald-50/20'
+              : 'border-[#E5E7EB] hover:border-emerald-300'
+          }`}
+          title="Filter: Approved Courts"
+        >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-[#5F6368] uppercase tracking-wider">
               Approved Courts
@@ -595,10 +622,19 @@ export default function CourtRequestsPage() {
             </span>
           </div>
           <p className="text-[10px] text-slate-400 mt-1 font-medium">Activated for player bookings</p>
-        </div>
+        </button>
 
         {/* Declined / Rejected */}
-        <div className="bg-white rounded-2xl p-4 border border-[#E5E7EB] shadow-xs hover:border-rose-300 transition-all">
+        <button
+          type="button"
+          onClick={() => setSelectedStatus(selectedStatus === 'REJECTED' ? 'ALL' : 'REJECTED')}
+          className={`bg-white rounded-2xl p-4 border text-left shadow-xs transition-all cursor-pointer ${
+            selectedStatus === 'REJECTED'
+              ? 'border-rose-500 ring-2 ring-rose-400/30 bg-rose-50/20'
+              : 'border-[#E5E7EB] hover:border-rose-300'
+          }`}
+          title="Filter: Declined Requests"
+        >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-[#5F6368] uppercase tracking-wider">
               Declined
@@ -614,10 +650,19 @@ export default function CourtRequestsPage() {
             </span>
           </div>
           <p className="text-[10px] text-slate-400 mt-1 font-medium">Declined with audit feedback</p>
-        </div>
+        </button>
 
         {/* Sports Count */}
-        <div className="bg-white rounded-2xl p-4 border border-[#E5E7EB] shadow-xs hover:border-purple-300 transition-all col-span-2 lg:col-span-1">
+        <button
+          type="button"
+          onClick={() => setSelectedSport('ALL')}
+          className={`bg-white rounded-2xl p-4 border text-left shadow-xs transition-all col-span-2 lg:col-span-1 cursor-pointer ${
+            selectedSport !== 'ALL'
+              ? 'border-purple-500 ring-2 ring-purple-400/30 bg-purple-50/20'
+              : 'border-[#E5E7EB] hover:border-purple-300'
+          }`}
+          title="Reset Sport Filter"
+        >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-[#5F6368] uppercase tracking-wider">
               Active Sports
@@ -633,7 +678,7 @@ export default function CourtRequestsPage() {
             </span>
           </div>
           <p className="text-[10px] text-slate-400 mt-1 font-medium">Turf, pitch &amp; court disciplines</p>
-        </div>
+        </button>
       </div>
 
       {/* 3. MULTI-STATE FINDER TABS */}
@@ -761,7 +806,6 @@ export default function CourtRequestsPage() {
                 <th className="py-3 px-4 min-w-[210px]">Venue Details</th>
                 <th className="py-3 px-4 min-w-[240px]">Court &amp; Sport</th>
                 <th className="py-3 px-4 min-w-[140px]">Request Date &amp; Time</th>
-                <th className="py-3 px-4 min-w-[120px]">Hourly Rate</th>
                 <th className="py-3 px-4 min-w-[110px]">Status</th>
                 <th className="py-3 px-4 min-w-[160px]">Approved / Rejected By</th>
                 <th className="py-3 px-4 text-center w-[80px]">Action</th>
@@ -770,7 +814,7 @@ export default function CourtRequestsPage() {
             <tbody className="divide-y divide-slate-100">
               {filteredRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-14 text-center text-slate-400">
+                  <td colSpan={8} className="py-14 text-center text-slate-400">
                     <Inbox className="h-9 w-9 mx-auto text-slate-300 mb-2" />
                     <p className="font-bold text-sm text-[#021526]">No court requests found</p>
                     <p className="text-[11px] text-slate-400 mt-0.5">
@@ -868,19 +912,7 @@ export default function CourtRequestsPage() {
                         </div>
                       </td>
 
-                      {/* 5. HOURLY RATE */}
-                      <td className="py-3.5 px-4 align-middle whitespace-nowrap">
-                        <div className="space-y-0.5">
-                          <p className="font-mono font-bold text-xs text-slate-900">
-                            ₹{req.price_per_hour}/hr
-                          </p>
-                          <p className="text-[10px] font-mono text-slate-400">
-                            Peak: ₹{req.peak_price}/hr
-                          </p>
-                        </div>
-                      </td>
-
-                      {/* 6. STATUS */}
+                      {/* 5. STATUS */}
                       <td className="py-3.5 px-4 align-middle whitespace-nowrap">
                         {status === 'NEW' && (
                           <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
