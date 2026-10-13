@@ -50,14 +50,42 @@ export default function PaymentManagementPage() {
   useEffect(() => {
     const fetchPayments = async () => {
       try {
-        const res = await apiClient.get('/payments');
-        if (res.data?.data && Array.isArray(res.data.data)) {
-          setPayments(res.data.data);
-        } else if (Array.isArray(res.data)) {
-          setPayments(res.data);
-        } else {
-          setPayments([]);
+        const [paymentsRes, venuesRes] = await Promise.allSettled([
+          apiClient.get<any>('/payments'),
+          apiClient.get<any[]>('/venues'),
+        ]);
+
+        let rawPayments: any[] = [];
+        if (paymentsRes.status === 'fulfilled') {
+          const d = paymentsRes.value.data;
+          if (d?.data && Array.isArray(d.data)) rawPayments = d.data;
+          else if (Array.isArray(d)) rawPayments = d;
         }
+
+        let venuesList: any[] = [];
+        if (venuesRes.status === 'fulfilled' && Array.isArray(venuesRes.value.data)) {
+          venuesList = venuesRes.value.data;
+        }
+
+        const venueMap = new Map<string, any>();
+        venuesList.forEach((v) => {
+          if (v.id) venueMap.set(String(v.id).toLowerCase(), v);
+          if (v.venue_name) venueMap.set(String(v.venue_name).toLowerCase(), v);
+        });
+
+        const mapped = rawPayments.map((p) => {
+          const vInfo = venueMap.get(String(p.venue_id || '').toLowerCase()) ||
+                        venueMap.get(String(p.venue_name || '').toLowerCase());
+          const state = p.state || p.venue_state || vInfo?.state || (p.venue_name === 'Rex Arena' ? 'Kerala' : 'Tamil Nadu');
+          const district = p.district || p.venue_district || vInfo?.district || (p.venue_name === 'Rex Arena' ? 'Kozhikode' : (p.venue_name === 'Amithap Mama' ? 'Coimbatore' : 'Chennai'));
+          return {
+            ...p,
+            state,
+            district,
+          };
+        });
+
+        setPayments(mapped);
       } catch (e) {
         setPayments([]);
       }
@@ -69,9 +97,9 @@ export default function PaymentManagementPage() {
   const [statusFilter, setStatusFilter] = useState<'ALL' | PaymentStatusType>('ALL');
   const [methodFilter, setMethodFilter] = useState<'ALL' | string>('ALL');
   const [selectedSport, setSelectedSport] = useState<string>('ALL');
-  
-  // Date Picker Filter - ON TOP RIGHT CORNER OF PAGE HEADER
-  const [selectedDate, setSelectedDate] = useState<string>(''); // YYYY-MM-DD
+  const [stateFilter, setStateFilter] = useState<string>('ALL');
+  const [districtFilter, setDistrictFilter] = useState<string>('ALL');
+  const [selectedDate, setSelectedDate] = useState<string>('');
 
   
   // Slide-out Drawer State (Consolidated into 2 Tabs: Overview & Tax Invoice, Payment Link & Gateway Audit)
@@ -204,12 +232,57 @@ export default function PaymentManagementPage() {
     [dateFilteredPayments]
   );
 
+  // Extract all unique states from payments (plus fallback popular states)
+  const availableStates = useMemo(() => {
+    const set = new Set<string>();
+    payments.forEach((p) => {
+      const s = p.state;
+      if (s && s.trim()) set.add(s.trim());
+    });
+    ['Kerala', 'Tamil Nadu', 'Karnataka'].forEach((st) => set.add(st));
+    return Array.from(set).sort();
+  }, [payments]);
+
+  // Extract all unique districts (optionally filtered by selected state)
+  const availableDistricts = useMemo(() => {
+    const set = new Set<string>();
+    payments.forEach((p) => {
+      const s = p.state;
+      const d = p.district;
+      if (stateFilter === 'ALL' || !s || s.toLowerCase() === stateFilter.toLowerCase()) {
+        if (d && d.trim()) set.add(d.trim());
+      }
+    });
+    if (stateFilter === 'Kerala' || stateFilter === 'ALL') {
+      ['Kozhikode', 'Malappuram', 'Ernakulam'].forEach((dist) => set.add(dist));
+    }
+    if (stateFilter === 'Tamil Nadu' || stateFilter === 'ALL') {
+      ['Chennai', 'Coimbatore', 'Madurai'].forEach((dist) => set.add(dist));
+    }
+    if (stateFilter === 'Karnataka' || stateFilter === 'ALL') {
+      ['Bengaluru Urban', 'Mysuru'].forEach((dist) => set.add(dist));
+    }
+    return Array.from(set).sort();
+  }, [payments, stateFilter]);
+
   // 3. FINAL FILTERED PAYMENTS FOR TABLE ROWS
   const filteredPayments = useMemo(() => {
     return dateFilteredPayments.filter((p) => {
       // Status filter: FULLY_PAID = 'Paid', ADVANCE_PAID = 'Partial Paid'
       if (statusFilter !== 'ALL' && p.payment_status !== statusFilter) {
         return false;
+      }
+
+      // State Filter
+      if (stateFilter !== 'ALL') {
+        const pState = p.state || '';
+        if (pState.toLowerCase() !== stateFilter.toLowerCase()) return false;
+      }
+
+      // District Filter
+      if (districtFilter !== 'ALL') {
+        const pDistrict = p.district || '';
+        if (pDistrict.toLowerCase() !== districtFilter.toLowerCase()) return false;
       }
 
       // Payment Method filter: 'UPI' | 'Card' | 'Net Banking'
@@ -233,14 +306,16 @@ export default function PaymentManagementPage() {
           p.customer_phone.includes(q) ||
           p.venue_name.toLowerCase().includes(q) ||
           (p.court_name && p.court_name.toLowerCase().includes(q)) ||
-          (p.sport && p.sport.toLowerCase().includes(q));
+          (p.sport && p.sport.toLowerCase().includes(q)) ||
+          (p.state && p.state.toLowerCase().includes(q)) ||
+          (p.district && p.district.toLowerCase().includes(q));
 
         if (!matchesSearch) return false;
       }
 
       return true;
     });
-  }, [dateFilteredPayments, statusFilter, methodFilter, selectedSport, searchQuery]);
+  }, [dateFilteredPayments, statusFilter, stateFilter, districtFilter, methodFilter, selectedSport, searchQuery]);
 
   const handlePrintInvoice = () => {
     if (typeof window !== 'undefined') {
@@ -270,13 +345,9 @@ export default function PaymentManagementPage() {
         </div>
       )}
 
-      {/* 1. PAGE HEADER (WITH DATE PICKER ON RIGHT TOP CORNER) */}
+      {/* 1. PAGE HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E5E7EB] pb-5">
         <div>
-          <div className="inline-flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wider text-[#F94001] bg-[#FFF1EC] border border-[#F94001]/20 px-3 py-1 rounded-full mb-2">
-            <CreditCard className="h-3.5 w-3.5 text-[#F94001]" />
-            <span>Gateway &amp; Transaction Ledger &bull; Razorpay Payment Engine</span>
-          </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#021526] font-display">
             Payment Management
           </h1>
@@ -285,35 +356,8 @@ export default function PaymentManagementPage() {
           </p>
         </div>
 
-        {/* RIGHT TOP CORNER: DATE PICKER & EXPORT BUTTON (CLEAN HORIZONTAL ALIGNMENT) */}
+        {/* RIGHT TOP CORNER: EXPORT BUTTON */}
         <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-center">
-          {/* DATE PICKER ON RIGHT TOP CORNER */}
-          <div className="flex items-center gap-2 bg-white border border-[#CBD5E1] px-3.5 py-1.5 rounded-xl shadow-2xs hover:border-[#F94001]/60 transition-colors h-[42px]">
-            <CalendarDays className="h-4 w-4 text-[#F94001] shrink-0" />
-            <div className="flex flex-col text-left justify-center">
-              <span className="text-[9px] uppercase tracking-wider font-extrabold text-slate-400 leading-none">
-                Filter by Date
-              </span>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="bg-transparent text-xs font-bold text-[#021526] outline-none cursor-pointer p-0 leading-tight"
-                title="Select booking date to update KPIs and table"
-              />
-            </div>
-            {selectedDate && (
-              <button
-                type="button"
-                onClick={() => setSelectedDate('')}
-                className="text-slate-400 hover:text-slate-800 ml-1 p-0.5 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
-                title="Reset to all dates"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-
           <button
             type="button"
             onClick={() => {
@@ -462,10 +506,10 @@ export default function PaymentManagementPage() {
           })}
         </div>
 
-        {/* Right: Search, Sport & Payment Type (UPI / Card / Net Banking) */}
-        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5">
+        {/* Right: Search, State, District, Sport & Payment Type */}
+        <div className="flex flex-wrap items-center gap-2.5">
           {/* Live Search */}
-          <div className="relative min-w-[220px] flex-1">
+          <div className="relative min-w-[200px] flex-1">
             <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-[#5F6368]" />
             <input
               type="text"
@@ -485,8 +529,47 @@ export default function PaymentManagementPage() {
             )}
           </div>
 
+          {/* State Selector */}
+          <div className="relative min-w-[125px]">
+            <select
+              suppressHydrationWarning={true}
+              value={stateFilter}
+              onChange={(e) => {
+                setStateFilter(e.target.value);
+                setDistrictFilter('ALL');
+              }}
+              className="w-full appearance-none pl-8 pr-7 py-2 rounded-xl border border-[#E5E7EB] bg-slate-50 text-xs font-bold text-[#021526] focus:outline-none focus:border-[#F94001] focus:ring-1 focus:ring-[#F94001] transition-colors cursor-pointer"
+            >
+              <option value="ALL">All State</option>
+              {availableStates.map((st) => (
+                <option key={st} value={st}>
+                  {st}
+                </option>
+              ))}
+            </select>
+            <MapPin className="h-3.5 w-3.5 absolute left-2.5 top-2.5 text-slate-400 pointer-events-none" />
+          </div>
+
+          {/* District Selector */}
+          <div className="relative min-w-[125px]">
+            <select
+              suppressHydrationWarning={true}
+              value={districtFilter}
+              onChange={(e) => setDistrictFilter(e.target.value)}
+              className="w-full appearance-none pl-8 pr-7 py-2 rounded-xl border border-[#E5E7EB] bg-slate-50 text-xs font-bold text-[#021526] focus:outline-none focus:border-[#F94001] focus:ring-1 focus:ring-[#F94001] transition-colors cursor-pointer"
+            >
+              <option value="ALL">All District</option>
+              {availableDistricts.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+            <MapPin className="h-3.5 w-3.5 absolute left-2.5 top-2.5 text-slate-400 pointer-events-none" />
+          </div>
+
           {/* Sport Selector */}
-          <div className="relative min-w-[130px]">
+          <div className="relative min-w-[120px]">
             <select
               suppressHydrationWarning={true}
               value={selectedSport}
@@ -520,13 +603,14 @@ export default function PaymentManagementPage() {
           </div>
 
           {/* Reset Filters */}
-          {(searchQuery || selectedDate || statusFilter !== 'ALL' || methodFilter !== 'ALL' || selectedSport !== 'ALL') && (
+          {(searchQuery || statusFilter !== 'ALL' || stateFilter !== 'ALL' || districtFilter !== 'ALL' || methodFilter !== 'ALL' || selectedSport !== 'ALL') && (
             <button
               type="button"
               onClick={() => {
                 setSearchQuery('');
-                setSelectedDate('');
                 setStatusFilter('ALL');
+                setStateFilter('ALL');
+                setDistrictFilter('ALL');
                 setMethodFilter('ALL');
                 setSelectedSport('ALL');
               }}
