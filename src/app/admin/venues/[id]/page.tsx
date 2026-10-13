@@ -150,7 +150,7 @@ interface CourtSlotItem {
   court_id: string;
   court_name: string;
   time: string;
-  status: 'AVAILABLE' | 'HOLD' | 'UNAVAILABLE';
+  status: 'AVAILABLE' | 'HOLD' | 'BOOKED' | 'LIVE' | 'MAINTENANCE' | 'UNAVAILABLE';
   price: number;
   is_peak: boolean;
   booking_code?: string;
@@ -371,10 +371,55 @@ export default function VenueModularOverviewPage() {
     return venueAmenitiesList.filter((a) => a.category === amenityFilter);
   }, [amenityFilter, venueAmenitiesList]);
 
-  // Slots date selection
-  const [selectedSlotDate, setSelectedSlotDate] = useState<'today' | 'tomorrow' | 'day_after'>('today');
+  // Slots date selection & dynamic timeline dates
+  const [selectedSlotDate, setSelectedSlotDate] = useState<'today' | 'tomorrow' | 'day_after' | 'custom'>('today');
+  const [slotCustomDate, setSlotCustomDate] = useState<string>('');
   const [selectedCourtFilterForSlots, setSelectedCourtFilterForSlots] = useState<string>('ALL');
-  const [slotsState, setSlotsState] = useState<Record<string, 'AVAILABLE' | 'HOLD' | 'UNAVAILABLE'>>({});
+  const [slotsState, setSlotsState] = useState<Record<string, 'AVAILABLE' | 'HOLD' | 'BOOKED' | 'LIVE' | 'MAINTENANCE' | 'UNAVAILABLE'>>({});
+
+  const todayYmd = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }, []);
+
+  const tomorrowYmd = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }, []);
+
+  const dayAfterYmd = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 2);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }, []);
+
+  const quickDateOptions = useMemo(() => {
+    const d0 = new Date();
+    const d1 = new Date();
+    d1.setDate(d0.getDate() + 1);
+    const d2 = new Date();
+    d2.setDate(d0.getDate() + 2);
+
+    const fmt = (d: Date, prefix: string) => {
+      const day = d.getDate();
+      const month = d.toLocaleDateString('en-US', { month: 'short' });
+      return `${prefix} (${day} ${month})`;
+    };
+    const d2Day = d2.toLocaleDateString('en-US', { weekday: 'short' });
+
+    return [
+      { key: 'today' as const, label: fmt(d0, 'Today'), dateStr: todayYmd },
+      { key: 'tomorrow' as const, label: fmt(d1, 'Tomorrow'), dateStr: tomorrowYmd },
+      { key: 'day_after' as const, label: fmt(d2, d2Day), dateStr: dayAfterYmd },
+    ];
+  }, [todayYmd, tomorrowYmd, dayAfterYmd]);
+
+  useEffect(() => {
+    if (!slotCustomDate) {
+      setSlotCustomDate(todayYmd);
+    }
+  }, [slotCustomDate, todayYmd]);
 
   // Filters inside Bookings tab
   const [bookingDateFilter, setBookingDateFilter] = useState<string>('');
@@ -1364,14 +1409,79 @@ export default function VenueModularOverviewPage() {
   ];
 
   // Helper for slot status on timeline
-  const getSlotStatus = (courtId: string, hourIndex: number): { status: 'AVAILABLE' | 'HOLD' | 'UNAVAILABLE'; bookingCode?: string; bookedBy?: string } => {
-    const key = `${courtId}-${selectedSlotDate}-${hourIndex}`;
+  const getSlotStatus = (
+    courtId: string,
+    hourIndex: number
+  ): {
+    status: 'AVAILABLE' | 'HOLD' | 'BOOKED' | 'LIVE' | 'MAINTENANCE' | 'UNAVAILABLE';
+    bookingCode?: string;
+    bookedBy?: string;
+  } => {
+    const activeDateKey = selectedSlotDate === 'custom' ? (slotCustomDate || 'custom') : selectedSlotDate;
+    const key = `${courtId}-${activeDateKey}-${hourIndex}`;
     if (slotsState[key]) {
       return { status: slotsState[key] };
     }
-    if (hourIndex === 12 || hourIndex === 13 || hourIndex === 14) {
-      return { status: 'UNAVAILABLE', bookingCode: `IBS-${9001 + hourIndex}`, bookedBy: 'Confirmed Player' };
+
+    // Match with real live bookings if available
+    const hourLabel = timelineHours[hourIndex];
+    const activeDateYmd =
+      selectedSlotDate === 'today'
+        ? todayYmd
+        : selectedSlotDate === 'tomorrow'
+        ? tomorrowYmd
+        : selectedSlotDate === 'day_after'
+        ? dayAfterYmd
+        : slotCustomDate;
+
+    const matchedBooking = liveVenueBookings.find((b) => {
+      const matchCourt =
+        b.court_id === courtId ||
+        !b.court_id ||
+        (b.court_name && courtsList.find((c) => c.id === courtId)?.name.toLowerCase() === b.court_name.toLowerCase());
+      const matchDate = !b.booking_date || b.booking_date === activeDateYmd || b.booking_date.startsWith(activeDateYmd);
+      const matchHour = b.time_slot && (b.time_slot.includes(hourLabel) || b.time_slot.startsWith(hourLabel.slice(0, 5)));
+      return matchCourt && matchDate && matchHour;
+    });
+
+    if (matchedBooking) {
+      if (matchedBooking.booking_status === 'IN_PLAY') {
+        return {
+          status: 'LIVE',
+          bookingCode: matchedBooking.booking_code,
+          bookedBy: `${matchedBooking.customer_name} (Checked In)`,
+        };
+      }
+      if (matchedBooking.booking_status === 'CONFIRMED') {
+        return {
+          status: 'BOOKED',
+          bookingCode: matchedBooking.booking_code,
+          bookedBy: matchedBooking.customer_name,
+        };
+      }
+      if (matchedBooking.booking_status === 'PENDING_PAYMENT') {
+        return {
+          status: 'HOLD',
+          bookingCode: matchedBooking.booking_code,
+          bookedBy: 'Hold - Payment Pending',
+        };
+      }
     }
+
+    // Realistic state showcase across hours
+    // Hour 14: 08:00 PM -> Live (Checked in)
+    if (hourIndex === 14) {
+      return { status: 'LIVE', bookingCode: 'IBS-LIVE88', bookedBy: 'Player Checked In (In-Play)' };
+    }
+    // Hour 4: 10:00 AM -> Maintenance (Turf maintenance)
+    if (hourIndex === 4) {
+      return { status: 'MAINTENANCE', bookingCode: 'MAINT-04', bookedBy: 'Court Maintenance' };
+    }
+    // Hours 12 (06:00 PM) & 13 (07:00 PM) -> Booked
+    if (hourIndex === 12 || hourIndex === 13) {
+      return { status: 'BOOKED', bookingCode: `IBS-${9001 + hourIndex}`, bookedBy: 'Confirmed Player' };
+    }
+    // Hour 11 (05:00 PM) -> Hold
     if (hourIndex === 11) {
       return { status: 'HOLD', bookingCode: 'HOLD-10M', bookedBy: 'Payment in Progress' };
     }
@@ -1379,12 +1489,27 @@ export default function VenueModularOverviewPage() {
   };
 
   const handleToggleTimelineSlot = (courtId: string, hourIndex: number) => {
-    const key = `${courtId}-${selectedSlotDate}-${hourIndex}`;
+    const activeDateKey = selectedSlotDate === 'custom' ? (slotCustomDate || 'custom') : selectedSlotDate;
+    const key = `${courtId}-${activeDateKey}-${hourIndex}`;
     const current = getSlotStatus(courtId, hourIndex).status;
-    const next = current === 'AVAILABLE' ? 'HOLD' : current === 'HOLD' ? 'UNAVAILABLE' : 'AVAILABLE';
+
+    let next: 'AVAILABLE' | 'HOLD' | 'BOOKED' | 'LIVE' | 'MAINTENANCE' = 'AVAILABLE';
+    if (current === 'AVAILABLE') next = 'HOLD';
+    else if (current === 'HOLD') next = 'BOOKED';
+    else if (current === 'BOOKED' || current === 'UNAVAILABLE') next = 'LIVE';
+    else if (current === 'LIVE') next = 'MAINTENANCE';
+    else if (current === 'MAINTENANCE') next = 'AVAILABLE';
+
     setSlotsState((prev) => ({ ...prev, [key]: next }));
-    const label = next === 'AVAILABLE' ? 'Open for Bookings' : next === 'HOLD' ? 'Placed on Hold' : 'Marked Blocked';
-    setStatusNotification(`Slot at ${timelineHours[hourIndex]} ${label}`);
+
+    const labelMap: Record<string, string> = {
+      AVAILABLE: 'Open for Bookings (Available)',
+      HOLD: 'Placed on Hold (10m)',
+      BOOKED: 'Marked Booked',
+      LIVE: 'Player Checked-in (LIVE)',
+      MAINTENANCE: 'Blocked for Maintenance',
+    };
+    setStatusNotification(`Slot at ${timelineHours[hourIndex]} ${labelMap[next] || next}`);
     setTimeout(() => setStatusNotification(null), 2500);
   };
 
@@ -3759,93 +3884,204 @@ export default function VenueModularOverviewPage() {
       ======================================================== */}
       {activeTab === 'slots' && (
         <div className="space-y-4 animate-in fade-in duration-150">
-          {/* Controls Bar: Date Selector & Court Filter */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Date:</span>
-              <div className="flex items-center gap-1">
-                {[
-                  { key: 'today', label: 'Today (9 Mar)' },
-                  { key: 'tomorrow', label: 'Tomorrow (10 Mar)' },
-                  { key: 'day_after', label: 'Wed (11 Mar)' },
-                ].map((d) => (
-                  <button
-                    key={d.key}
-                    type="button"
-                    onClick={() => setSelectedSlotDate(d.key as any)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-all ${
-                      selectedSlotDate === d.key
-                        ? 'bg-slate-900 text-white font-bold'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    {d.label}
-                  </button>
-                ))}
+          {/* Controls Bar: Date Selector, Date Picker, Court Filter & Legend */}
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3.5 bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs">
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Quick Date Pills */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Date:</span>
+                <div className="flex items-center gap-1">
+                  {quickDateOptions.map((d) => (
+                    <button
+                      key={d.key}
+                      type="button"
+                      onClick={() => {
+                        setSelectedSlotDate(d.key);
+                        setSlotCustomDate(d.dateStr);
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-all ${
+                        selectedSlotDate === d.key
+                          ? 'bg-slate-900 text-white font-bold shadow-xs'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {d.label}
+                    </button>
+                  ))}
+                </div>
               </div>
+
+              {/* Date Picker Filter Input */}
+              <div className="flex items-center gap-1.5">
+                <div className="relative flex items-center">
+                  <CalendarDays className="absolute left-2.5 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                  <input
+                    type="date"
+                    value={slotCustomDate}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSlotCustomDate(val);
+                      setSelectedSlotDate('custom');
+                    }}
+                    className={`h-8 pl-8 pr-2.5 rounded-xl text-xs font-semibold border cursor-pointer transition-all outline-none ${
+                      selectedSlotDate === 'custom'
+                        ? 'bg-orange-50 border-[#F94001] text-slate-900 ring-2 ring-[#F94001]/20 font-bold'
+                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:border-slate-300'
+                    }`}
+                    title="Select any date from calendar"
+                  />
+                </div>
+                {selectedSlotDate === 'custom' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedSlotDate('today');
+                      setSlotCustomDate(todayYmd);
+                    }}
+                    className="text-[11px] font-bold text-[#F94001] hover:underline cursor-pointer"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+
+              {/* Court Dropdown Filter if multiple courts */}
+              {courtsList.length > 1 && (
+                <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Court:</span>
+                  <select
+                    value={selectedCourtFilterForSlots}
+                    onChange={(e) => setSelectedCourtFilterForSlots(e.target.value)}
+                    className="h-8 px-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 outline-none hover:border-slate-300 cursor-pointer"
+                  >
+                    <option value="ALL">All Courts ({courtsList.length})</option>
+                    {courtsList.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.sport})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
-            {/* Legend */}
-            <div className="flex items-center gap-4 text-xs font-semibold">
+            {/* Comprehensive Legend: Available, Hold (10m), Booked, Live (Check-in), Maintenance */}
+            <div className="flex flex-wrap items-center gap-3 lg:gap-4 text-xs font-semibold">
               <div className="flex items-center gap-1.5">
-                <span className="h-3 w-3 rounded bg-emerald-500" />
+                <span className="h-3 w-3 rounded bg-emerald-500 shrink-0" />
                 <span className="text-slate-700">Available</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="h-3 w-3 rounded bg-amber-400" />
+                <span className="h-3 w-3 rounded bg-amber-400 shrink-0" />
                 <span className="text-slate-700">Hold (10m)</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="h-3 w-3 rounded bg-slate-800" />
-                <span className="text-slate-700">Booked / Unavailable</span>
+                <span className="h-3 w-3 rounded bg-slate-800 shrink-0" />
+                <span className="text-slate-700">Booked</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="relative flex h-2.5 w-2.5 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-600"></span>
+                </span>
+                <span className="text-blue-700 font-bold">Live (Check-in)</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="h-3 w-3 rounded bg-orange-500 shrink-0" />
+                <span className="text-orange-700">Maintenance</span>
               </div>
             </div>
           </div>
 
           {/* Timeline Matrix Grid */}
           <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden p-4 space-y-4">
-            <p className="text-xs text-slate-500">
-              Click on any slot cell to toggle states: <strong className="text-emerald-700">Available</strong> &rarr; <strong className="text-amber-600">Hold</strong> &rarr; <strong className="text-slate-900">Unavailable / Blocked</strong>.
-            </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <p className="text-xs text-slate-500 flex items-center gap-1.5 flex-wrap">
+                <span>Click on any slot cell to cycle states:</span>
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold text-[11px]">Available</span>
+                <span>&rarr;</span>
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 font-bold text-[11px]">Hold</span>
+                <span>&rarr;</span>
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-slate-900 text-white font-bold text-[11px]">Booked</span>
+                <span>&rarr;</span>
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-600 text-white font-bold text-[11px] animate-pulse">
+                  <span className="h-1.5 w-1.5 rounded-full bg-white"></span>
+                  Live (Check-in)
+                </span>
+                <span>&rarr;</span>
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-orange-100 text-orange-900 font-bold text-[11px] border border-orange-200">
+                  <Wrench className="h-2.5 w-2.5 text-orange-700" />
+                  Maintenance
+                </span>
+              </p>
+              <span className="text-[11px] font-mono font-semibold text-slate-400 shrink-0">
+                Active Date: {selectedSlotDate === 'custom' ? slotCustomDate : selectedSlotDate === 'today' ? todayYmd : selectedSlotDate === 'tomorrow' ? tomorrowYmd : dayAfterYmd}
+              </span>
+            </div>
 
             <div className="space-y-4">
-              {courtsList.map((court) => (
-                <div key={court.id} className="p-3 rounded-xl border border-slate-200/80 bg-slate-50/50 space-y-2">
+              {(selectedCourtFilterForSlots === 'ALL'
+                ? courtsList
+                : courtsList.filter((c) => c.id === selectedCourtFilterForSlots)
+              ).map((court) => (
+                <div key={court.id} className="p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/50 space-y-2.5">
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-900">{court.name}</span>
+                      <span className="font-bold text-slate-900 text-sm">{court.name}</span>
                       <span className="text-[10px] font-bold text-[#F94001] bg-[#FFF1EC] px-2 py-0.5 rounded">
                         {court.sport}
                       </span>
                     </div>
-                    <span className="text-[11px] font-mono text-slate-500">Rate: ₹{court.base_hourly_rate}/hr</span>
+                    <span className="text-[11px] font-mono text-slate-500 font-semibold">Rate: ₹{court.base_hourly_rate}/hr</span>
                   </div>
 
                   {/* Hourly slot buttons */}
                   <div className="grid grid-cols-3 sm:grid-cols-6 lg:grid-cols-8 gap-1.5">
                     {timelineHours.map((hourStr, hourIdx) => {
                       const slot = getSlotStatus(court.id, hourIdx);
+                      const isAvailable = slot.status === 'AVAILABLE';
+                      const isHold = slot.status === 'HOLD';
+                      const isBooked = slot.status === 'BOOKED' || slot.status === 'UNAVAILABLE';
+                      const isLive = slot.status === 'LIVE';
+                      const isMaintenance = slot.status === 'MAINTENANCE';
+
                       return (
                         <button
                           key={hourStr}
                           type="button"
                           onClick={() => handleToggleTimelineSlot(court.id, hourIdx)}
                           className={`p-2 rounded-lg text-[11px] font-semibold text-center transition-all cursor-pointer border ${
-                            slot.status === 'AVAILABLE'
+                            isAvailable
                               ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
-                              : slot.status === 'HOLD'
+                              : isHold
                               ? 'bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200'
+                              : isLive
+                              ? 'bg-blue-600 text-white border-blue-700 hover:bg-blue-700 shadow-xs ring-2 ring-blue-300/80 animate-pulse'
+                              : isMaintenance
+                              ? 'bg-orange-100 text-orange-950 border-orange-300 hover:bg-orange-200'
                               : 'bg-slate-900 text-white border-slate-800 hover:bg-slate-800'
                           }`}
-                          title={`Click to toggle: ${hourStr} (${slot.status})`}
+                          title={`Click to cycle status: ${hourStr} - ${slot.status}${slot.bookedBy ? ` (${slot.bookedBy})` : ''}`}
                         >
                           <div className="font-mono">{hourStr}</div>
-                          <div className="text-[9px] font-bold opacity-80 mt-0.5">
-                            {slot.status === 'AVAILABLE'
-                              ? '₹' + court.base_hourly_rate
-                              : slot.status === 'HOLD'
-                              ? 'HOLD'
-                              : 'BOOKED'}
+                          <div className="text-[9px] font-bold opacity-90 mt-0.5">
+                            {isAvailable ? (
+                              '₹' + court.base_hourly_rate
+                            ) : isHold ? (
+                              'HOLD'
+                            ) : isLive ? (
+                              <span className="inline-flex items-center gap-1 justify-center">
+                                <span className="h-1.5 w-1.5 rounded-full bg-white"></span>
+                                LIVE
+                              </span>
+                            ) : isMaintenance ? (
+                              <span className="inline-flex items-center gap-0.5 justify-center">
+                                <Wrench className="h-2.5 w-2.5 shrink-0" />
+                                MAINT
+                              </span>
+                            ) : (
+                              'BOOKED'
+                            )}
                           </div>
                         </button>
                       );
