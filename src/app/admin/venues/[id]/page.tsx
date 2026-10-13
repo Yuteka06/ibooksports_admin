@@ -181,6 +181,20 @@ export default function VenueModularOverviewPage() {
     }
   };
 
+  // Cancellations Pagination & Slide Bar Drawer State
+  const [cancellationCurrentPage, setCancellationCurrentPage] = useState<number>(1);
+  const [cancellationPageSize, setCancellationPageSize] = useState<number>(10);
+  const [selectedCancellationForDrawer, setSelectedCancellationForDrawer] = useState<BookingItem | null>(null);
+  const [cancellationCopiedText, setCancellationCopiedText] = useState<string | null>(null);
+
+  const handleCopyCancellationText = (text: string, id: string) => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCancellationCopiedText(id);
+      setTimeout(() => setCancellationCopiedText(null), 2000);
+    }
+  };
+
   // Staff pagination computations
   const staffTotalItems = staffMembers.length;
   const staffTotalPages = Math.max(1, Math.ceil(staffTotalItems / staffPageSize));
@@ -499,10 +513,15 @@ export default function VenueModularOverviewPage() {
             advance_amount: Number(b.advance_amount || b.advanceAmount || b.paid_amount || b.paidAmount) || 0,
             balance_amount: Number(b.balance_amount || b.balanceAmount) || 0,
             payment_status: (b.payment_status || b.paymentStatus || 'PAID') as any,
-            booking_status: (b.status === 'Confirmed' ? 'CONFIRMED' : (b.booking_status || b.status || 'CONFIRMED')) as any,
+            booking_status: (b.status === 'Cancelled' ? 'CANCELLED' : b.status === 'Confirmed' ? 'CONFIRMED' : (b.booking_status || b.status || 'CONFIRMED')) as any,
             payment_method: b.payment_method || b.paymentMethod || 'UPI',
             transaction_id: b.transaction_id || b.transactionId || `TXN-${b.id}`,
             created_at: b.created_at || b.createdAt || new Date().toISOString(),
+            cancellation_reason: b.cancellation_reason || b.cancellationReason || b.cancel_reason,
+            cancelled_at: b.cancelled_at || b.cancelledAt,
+            refund_amount: Number(b.refund_amount || b.refundAmount || 0),
+            refund_status: b.refund_status || b.refundStatus || (b.status === 'Cancelled' ? 'WALLET_CREDITED' : undefined),
+            refund_utr: b.refund_utr || b.refundUtr,
           }));
         setLiveVenueBookings(filteredB);
 
@@ -1063,6 +1082,14 @@ export default function VenueModularOverviewPage() {
     return venueBookings.filter((b: BookingItem) => b.booking_status === 'CANCELLED' || (b.refund_amount && b.refund_amount > 0));
   }, [venueBookings]);
 
+  // Cancellations pagination computations
+  const cancellationTotalItems = venueCancellations.length;
+  const cancellationTotalPages = Math.max(1, Math.ceil(cancellationTotalItems / cancellationPageSize));
+  const cancellationStartIndex = (cancellationCurrentPage - 1) * cancellationPageSize;
+  const paginatedCancellations = useMemo(() => {
+    return venueCancellations.slice(cancellationStartIndex, cancellationStartIndex + cancellationPageSize);
+  }, [venueCancellations, cancellationStartIndex, cancellationPageSize]);
+
   // Filtered Settlements (Real live data only)
   const venueSettlements = useMemo<SettlementBatchItem[]>(() => {
     return liveVenueSettlements;
@@ -1375,7 +1402,7 @@ export default function VenueModularOverviewPage() {
             { key: 'bookings', label: 'Bookings', icon: CalendarCheck, count: venueBookings.length },
             { key: 'settlement', label: 'Settlement', icon: Landmark, count: venueSettlements.length },
             { key: 'staff', label: 'Staff', icon: Users, count: staffMembers.length },
-            { key: 'slots', label: 'Slots Timeline', icon: Clock, count: 'Live' },
+            { key: 'slots', label: 'Slots Timeline', icon: Clock, count: null },
             { key: 'cancellation', label: 'Cancellations', icon: AlertCircle, count: venueCancellations.length },
             { key: 'support', label: 'Support Requests', icon: LifeBuoy, count: venueSupportTickets.length },
           ].map((tab) => {
@@ -1549,13 +1576,6 @@ export default function VenueModularOverviewPage() {
                     <span className="font-medium">
                       Total {courtsList.length} Playing Pitches · 1 Court = 1 Sport strictly configured
                     </span>
-                    <button
-                      type="button"
-                      onClick={handleOpenNewCourtRequestModal}
-                      className="text-xs font-bold text-[#F94001] hover:underline cursor-pointer"
-                    >
-                      + Request Court Extension
-                    </button>
                   </div>
                 </div>
               </div>
@@ -2780,15 +2800,14 @@ export default function VenueModularOverviewPage() {
                             {b.booking_status}
                           </span>
                         </td>
-                        <td className="py-2.5 px-3 text-center">
+                        <td className="py-2.5 px-3 text-center whitespace-nowrap">
                           <button
                             type="button"
                             onClick={() => setSelectedBookingForDrawer(b)}
-                            className="h-7 px-2.5 rounded-lg border border-slate-200 hover:border-[#F94001] hover:text-[#F94001] bg-white text-slate-600 text-xs font-semibold inline-flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                            className="h-7 w-7 rounded-lg border border-slate-200 hover:border-[#F94001]/40 hover:text-[#F94001] hover:bg-[#FFF1EC] bg-white text-slate-500 inline-flex items-center justify-center cursor-pointer transition-all shadow-2xs mx-auto"
                             title="Inspect Booking Details"
                           >
-                            <Eye className="h-3 w-3" />
-                            <span>Inspect</span>
+                            <Eye className="h-3.5 w-3.5" />
                           </button>
                         </td>
                       </tr>
@@ -3076,7 +3095,7 @@ export default function VenueModularOverviewPage() {
                             </span>
                           </td>
 
-                          {/* Actions: Details Button */}
+                          {/* Actions: Eye Icon Button Only */}
                           <td className="py-3 px-4 text-center whitespace-nowrap align-middle">
                             <button
                               type="button"
@@ -3084,10 +3103,10 @@ export default function VenueModularOverviewPage() {
                                 e.stopPropagation();
                                 setSelectedStaffForDrawer(staff);
                               }}
-                              className="h-7 px-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-[#F94001] hover:border-[#F94001]/40 hover:bg-[#FFF1EC] text-xs font-semibold inline-flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
+                              className="h-7 w-7 rounded-lg border border-slate-200 bg-white hover:bg-[#FFF1EC] text-slate-500 hover:text-[#F94001] hover:border-[#F94001]/40 inline-flex items-center justify-center shadow-2xs transition-all cursor-pointer mx-auto"
+                              title="View Staff Details"
                             >
-                              <Eye className="h-3 w-3 text-slate-500" />
-                              <span>Details &gt;</span>
+                              <Eye className="h-3.5 w-3.5" />
                             </button>
                           </td>
                         </tr>
@@ -3433,6 +3452,7 @@ export default function VenueModularOverviewPage() {
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-slate-200/90 bg-slate-50/75 text-slate-500 font-semibold tracking-wider text-[10px] uppercase select-none">
+                    <th className="py-2.5 px-3 text-center w-12">#</th>
                     <th className="py-2.5 px-3">Customer ID & Name</th>
                     <th className="py-2.5 px-3">Booking Code</th>
                     <th className="py-2.5 px-3">Slot Schedule</th>
@@ -3441,31 +3461,49 @@ export default function VenueModularOverviewPage() {
                     <th className="py-2.5 px-3">Refund Amount</th>
                     <th className="py-2.5 px-3">Reason</th>
                     <th className="py-2.5 px-3">Status</th>
+                    <th className="py-2.5 px-3 text-center w-16">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {venueCancellations.length === 0 ? (
+                  {cancellationTotalItems === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-12 text-center text-slate-400">
+                      <td colSpan={10} className="py-12 text-center text-slate-400">
                         Zero cancellations logged for this arena.
                       </td>
                     </tr>
                   ) : (
-                    venueCancellations.map((b) => (
-                      <tr key={b.id} className="hover:bg-slate-50/70">
+                    paginatedCancellations.map((b, index) => (
+                      <tr key={b.id || index} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="py-2.5 px-3 text-center font-mono text-slate-500 font-semibold">
+                          {cancellationStartIndex + index + 1}
+                        </td>
                         <td className="py-2.5 px-3">
                           <div className="font-bold text-slate-900">{b.customer_name}</div>
                           <div className="text-[10px] font-mono text-slate-400">{b.customer_id}</div>
                         </td>
-                        <td className="py-2.5 px-3 font-mono font-bold text-[#F94001]">{b.booking_code}</td>
+                        <td className="py-2.5 px-3 font-mono font-bold text-[#F94001] whitespace-nowrap">{b.booking_code}</td>
                         <td className="py-2.5 px-3">
-                          <div>{b.booking_date}</div>
+                          <div className="font-medium text-slate-800">{b.booking_date}</div>
                           <div className="text-[10px] font-mono text-slate-400">{b.time_slot}</div>
                         </td>
-                        <td className="py-2.5 px-3 font-mono font-bold text-slate-900">₹{b.total_amount}</td>
-                        <td className="py-2.5 px-3 text-slate-600">{b.cancelled_at || '2026-03-04 16:30'}</td>
-                        <td className="py-2.5 px-3 font-mono font-black text-emerald-700">
-                          ₹{b.refund_amount || b.total_amount}
+                        <td className="py-2.5 px-3">
+                          <div className="font-mono font-bold text-slate-900">
+                            ₹{b.total_amount?.toLocaleString('en-IN') || 0}
+                          </div>
+                          <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wider uppercase bg-slate-100 text-slate-600 border border-slate-200">
+                            {b.payment_method || 'UPI'}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">
+                          {b.cancelled_at || '2026-03-04 16:30'}
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <div className="font-mono font-black text-emerald-700">
+                            ₹{(b.refund_amount || b.total_amount)?.toLocaleString('en-IN')}
+                          </div>
+                          <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wider uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            {b.payment_method ? `${b.payment_method} (Reversed)` : 'UPI (Reversed)'}
+                          </span>
                         </td>
                         <td className="py-2.5 px-3 text-slate-600 max-w-[200px] truncate" title={b.cancellation_reason}>
                           {b.cancellation_reason || 'Inclement weather cancellation'}
@@ -3475,11 +3513,112 @@ export default function VenueModularOverviewPage() {
                             {b.refund_status || 'WALLET_CREDITED'}
                           </span>
                         </td>
+                        <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedCancellationForDrawer(b)}
+                            className="h-7 w-7 rounded-lg border border-slate-200 hover:border-[#F94001]/40 hover:text-[#F94001] hover:bg-[#FFF1EC] bg-white text-slate-500 inline-flex items-center justify-center cursor-pointer transition-all shadow-2xs mx-auto"
+                            title="View Cancellation Details"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                          </button>
+                        </td>
                       </tr>
                     ))
                   )}
                 </tbody>
               </table>
+            </div>
+
+            {/* Pagination Bar */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3.5 border-t border-slate-200/90 bg-slate-50/50 text-xs text-slate-600 select-none">
+              <div className="flex items-center gap-4">
+                <span>
+                  Showing{' '}
+                  <strong className="text-slate-900 font-semibold">
+                    {cancellationTotalItems === 0 ? 0 : cancellationStartIndex + 1}
+                  </strong>{' '}
+                  to{' '}
+                  <strong className="text-slate-900 font-semibold">
+                    {Math.min(cancellationStartIndex + cancellationPageSize, cancellationTotalItems)}
+                  </strong>{' '}
+                  of <strong className="text-slate-900 font-semibold">{cancellationTotalItems}</strong> entries
+                </span>
+
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-400 text-[11px]">Rows per page:</span>
+                  <select
+                    value={cancellationPageSize}
+                    onChange={(e) => {
+                      setCancellationPageSize(Number(e.target.value));
+                      setCancellationCurrentPage(1);
+                    }}
+                    className="h-7 px-2 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:border-slate-300 focus:outline-none focus:border-[#F94001] cursor-pointer"
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  disabled={cancellationCurrentPage <= 1}
+                  onClick={() => setCancellationCurrentPage((prev) => Math.max(1, prev - 1))}
+                  className="h-8 px-2.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 text-xs font-semibold transition-all shadow-2xs cursor-pointer"
+                  title="Previous Page"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                  <span>Prev</span>
+                </button>
+
+                <div className="flex items-center gap-1 px-1">
+                  {Array.from({ length: cancellationTotalPages }, (_, i) => i + 1)
+                    .filter((p) => {
+                      return (
+                        p === 1 ||
+                        p === cancellationTotalPages ||
+                        Math.abs(p - cancellationCurrentPage) <= 1
+                      );
+                    })
+                    .map((p, idx, arr) => {
+                      const prevPageNum = arr[idx - 1];
+                      const showEllipsis = prevPageNum && p - prevPageNum > 1;
+                      return (
+                        <React.Fragment key={p}>
+                          {showEllipsis && (
+                            <span className="px-1 text-slate-400 text-xs">...</span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setCancellationCurrentPage(p)}
+                            className={`h-8 min-w-[32px] px-2 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer ${
+                              cancellationCurrentPage === p
+                                ? 'bg-[#F94001] text-white border border-[#F94001]'
+                                : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        </React.Fragment>
+                      );
+                    })}
+                </div>
+
+                <button
+                  type="button"
+                  disabled={cancellationCurrentPage >= cancellationTotalPages}
+                  onClick={() => setCancellationCurrentPage((prev) => Math.min(cancellationTotalPages, prev + 1))}
+                  className="h-8 px-2.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 text-xs font-semibold transition-all shadow-2xs cursor-pointer"
+                  title="Next Page"
+                >
+                  <span>Next</span>
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -5007,6 +5146,265 @@ export default function VenueModularOverviewPage() {
                 className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs transition-colors cursor-pointer"
               >
                 Close Dossier
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          SLIDE BAR (DRAWER) FOR CANCELLATION DETAILS
+      ======================================================== */}
+      {selectedCancellationForDrawer && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex justify-end animate-in fade-in duration-150"
+          onClick={() => setSelectedCancellationForDrawer(null)}
+        >
+          <div
+            className="w-full max-w-lg bg-white h-full shadow-2xl flex flex-col border-l border-slate-200 animate-in slide-in-from-right duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Drawer Header */}
+            <div className="p-5 border-b border-slate-200 flex items-center justify-between shrink-0 bg-slate-50/70">
+              <div className="space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-widest text-[#F94001]">
+                  CANCELLATION &amp; REFUND AUDIT DOSSIER
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 font-mono text-[11px] font-bold">
+                    {selectedCancellationForDrawer.booking_code}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 font-bold text-[10px]">
+                    {selectedCancellationForDrawer.refund_status || 'WALLET_CREDITED'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 font-medium">
+                  {currentVenue.venue_name} &bull; {currentVenue.district || currentVenue.state}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedCancellationForDrawer(null)}
+                className="h-8 w-8 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 flex items-center justify-center cursor-pointer transition-colors"
+                title="Close Drawer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Drawer Body */}
+            <div className="p-5 overflow-y-auto flex-1 space-y-4 text-xs">
+              {/* CARD 1: Customer Profile */}
+              <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-[#F94001]" />
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-900">
+                      Customer &amp; Booker Information
+                    </span>
+                  </div>
+                  <span className="font-mono text-[10px] text-slate-400">
+                    ID: {selectedCancellationForDrawer.customer_id}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-extrabold text-sm text-slate-900">
+                      {selectedCancellationForDrawer.customer_name}
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-0.5">Primary Booker</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] text-slate-400 block font-medium">Customer Phone</span>
+                    {selectedCancellationForDrawer.customer_phone ? (
+                      <div className="flex items-center gap-1 mt-0.5 justify-end">
+                        <a
+                          href={`tel:${selectedCancellationForDrawer.customer_phone}`}
+                          className="font-mono font-bold text-slate-800 hover:text-[#F94001] transition-colors"
+                        >
+                          {selectedCancellationForDrawer.customer_phone}
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyCancellationText(selectedCancellationForDrawer.customer_phone, 'phone')}
+                          className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 cursor-pointer"
+                          title="Copy phone"
+                        >
+                          {cancellationCopiedText === 'phone' ? (
+                            <Check className="h-3 w-3 text-emerald-600" />
+                          ) : (
+                            <Copy className="h-3 w-3" />
+                          )}
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-slate-400 italic">Not available</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* CARD 2: Slot & Court Specifications */}
+              <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <CalendarCheck className="h-4 w-4 text-[#F94001]" />
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-900">
+                      Cancelled Slot &amp; Match Schedule
+                    </span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full bg-slate-900 text-white font-mono text-[10px] font-bold uppercase">
+                    {selectedCancellationForDrawer.sport}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className="text-[10px] text-slate-400 block font-medium">Playing Court</span>
+                    <span className="font-bold text-slate-800 text-xs mt-0.5 block">
+                      {selectedCancellationForDrawer.court_name || 'Court 1'}
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className="text-[10px] text-slate-400 block font-medium">Match Date</span>
+                    <span className="font-bold text-slate-800 text-xs mt-0.5 block">
+                      {selectedCancellationForDrawer.booking_date}
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className="text-[10px] text-slate-400 block font-medium">Reserved Slot</span>
+                    <span className="font-mono font-bold text-slate-800 text-xs mt-0.5 block">
+                      {selectedCancellationForDrawer.time_slot}
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className="text-[10px] text-slate-400 block font-medium">Duration</span>
+                    <span className="font-bold text-slate-800 text-xs mt-0.5 block">
+                      {selectedCancellationForDrawer.duration_minutes || 60} Minutes
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* CARD 3: Payment & Refund Breakdown */}
+              <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <Landmark className="h-4 w-4 text-[#F94001]" />
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-900">
+                      Payment &amp; Refund Audit Breakdown
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold">
+                    Reversal Verified
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-medium">Original Paid Amount</span>
+                      <span className="font-mono font-bold text-slate-900 text-sm">
+                        ₹{selectedCancellationForDrawer.total_amount?.toLocaleString('en-IN') || 0}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-slate-400 block font-medium">Payment Mode</span>
+                      <span className="font-bold text-slate-800 uppercase text-xs mt-0.5 block">
+                        {selectedCancellationForDrawer.payment_method || 'UPI'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200/80">
+                    <div>
+                      <span className="text-[10px] text-emerald-800 block font-medium">Total Refund Reversal</span>
+                      <span className="font-mono font-black text-emerald-700 text-base">
+                        ₹{(selectedCancellationForDrawer.refund_amount || selectedCancellationForDrawer.total_amount)?.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-emerald-800 block font-medium">Refund Channel</span>
+                      <span className="font-bold text-emerald-900 text-xs mt-0.5 block">
+                        {selectedCancellationForDrawer.payment_method ? `${selectedCancellationForDrawer.payment_method} Reversal` : 'UPI Source Reversal'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5 text-[11px]">
+                    <div className="flex items-center justify-between text-slate-500">
+                      <span>Original Transaction ID:</span>
+                      <span className="font-mono font-bold text-slate-800">
+                        {selectedCancellationForDrawer.transaction_id || `TXN-${selectedCancellationForDrawer.id}`}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-slate-500">
+                      <span>Refund Reference / UTR:</span>
+                      <span className="font-mono font-bold text-emerald-700">
+                        {selectedCancellationForDrawer.refund_utr || `REF-UTR-${selectedCancellationForDrawer.booking_code.replace(/[^a-zA-Z0-9]/g, '')}`}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-slate-500 pt-1 border-t border-slate-200/60">
+                      <span>Venue Payout Deducted:</span>
+                      <span className="font-mono font-semibold text-slate-700">
+                        ₹{(selectedCancellationForDrawer.venue_share || Math.round((selectedCancellationForDrawer.total_amount || 0) * 0.9)).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-slate-500">
+                      <span>Platform Commission Reversed:</span>
+                      <span className="font-mono font-semibold text-slate-700">
+                        ₹{(selectedCancellationForDrawer.platform_fee || Math.round((selectedCancellationForDrawer.total_amount || 0) * 0.1)).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* CARD 4: Reason & Cancellation Audit Trail */}
+              <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-[#F94001]" />
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-900">
+                      Cancellation Reason &amp; Audit Trail
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-amber-50/60 border border-amber-200/70 space-y-1">
+                  <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider block">
+                    Reason Logged
+                  </span>
+                  <p className="text-xs font-semibold text-slate-800 leading-relaxed">
+                    {selectedCancellationForDrawer.cancellation_reason || 'Inclement weather cancellation / Customer requested cancellation'}
+                  </p>
+                </div>
+
+                <div className="space-y-1.5 text-[11px] text-slate-500">
+                  <div className="flex items-center justify-between">
+                    <span>Cancelled At:</span>
+                    <span className="font-semibold text-slate-800">
+                      {selectedCancellationForDrawer.cancelled_at || '2026-03-04 16:30'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Policy Adherence:</span>
+                    <span className="font-semibold text-emerald-700">100% Refund Approved</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Drawer Footer */}
+            <div className="p-4 border-t border-slate-200 bg-slate-50 shrink-0 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedCancellationForDrawer(null)}
+                className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-colors cursor-pointer"
+              >
+                Close Drawer
               </button>
             </div>
           </div>
