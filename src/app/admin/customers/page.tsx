@@ -24,6 +24,7 @@ import {
   ShieldCheck,
   ExternalLink,
   ChevronRight,
+  ChevronLeft,
   Activity,
   Receipt,
   RotateCcw,
@@ -57,6 +58,8 @@ export default function CustomerManagementPage() {
 
   // Filter state for main customers list
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [tierFilter, setTierFilter] = useState('ALL');
   const [sortBy, setSortBy] = useState<'spend' | 'hours' | 'bookings' | 'name' | 'id'>('spend');
 
@@ -142,19 +145,75 @@ export default function CustomerManagementPage() {
           formattedId.includes(q) ||
           c.id.toLowerCase().includes(q);
 
-        const matchesTier = tierFilter === 'ALL' || c.tier === tierFilter;
-
-        return matchesSearch && matchesTier;
+        return matchesSearch;
       })
-      .sort((a, b) => {
-        if (sortBy === 'spend') return b.total_spent - a.total_spent;
-        if (sortBy === 'hours') return (b.total_hours_spent || 0) - (a.total_hours_spent || 0);
-        if (sortBy === 'bookings') return b.total_bookings - a.total_bookings;
-        if (sortBy === 'name') return a.name.localeCompare(b.name);
-        if (sortBy === 'id') return a.id.localeCompare(b.id);
-        return 0;
-      });
-  }, [customers, searchQuery, tierFilter, sortBy]);
+      .sort((a, b) => b.total_spent - a.total_spent);
+  }, [customers, searchQuery]);
+
+  // Pagination computations
+  const totalItems = filteredCustomers.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedCustomers = useMemo(() => {
+    return filteredCustomers.slice(startIndex, startIndex + pageSize);
+  }, [filteredCustomers, startIndex, pageSize]);
+
+  // Helper to compute due amount and payment types for a customer
+  const getCustomerPaymentInfo = (cust: CustomerItem) => {
+    const custBookings = allBookings.filter(
+      (b) =>
+        b.customer_id === cust.id ||
+        (b.customer_name && cust.name && b.customer_name.toLowerCase() === cust.name.toLowerCase()) ||
+        (b.customer_phone && cust.phone && b.customer_phone.replace(/\D/g, '') === cust.phone.replace(/\D/g, ''))
+    );
+
+    let totalDue = 0;
+    let dueType = 'Due: Cash';
+    let paymentMethod = (cust.recent_booking as any)?.payment_method || '';
+
+    custBookings.forEach((b: any) => {
+      if (b.payment_method) {
+        paymentMethod = b.payment_method;
+      }
+      if (b.booking_status !== 'CANCELLED' && b.payment_status !== 'FAILED') {
+        const bal = b.balance_amount !== undefined ? Number(b.balance_amount) : 0;
+        if (bal > 0) {
+          totalDue += bal;
+          if (b.due_mode === 'ONLINE') {
+            dueType = 'Due: Online';
+          } else {
+            dueType = 'Due: Cash';
+          }
+        }
+      }
+    });
+
+    if (!paymentMethod) {
+      const pay = allPayments.find(
+        (p) =>
+          p.customer_phone === cust.phone ||
+          (p.customer_name && cust.name && p.customer_name.toLowerCase() === cust.name.toLowerCase())
+      );
+      if (pay?.payment_method) {
+        paymentMethod = pay.payment_method;
+      }
+    }
+
+    const raw = (paymentMethod || 'UPI').toUpperCase();
+    const cleanPayType = raw.includes('CASH')
+      ? 'CASH'
+      : raw.includes('CARD')
+      ? 'CARD'
+      : raw.includes('ONLINE')
+      ? 'ONLINE'
+      : 'UPI';
+
+    return {
+      totalDue,
+      dueType,
+      paymentType: cleanPayType,
+    };
+  };
 
   // Overall KPIs for main list (NO WALLET)
   const totalPlayers = customers.length;
@@ -1271,37 +1330,13 @@ export default function CustomerManagementPage() {
   return (
     <div className="animate-in fade-in duration-300 space-y-6">
       {/* 1. PAGE HEADER */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#E5E7EB] pb-5">
-        <div>
-          <div className="inline-flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wider text-[#F94001] bg-[#FFF1EC] border border-[#F94001]/20 px-3 py-1 rounded-full mb-2">
-            <Users className="h-3.5 w-3.5 text-[#F94001]" />
-            <span>Player &amp; Customer Directory &bull; Multi-State Network</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#021526] font-display">
-            Customer Management
-          </h1>
-          <p className="text-xs sm:text-sm text-[#5F6368] mt-1 font-medium">
-            Registered customer IDs, contact details, venue reservations, court hours spent, total booking pay, and real-time reservation history.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => fetchCustomerData(true)}
-            disabled={refreshing || loading}
-            className="px-3.5 py-2 rounded-xl bg-white border border-[#E5E7EB] hover:bg-slate-50 shadow-xs flex items-center gap-2 text-xs font-bold text-slate-700 transition-all cursor-pointer disabled:opacity-60"
-            title="Reload live customer records"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 text-[#F94001] ${refreshing ? 'animate-spin' : ''}`} />
-            <span>{refreshing ? 'Syncing...' : 'Refresh'}</span>
-          </button>
-
-          <div className="px-3.5 py-2 rounded-xl bg-white border border-[#E5E7EB] shadow-xs flex items-center gap-2 text-xs font-bold text-slate-700">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>{customers.length} Verified Players</span>
-          </div>
-        </div>
+      <div className="border-b border-[#E5E7EB] pb-5">
+        <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#021526] font-display">
+          Customer Management
+        </h1>
+        <p className="text-xs sm:text-sm text-[#5F6368] mt-1 font-medium">
+          Registered customer IDs, contact details, venue reservations, court hours spent, total booking pay, and real-time reservation history.
+        </p>
       </div>
 
       {/* 2. OPERATIONAL KPI METRICS ROW (CLEAN & SATISFYING - NO WALLET!) */}
@@ -1391,100 +1426,56 @@ export default function CustomerManagementPage() {
         </div>
       </div>
 
-      {/* 3. SEARCH, TIER AND SORT CONTROLS */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-[#E5E7EB] shadow-xs">
-        {/* Live Search Input */}
-        <div className="relative flex-1 min-w-[280px]">
+      {/* 3. SEARCH CONTROLS */}
+      <div className="bg-white p-3 rounded-2xl border border-[#E5E7EB] shadow-xs">
+        <div className="relative w-full">
           <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-[#5F6368]" />
           <input
             type="text"
             placeholder="Search customer ID, name, phone, email, district, state..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
             className="w-full rounded-xl bg-slate-50 border border-[#E5E7EB] pl-10 pr-9 py-2 text-xs text-[#021526] placeholder-[#5F6368] focus:bg-white focus:border-[#F94001] focus:ring-2 focus:ring-[#F94001]/10 transition-all outline-none font-medium"
           />
           {searchQuery && (
             <button
               type="button"
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
+              onClick={() => {
+                setSearchQuery('');
+                setCurrentPage(1);
+              }}
+              className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
             >
               <X className="h-4 w-4" />
             </button>
           )}
         </div>
-
-        {/* Dropdown Filters & Sorters */}
-        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5">
-          {/* Tier Selector */}
-          <div className="relative min-w-[140px] flex-1 sm:flex-none">
-            <select
-              value={tierFilter}
-              onChange={(e) => setTierFilter(e.target.value)}
-              className="w-full appearance-none pl-8 pr-8 py-2 rounded-xl border border-[#E5E7EB] bg-slate-50 text-xs font-bold text-[#021526] focus:outline-none focus:border-[#F94001] focus:ring-1 focus:ring-[#F94001] transition-colors cursor-pointer"
-            >
-              <option value="ALL">All Loyalty Tiers</option>
-              <option value="PLATINUM">Platinum Tier</option>
-              <option value="GOLD">Gold Tier</option>
-              <option value="SILVER">Silver Tier</option>
-              <option value="REGULAR">Regular Tier</option>
-            </select>
-            <Trophy className="h-3.5 w-3.5 absolute left-2.5 top-2.5 text-amber-500 pointer-events-none" />
-          </div>
-
-          {/* Sort Selector */}
-          <div className="relative min-w-[170px] flex-1 sm:flex-none">
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              className="w-full appearance-none pl-8 pr-8 py-2 rounded-xl border border-[#E5E7EB] bg-slate-50 text-xs font-bold text-[#021526] focus:outline-none focus:border-[#F94001] focus:ring-1 focus:ring-[#F94001] transition-colors cursor-pointer"
-            >
-              <option value="spend">Sort: Highest Total Pay</option>
-              <option value="hours">Sort: Most Hours Spent</option>
-              <option value="bookings">Sort: Most Bookings</option>
-              <option value="name">Sort: Player Name (A-Z)</option>
-              <option value="id">Sort: Customer ID</option>
-            </select>
-            <ArrowUpDown className="h-3.5 w-3.5 absolute left-2.5 top-2.5 text-slate-500 pointer-events-none" />
-          </div>
-
-          {/* Reset Filters */}
-          {(searchQuery || tierFilter !== 'ALL') && (
-            <button
-              type="button"
-              onClick={() => {
-                setSearchQuery('');
-                setTierFilter('ALL');
-              }}
-              className="px-3 py-2 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 shrink-0"
-              title="Reset all filters"
-            >
-              <X className="h-3.5 w-3.5" />
-              <span>Reset</span>
-            </button>
-          )}
-        </div>
       </div>
 
-      {/* 5. MINIMAL & MAIN CONTENT DATA TABLE (WITH LAST BOOKING ID & DATE) */}
+      {/* 5. MINIMAL & MAIN CONTENT DATA TABLE (WITH SERIAL NO, TOTAL COST PAID WITH PAYMENT TYPE, DUE AMOUNT & PAGINATION) */}
       <div className="rounded-2xl bg-white border border-slate-200/90 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="border-b border-slate-200/90 bg-slate-50/75 text-slate-500 font-semibold tracking-wider text-[11px] uppercase select-none">
+              <tr className="border-b border-slate-200/90 bg-slate-50/75 text-slate-500 font-semibold tracking-wider text-[10px] uppercase select-none">
+                <th className="py-3 px-3 text-center w-12">#</th>
                 <th className="py-3 px-4 w-[110px]">Customer ID</th>
-                <th className="py-3 px-4 min-w-[220px]">Customer Details</th>
+                <th className="py-3 px-4 min-w-[200px]">Customer Details</th>
                 <th className="py-3 px-4 min-w-[120px]">Total Bookings</th>
-                <th className="py-3 px-4 min-w-[130px]">Total Hours Spent</th>
-                <th className="py-3 px-4 min-w-[130px]">Total Cost Paid</th>
-                <th className="py-3 px-4 min-w-[170px]">Last Booking</th>
-                <th className="py-3 px-4 text-center w-[100px]">Actions</th>
+                <th className="py-3 px-4 min-w-[120px]">Total Hours Spent</th>
+                <th className="py-3 px-4 min-w-[140px]">Total Cost Paid</th>
+                <th className="py-3 px-4 min-w-[130px]">Due Amount</th>
+                <th className="py-3 px-4 min-w-[160px]">Last Booking</th>
+                <th className="py-3 px-4 text-center w-[90px]">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-16 text-center text-slate-400">
+                  <td colSpan={9} className="py-16 text-center text-slate-400">
                     <div className="flex flex-col items-center justify-center gap-3">
                       <Loader2 className="h-7 w-7 text-[#F94001] animate-spin" />
                       <p className="font-bold text-xs text-slate-700">Fetching live customer directory...</p>
@@ -1494,19 +1485,20 @@ export default function CustomerManagementPage() {
                 </tr>
               ) : filteredCustomers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                  <td colSpan={9} className="py-12 text-center text-slate-400">
                     <p className="font-semibold text-xs text-slate-700">No matching customers found</p>
                     <p className="text-[11px] text-slate-400 mt-0.5">
-                      Try adjusting your search query or tier filter
+                      Try adjusting your search query keywords
                     </p>
                   </td>
                 </tr>
               ) : (
-                filteredCustomers.map((cust) => {
+                paginatedCustomers.map((cust, index) => {
                   const displayId = formatCustomerId(cust.id);
                   const isCopied = copiedId === cust.id;
                   const hoursSpent = cust.total_hours_spent || Math.round(cust.total_bookings * 1.4);
                   const recent = cust.recent_booking;
+                  const { totalDue, dueType, paymentType } = getCustomerPaymentInfo(cust);
 
                   return (
                     <tr
@@ -1517,7 +1509,12 @@ export default function CustomerManagementPage() {
                       }}
                       className="hover:bg-slate-50/70 transition-colors group cursor-pointer"
                     >
-                      {/* 1. CUSTOMER ID */}
+                      {/* 1. SERIAL NO */}
+                      <td className="py-3.5 px-3 align-middle text-center font-mono font-semibold text-slate-500">
+                        {startIndex + index + 1}
+                      </td>
+
+                      {/* 2. CUSTOMER ID */}
                       <td className="py-3.5 px-4 align-middle whitespace-nowrap">
                         <div className="inline-flex items-center gap-1.5">
                           <span className="font-mono text-xs font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
@@ -1541,7 +1538,7 @@ export default function CustomerManagementPage() {
                         </div>
                       </td>
 
-                      {/* 2. CUSTOMER DETAILS (NAME & PHONE ONLY - NO EMAIL FOR CLEAN TABLE ALIGNMENT) */}
+                      {/* 3. CUSTOMER DETAILS */}
                       <td className="py-3.5 px-4 align-middle whitespace-nowrap">
                         <div className="space-y-0.5">
                           <p className="font-bold text-slate-900 text-xs tracking-tight group-hover:text-[#F94001] transition-colors whitespace-nowrap">
@@ -1558,7 +1555,7 @@ export default function CustomerManagementPage() {
                         </div>
                       </td>
 
-                      {/* 3. TOTAL BOOKINGS */}
+                      {/* 4. TOTAL BOOKINGS */}
                       <td className="py-3.5 px-4 align-middle whitespace-nowrap">
                         <div className="space-y-0.5">
                           <span className="font-mono font-bold text-xs text-slate-900">
@@ -1574,7 +1571,7 @@ export default function CustomerManagementPage() {
                         </div>
                       </td>
 
-                      {/* 4. TOTAL HOURS SPENT */}
+                      {/* 5. TOTAL HOURS SPENT */}
                       <td className="py-3.5 px-4 align-middle whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
                           <Clock className="h-3.5 w-3.5 text-amber-500 shrink-0" />
@@ -1587,17 +1584,40 @@ export default function CustomerManagementPage() {
                         </div>
                       </td>
 
-                      {/* 5. TOTAL COST PAID (NO WALLET - DIRECT PAYMENT) */}
+                      {/* 6. TOTAL COST PAID (WITH PAYMENT TYPE LIKE UPI) */}
                       <td className="py-3.5 px-4 align-middle whitespace-nowrap">
                         <div className="space-y-0.5">
-                          <p className="font-mono font-black text-xs text-emerald-700">
+                          <p className="font-mono font-black text-xs text-slate-900">
                             ₹{cust.total_spent.toLocaleString('en-IN')}
                           </p>
-                          <p className="text-[10px] text-slate-400 font-medium">Direct payment</p>
+                          <span className="inline-block px-1.5 py-0.2 rounded text-[10px] font-bold font-mono bg-purple-50 text-purple-700 border border-purple-200">
+                            {paymentType}
+                          </span>
                         </div>
                       </td>
 
-                      {/* 6. LAST BOOKING (ID & DATE) */}
+                      {/* 7. DUE AMOUNT & PAYMENT TYPE */}
+                      <td className="py-3.5 px-4 align-middle whitespace-nowrap font-mono">
+                        {totalDue > 0 ? (
+                          <div className="space-y-0.5">
+                            <span className="font-bold text-xs text-amber-700">
+                              ₹{totalDue.toLocaleString('en-IN')}
+                            </span>
+                            <span className="block text-[10px] font-sans font-bold text-amber-800 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200 w-fit">
+                              {dueType}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="space-y-0.5">
+                            <span className="font-medium text-xs text-slate-600">₹0</span>
+                            <span className="block text-[10px] font-sans font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200 w-fit">
+                              Cleared
+                            </span>
+                          </div>
+                        )}
+                      </td>
+
+                      {/* 8. LAST BOOKING */}
                       <td className="py-3.5 px-4 align-middle whitespace-nowrap">
                         {recent ? (
                           <div className="space-y-1">
@@ -1629,7 +1649,7 @@ export default function CustomerManagementPage() {
                         )}
                       </td>
 
-                      {/* 7. ACTIONS (OPENS CUSTOMER DETAIL VIEW) */}
+                      {/* 9. ACTIONS */}
                       <td className="py-3.5 px-4 align-middle text-center whitespace-nowrap">
                         <button
                           type="button"
@@ -1639,7 +1659,7 @@ export default function CustomerManagementPage() {
                             setDetailTab('overview');
                           }}
                           className="h-7.5 px-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-[#F94001] hover:border-[#F94001]/40 hover:bg-[#FFF1EC] text-xs font-semibold inline-flex items-center gap-1 shadow-2xs transition-all cursor-pointer active:scale-95"
-                          title="Open Customer Details &amp; Venue Management"
+                          title="Open Customer Details"
                         >
                           <Eye className="h-3 w-3 text-slate-500" />
                           <span>Details &gt;</span>
@@ -1652,6 +1672,93 @@ export default function CustomerManagementPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Bar */}
+        {totalItems > 0 && (
+          <div className="p-3.5 border-t border-slate-200/80 bg-slate-50/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+            <div className="flex items-center gap-3">
+              <span>
+                Showing <strong className="text-slate-900">{startIndex + 1}</strong> to{' '}
+                <strong className="text-slate-900">
+                  {Math.min(startIndex + pageSize, totalItems)}
+                </strong>{' '}
+                of <strong className="text-slate-900">{totalItems}</strong> customers
+              </span>
+              <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200">
+                <span className="text-[11px] text-slate-500">Rows:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 outline-none cursor-pointer hover:border-slate-300"
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                className="h-8 px-2.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 text-xs font-semibold transition-all shadow-2xs cursor-pointer"
+                title="Previous Page"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+                <span>Prev</span>
+              </button>
+
+              <div className="flex items-center gap-1 px-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((p) => {
+                    return (
+                      p === 1 ||
+                      p === totalPages ||
+                      Math.abs(p - currentPage) <= 1
+                    );
+                  })
+                  .map((p, idx, arr) => {
+                    const prevPageNum = arr[idx - 1];
+                    const showEllipsis = prevPageNum && p - prevPageNum > 1;
+                    return (
+                      <React.Fragment key={p}>
+                        {showEllipsis && (
+                          <span className="px-1 text-slate-400 text-xs">...</span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setCurrentPage(p)}
+                          className={`h-8 min-w-[32px] px-2 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer ${
+                            currentPage === p
+                              ? 'bg-[#F94001] text-white border border-[#F94001]'
+                              : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      </React.Fragment>
+                    );
+                  })}
+              </div>
+
+              <button
+                type="button"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                className="h-8 px-2.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 text-xs font-semibold transition-all shadow-2xs cursor-pointer"
+                title="Next Page"
+              >
+                <span>Next</span>
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
