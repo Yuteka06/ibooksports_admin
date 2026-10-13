@@ -91,6 +91,7 @@ import {
   CourtExtensionHistory,
 } from '@/lib/mockData';
 import { apiClient, onboardingApi, adminApi } from '@/lib/api';
+import DocumentPreview from '@/components/admin/DocumentPreview';
 
 const REJECTION_REASONS = [
   { value: 'PRICING_OUT_OF_BOUNDS', label: 'Hourly pricing violates regional slot rate caps' },
@@ -2176,9 +2177,11 @@ export default function VenueModularOverviewPage() {
                     </div>
                     <span className="text-[11px] font-black text-slate-800 tracking-wider uppercase">Operating Schedule</span>
                   </div>
-                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                    Open 7 Days
-                  </span>
+                  {(currentVenue?.operating_hours?.day_schedules?.length || 0) > 0 && (
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      Open {currentVenue!.operating_hours!.day_schedules!.filter((d: { is_open: boolean }) => d.is_open).length} Days
+                    </span>
+                  )}
                 </div>
 
                 <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -2200,28 +2203,9 @@ export default function VenueModularOverviewPage() {
                       </div>
                     ))
                   ) : (
-                    [
-                      { dayKey: 'Mon', dayName: 'Monday', time: '06:00 AM – 10:00 PM' },
-                      { dayKey: 'Tue', dayName: 'Tuesday', time: '06:00 AM – 10:00 PM' },
-                      { dayKey: 'Wed', dayName: 'Wednesday', time: '06:00 AM – 10:00 PM' },
-                      { dayKey: 'Thu', dayName: 'Thursday', time: '06:00 AM – 10:00 PM' },
-                      { dayKey: 'Fri', dayName: 'Friday', time: '06:00 AM – 10:00 PM' },
-                      { dayKey: 'Sat', dayName: 'Saturday', time: '06:00 AM – 11:00 PM' },
-                      { dayKey: 'Sun', dayName: 'Sunday', time: '06:00 AM – 11:00 PM' },
-                    ].map((day) => (
-                      <div
-                        key={day.dayKey}
-                        className="flex items-center justify-between p-2 rounded-xl bg-slate-50/70 border border-slate-100 text-xs"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="w-8 text-center text-[10px] font-black text-slate-600 uppercase bg-slate-200/70 rounded py-0.5">
-                            {day.dayKey}
-                          </span>
-                          <span className="font-bold text-slate-800">{day.dayName}</span>
-                        </div>
-                        <span className="font-mono text-[11px] font-bold text-slate-700">{day.time}</span>
-                      </div>
-                    ))
+                    <div className="sm:col-span-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 font-semibold">
+                      Operating hours were not provided in the onboarding application.
+                    </div>
                   )}
                 </div>
               </div>
@@ -2289,7 +2273,7 @@ export default function VenueModularOverviewPage() {
                             <p className="font-bold text-slate-900 text-xs truncate">Aadhaar Card</p>
                             <p className="text-[10px] font-mono text-slate-500 truncate">{currentVenue.owner.aadhaar_document_id}</p>
                             <p className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
-                              <Check className="h-2.5 w-2.5" /> Uploaded &amp; Verified
+                              <Check className="h-2.5 w-2.5" /> Uploaded
                             </p>
                           </div>
                         </div>
@@ -2324,7 +2308,7 @@ export default function VenueModularOverviewPage() {
                             <p className="font-bold text-slate-900 text-xs truncate">Profile Photo ID</p>
                             <p className="text-[10px] font-mono text-slate-500 truncate">{currentVenue.owner.profile_photo_document_id}</p>
                             <p className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
-                              <Check className="h-2.5 w-2.5" /> Uploaded &amp; Verified
+                              <Check className="h-2.5 w-2.5" /> Uploaded
                             </p>
                           </div>
                         </div>
@@ -2359,7 +2343,7 @@ export default function VenueModularOverviewPage() {
                             <p className="font-bold text-slate-900 text-xs truncate">PAN Card Document</p>
                             <p className="text-[10px] font-mono text-slate-500 truncate">{currentVenue.owner.pan_document_id}</p>
                             <p className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
-                              <Check className="h-2.5 w-2.5" /> Uploaded &amp; Verified
+                              <Check className="h-2.5 w-2.5" /> Uploaded
                             </p>
                           </div>
                         </div>
@@ -2394,7 +2378,7 @@ export default function VenueModularOverviewPage() {
                             <p className="font-bold text-slate-900 text-xs truncate">GST Registration Certificate</p>
                             <p className="text-[10px] font-mono text-slate-500 truncate">{currentVenue.gst_document_id}</p>
                             <p className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
-                              <Check className="h-2.5 w-2.5" /> Uploaded &amp; Verified
+                              <Check className="h-2.5 w-2.5" /> Uploaded
                             </p>
                           </div>
                         </div>
@@ -2429,7 +2413,7 @@ export default function VenueModularOverviewPage() {
                             <p className="font-bold text-slate-900 text-xs truncate">Bank Account Proof</p>
                             <p className="text-[10px] font-mono text-slate-500 truncate">{currentVenue.bank.branch_proof_document_id}</p>
                             <p className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
-                              <Check className="h-2.5 w-2.5" /> Uploaded &amp; Verified
+                              <Check className="h-2.5 w-2.5" /> Uploaded
                             </p>
                           </div>
                         </div>
@@ -2487,13 +2471,13 @@ export default function VenueModularOverviewPage() {
                     <div>
                       <span className="text-slate-400 text-[10px] uppercase font-semibold tracking-wider">Bank Name</span>
                       <h4 className="text-lg font-black text-slate-900 mt-0.5 tracking-tight">
-                        {currentVenue?.bank?.bank_name || 'HDFC Bank'}
+                        {currentVenue?.bank?.bank_name || 'Not provided'}
                       </h4>
                     </div>
                     <div className="text-right">
                       <span className="text-slate-400 text-[10px] uppercase font-semibold tracking-wider">Account</span>
                       <p className="text-sm font-mono font-bold text-slate-900 mt-0.5 tracking-wider">
-                        {currentVenue?.bank?.account_number_masked || '•••• 4512'}
+                        {currentVenue?.bank?.account_number_masked || 'Not provided'}
                       </p>
                     </div>
                   </div>
@@ -2503,7 +2487,7 @@ export default function VenueModularOverviewPage() {
                     <div className="bg-slate-50/80 rounded-xl p-2.5 border border-slate-100">
                       <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider block">IFSC Code</span>
                       <span className="font-mono font-bold text-slate-900 text-xs mt-0.5 block">
-                        {currentVenue?.bank?.ifsc_code || 'HDFC0000123'}
+                        {currentVenue?.bank?.ifsc_code || 'Not provided'}
                       </span>
                     </div>
                     <div className="bg-slate-50/80 rounded-xl p-2.5 border border-slate-100">
@@ -5222,21 +5206,12 @@ export default function VenueModularOverviewPage() {
             {/* Dynamic Document Display - Real Uploaded File */}
             <div className="flex-1 overflow-hidden bg-slate-100 rounded-2xl border border-slate-200 flex items-center justify-center min-h-[400px] max-h-[70vh]">
               {documentPreviewModal.url ? (
-                documentPreviewModal.isPdf ? (
-                  <iframe
-                    src={documentPreviewModal.url}
-                    title={documentPreviewModal.title}
-                    className="w-full h-[68vh] bg-white border-0 rounded-2xl"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center p-4 bg-slate-950/95 overflow-auto rounded-2xl">
-                    <img
-                      src={documentPreviewModal.url}
-                      alt={documentPreviewModal.title}
-                      className="max-h-[64vh] max-w-full object-contain rounded-lg shadow-xl"
-                    />
-                  </div>
-                )
+                <DocumentPreview
+                  url={documentPreviewModal.url}
+                  title={documentPreviewModal.title}
+                  imageClassName="max-h-[64vh] max-w-full object-contain rounded-lg shadow-xl"
+                  frameClassName="w-full h-[68vh] bg-white border-0 rounded-2xl"
+                />
               ) : (
                 <div className="p-8 text-center space-y-2">
                   <AlertCircle className="h-8 w-8 text-slate-400 mx-auto" />

@@ -223,8 +223,8 @@ export default function VenuesManagementPage() {
   const activeVenuesCount = statusCounts.ACTIVE;
   const inactiveVenuesCount = statusCounts.INACTIVE;
   const totalCourts = venues.reduce((acc, v) => acc + (v.courts || (v.court_list ? v.court_list.length : 0)), 0);
-  const totalTodayBookings = venues.reduce((acc, v) => acc + (v.status === 'ACTIVE' ? (v.today_bookings_count || 12) : 0), 0);
-  const totalTodayRevenue = venues.reduce((acc, v) => acc + (v.status === 'ACTIVE' ? (v.today_booking_revenue || 15000) : 0), 0);
+  const totalTodayBookings = venues.reduce((acc, v) => acc + (v.status === 'ACTIVE' ? (v.today_bookings_count || 0) : 0), 0);
+  const totalTodayRevenue = venues.reduce((acc, v) => acc + (v.status === 'ACTIVE' ? (v.today_booking_revenue || 0) : 0), 0);
 
   // Helper for formatted venue ID
   const formatVenueId = (id: string) => {

@@ -815,9 +815,12 @@ export interface OnboardingRejectionReason {
   reason: string;
 }
 
+/** IN_PROGRESS -> UNDER_REVIEW -> APPROVED | REJECTED -> RESUBMITTED -> APPROVED | REJECTED */
+export type OnboardingApplicationStatus = 'IN_PROGRESS' | 'UNDER_REVIEW' | 'RESUBMITTED' | 'APPROVED' | 'REJECTED';
+
 export interface OnboardingStatusResponse {
   application_id: string;
-  status: 'DRAFT' | 'SUBMITTED' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
+  status: OnboardingApplicationStatus;
   current_step: number;
   updated_at: string;
   message: string;
@@ -902,7 +905,7 @@ export interface OnboardingSessionData {
     account_type: string;
     branch_proof_document_id: string;
   };
-  status: 'DRAFT' | 'SUBMITTED' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
+  status: OnboardingApplicationStatus;
   rejection_reasons?: OnboardingRejectionReason[];
   app_access_link?: string;
   approved_by?: string;
@@ -1107,7 +1110,7 @@ export const onboardingApi = {
     const response = await apiClient.post<{
       success: boolean;
       application_id: string;
-      status: 'PENDING_REVIEW';
+      status: 'UNDER_REVIEW' | 'RESUBMITTED';
       message: string;
       updated_at: string;
     }>('/onboarding/submit', { declaration_accepted }, {

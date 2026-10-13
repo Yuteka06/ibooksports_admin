@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import DocumentPreview from '@/components/admin/DocumentPreview';
 import Link from 'next/link';
 import {
   UserCheck,
@@ -310,14 +311,16 @@ export default function PartnerOnboardingAdminTrackerPage() {
   };
 
 
+  // Partner is still filling the form: never shown in the admin module.
   const isDraftStatus = (status?: string) => {
     const s = (status || '').toUpperCase();
-    return s === 'DRAFT';
+    return s === 'IN_PROGRESS' || s === 'DRAFT';
   };
 
+  // First submission waiting for review (legacy SUBMITTED / PENDING_REVIEW included).
   const isSubmittedStatus = (status?: string) => {
     const s = (status || '').toUpperCase();
-    return ['SUBMITTED', 'PENDING', 'PENDING_REVIEW', 'UNDER_REVIEW'].includes(s);
+    return ['UNDER_REVIEW', 'SUBMITTED', 'PENDING', 'PENDING_REVIEW'].includes(s);
   };
 
   const isApprovedStatus = (status?: string) => {
@@ -330,17 +333,10 @@ export default function PartnerOnboardingAdminTrackerPage() {
     return s === 'REJECTED';
   };
 
+  // Corrected by the partner after a rejection and submitted again.
   const isResubmissionStatus = (status?: string) => {
     const s = (status || '').toUpperCase();
-    return [
-      'NEEDS_CORRECTION',
-      'CORRECTIONS_REQUIRED',
-      'CORRECTION_REQUESTED',
-      'CORRECTION_REQUIRED',
-      'CHANGES_REQUESTED',
-      'RESUBMISSION',
-      'RESUBMITTED',
-    ].includes(s);
+    return s === 'RESUBMITTED';
   };
 
   const filteredApps = applications.filter((app) => {
@@ -387,10 +383,10 @@ export default function PartnerOnboardingAdminTrackerPage() {
         </span>
       );
     }
-    if (['PENDING', 'PENDING_REVIEW', 'UNDER_REVIEW', 'SUBMITTED'].includes(normalized)) {
+    if (isSubmittedStatus(normalized)) {
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono bg-amber-50 text-amber-800 border border-amber-200">
-          <Clock className="h-3 w-3 text-amber-600" /> SUBMITTED
+          <Clock className="h-3 w-3 text-amber-600" /> UNDER REVIEW
         </span>
       );
     }
@@ -401,16 +397,16 @@ export default function PartnerOnboardingAdminTrackerPage() {
         </span>
       );
     }
-    if (['NEEDS_CORRECTION', 'CORRECTIONS_REQUIRED', 'CORRECTION_REQUESTED', 'CORRECTION_REQUIRED', 'CHANGES_REQUESTED', 'RESUBMISSION', 'RESUBMITTED'].includes(normalized)) {
+    if (isResubmissionStatus(normalized)) {
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono bg-orange-50 text-orange-800 border border-orange-200">
-          <AlertCircle className="h-3 w-3 text-orange-600" /> RESUBMISSION
+          <AlertCircle className="h-3 w-3 text-orange-600" /> RESUBMITTED
         </span>
       );
     }
     return (
       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono bg-slate-100 text-slate-700 border border-slate-200">
-        <Layers className="h-3 w-3 text-slate-500" /> {normalized || 'SUBMITTED'}
+        <Layers className="h-3 w-3 text-slate-500" /> {normalized.replace(/_/g, ' ') || 'UNDER REVIEW'}
       </span>
     );
   };
@@ -559,15 +555,15 @@ export default function PartnerOnboardingAdminTrackerPage() {
           </div>
         </div>
 
-        {/* SEARCH, KPI STATUS FILTERS (DRAFT REMOVED) */}
+        {/* SEARCH, KPI STATUS FILTERS (IN_PROGRESS applications are not shown) */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-3 rounded-2xl border border-slate-200">
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-full">
             {[
               { key: 'ALL', label: 'All', count: totalCount },
-              { key: 'SUBMITTED', label: 'Submitted', count: submittedCount },
+              { key: 'SUBMITTED', label: 'Under Review', count: submittedCount },
               { key: 'APPROVED', label: 'Approved', count: approvedCount },
               { key: 'REJECTED', label: 'Reject', count: rejectCount },
-              { key: 'RESUBMISSION', label: 'Resubmission', count: resubmissionCount },
+              { key: 'RESUBMISSION', label: 'Resubmitted', count: resubmissionCount },
             ].map(({ key, label, count }) => (
               <button
                 key={key}
@@ -780,16 +776,16 @@ export default function PartnerOnboardingAdminTrackerPage() {
                           </div>
                         )}
 
-                        {/* RESUBMISSION: Show Resubmission Details */}
+                        {/* RESUBMITTED: corrected by the partner, waiting for review again */}
                         {isResubmissionStatus(app.status) && (
                           <div className="mt-1">
                             <span className="text-[10px] text-orange-600 font-medium">
-                              Changes Requested
+                              Corrected &amp; resubmitted - awaiting review
                             </span>
                           </div>
                         )}
 
-                        {/* SUBMITTED: Show Pending state */}
+                        {/* UNDER REVIEW: first submission waiting for review */}
                         {isSubmittedStatus(app.status) && (
                           <div className="mt-1">
                             <span className="text-[10px] text-slate-400">
@@ -1824,21 +1820,12 @@ export default function PartnerOnboardingAdminTrackerPage() {
             {/* Minimal Document Viewer Body */}
             <div className="flex-1 overflow-hidden bg-slate-100 flex items-center justify-center min-h-[420px] max-h-[82vh]">
               {selectedDocPreview.fileUrl ? (
-                selectedDocPreview.docType === 'COURT_PHOTO' || selectedDocPreview.docType === 'PROFILE_PHOTO' ? (
-                  <div className="w-full h-full flex items-center justify-center p-4 bg-slate-950/95 overflow-auto">
-                    <img
-                      src={selectedDocPreview.fileUrl}
-                      alt={selectedDocPreview.title}
-                      className="max-h-[78vh] max-w-full w-auto object-contain rounded-lg shadow-xl"
-                    />
-                  </div>
-                ) : (
-                  <iframe
-                    src={selectedDocPreview.fileUrl}
-                    title={selectedDocPreview.title}
-                    className="w-full h-[78vh] bg-white border-0"
-                  />
-                )
+                <DocumentPreview
+                  url={selectedDocPreview.fileUrl}
+                  title={selectedDocPreview.title}
+                  imageClassName="max-h-[78vh] max-w-full w-auto object-contain rounded-lg shadow-xl"
+                  frameClassName="w-full h-[78vh] bg-white border-0"
+                />
               ) : (
                 <div className="p-10 text-center space-y-2">
                   <AlertCircle className="h-8 w-8 text-slate-400 mx-auto" />
