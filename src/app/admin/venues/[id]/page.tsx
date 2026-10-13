@@ -2420,143 +2420,157 @@ export default function VenueModularOverviewPage() {
                     return (
                       <div
                         key={req.id}
-                        className={`bg-white rounded-2xl border p-4.5 shadow-2xs space-y-3.5 transition-all hover:shadow-md flex flex-col justify-between ${
-                          isRejected
-                            ? 'border-rose-300 ring-1 ring-rose-200/50'
-                            : isApproved
-                            ? 'border-emerald-200 bg-emerald-50/10'
-                            : reqStatusUpper === 'RESUBMITTED'
-                            ? 'border-purple-200 ring-1 ring-purple-100'
-                            : 'border-slate-200/90'
-                        }`}
+                        className="bg-white rounded-2xl border border-slate-200/90 overflow-hidden shadow-2xs hover:shadow-md transition-all flex flex-col justify-between"
                       >
-                        <div className="space-y-3">
-                          {/* Header: ID, Round, Sport, Status */}
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="font-mono text-xs font-bold text-slate-500">{req.id}</span>
-                                <span className="px-1.5 py-0.2 rounded-md bg-slate-100 text-slate-700 font-mono text-[10px] font-bold">
-                                  Round {req.submission_round || 1}
-                                </span>
-                                <span className="px-1.5 py-0.2 rounded-md bg-orange-50 text-[#F94001] border border-orange-200/60 text-[10px] font-extrabold uppercase">
-                                  {req.sport}
-                                </span>
-                              </div>
-                              <h3 className="text-sm font-black text-slate-900 tracking-tight mt-1 leading-snug">
-                                {req.court_name}
-                              </h3>
-                              <p className="text-[11px] text-slate-500 font-medium truncate">{req.display_name}</p>
-                            </div>
-
-                            {/* Status Badge */}
-                            <div className="shrink-0">
-                              {(reqStatusUpper === 'SUBMITTED' || reqStatusUpper === 'NEW_REQUEST' || reqStatusUpper === 'PENDING') && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200/80">
-                                  <Clock className="h-3 w-3 text-amber-600" />
-                                  <span>1st Submitted</span>
-                                </span>
-                              )}
-                              {reqStatusUpper === 'RESUBMITTED' && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-purple-50 text-purple-800 border border-purple-200/80">
-                                  <RotateCcw className="h-3 w-3 text-purple-600" />
-                                  <span>Resubmitted (R{req.submission_round})</span>
-                                </span>
-                              )}
-                              {isApproved && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200/80">
-                                  <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                                  <span>Approved</span>
-                                </span>
-                              )}
-                              {isRejected && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-800 border border-rose-200/80">
-                                  <X className="h-3 w-3 text-rose-600" />
-                                  <span>Rejected</span>
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Specs Grid */}
-                          <div className="bg-slate-50/80 rounded-xl p-2.5 border border-slate-200/70 grid grid-cols-2 gap-2 text-[11px]">
-                            <div>
-                              <span className="text-slate-400 text-[10px] font-mono block uppercase">Ground Type</span>
-                              <span className="font-bold text-slate-800 truncate block">
+                        {/* Top Content: Badges, Title, Pricing Box, Specs, Policy */}
+                        <div className="p-4 space-y-3.5 flex-1">
+                          {/* Header: Sport & Ground Badges + Status Pill */}
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="px-2.5 py-0.5 rounded-md bg-slate-900 text-white font-black text-[10px] tracking-wider uppercase font-mono">
+                                {req.sport}
+                              </span>
+                              <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold text-[10px]">
                                 {req.same_physical_sports ? 'Shared Ground' : 'Separate Ground'}
                               </span>
                             </div>
-                            <div>
-                              <span className="text-slate-400 text-[10px] font-mono block uppercase">Standard Rate</span>
-                              <span className="font-mono font-bold text-slate-900 block">₹{req.regular_price || req.price_per_hour}/hr</span>
-                            </div>
-                            <div>
-                              <span className="text-slate-400 text-[10px] font-mono block uppercase">Peak Rate</span>
-                              <span className="font-mono font-bold text-[#F94001] block">
-                                ₹{req.peak_price}/hr
+
+                            {/* Status Pill matching Image 2 */}
+                            {isApproved && (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                <span>Approved</span>
+                              </span>
+                            )}
+                            {isRejected && (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200 shrink-0">
+                                <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                                <span>Rejected</span>
+                              </span>
+                            )}
+                            {isPending && reqStatusUpper === 'RESUBMITTED' && (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-50 text-purple-700 border border-purple-200 shrink-0">
+                                <span className="h-1.5 w-1.5 rounded-full bg-purple-500" />
+                                <span>Resubmitted (R{req.submission_round || 2})</span>
+                              </span>
+                            )}
+                            {isPending && reqStatusUpper !== 'RESUBMITTED' && (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 shrink-0">
+                                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                                <span>1st Submitted</span>
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Court Name & Display Name */}
+                          <div>
+                            <h3 className="text-base font-black text-slate-900 tracking-tight leading-snug">
+                              {req.court_name}
+                            </h3>
+                            <p className="text-xs text-slate-500 font-medium mt-0.5 line-clamp-1">
+                              {req.display_name}
+                            </p>
+                          </div>
+
+                          {/* Pricing Tiers Box matching Image 2 */}
+                          <div className="bg-slate-50/80 rounded-xl p-3 border border-slate-100 space-y-2">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-slate-500 font-medium">Standard Rate</span>
+                              <span className="font-mono font-bold text-slate-900 text-sm">
+                                ₹{Number(req.regular_price || req.price_per_hour || 1000).toLocaleString('en-IN')}<span className="text-[10px] font-normal text-slate-400">/hr</span>
                               </span>
                             </div>
-                            <div>
-                              <span className="text-slate-400 text-[10px] font-mono block uppercase">Weekend Rate</span>
-                              <span className="font-mono font-bold text-amber-800 block">
-                                ₹{req.weekend_price}/hr
+
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-[#F94001] font-medium flex items-center gap-1">
+                                <Flame className="h-3 w-3" />
+                                <span>Peak ({req.peak_hours_start || '06:00 PM'}–{req.peak_hours_end || '10:00 PM'})</span>
+                              </span>
+                              <span className="font-mono font-bold text-[#F94001] text-sm">
+                                ₹{Number(req.peak_price || req.price_per_hour || 1400).toLocaleString('en-IN')}<span className="text-[10px] font-normal text-orange-300">/hr</span>
+                              </span>
+                            </div>
+
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-amber-700 font-medium flex items-center gap-1">
+                                <Sun className="h-3 w-3 text-amber-500" />
+                                <span>Weekend ({Array.isArray(req.peak_days) && req.peak_days.length > 0 ? req.peak_days.join(', ') : 'Sat, Sun'})</span>
+                              </span>
+                              <span className="font-mono font-bold text-slate-800 text-sm">
+                                ₹{Number(req.weekend_price || req.price_per_hour || 1500).toLocaleString('en-IN')}<span className="text-[10px] font-normal text-slate-400">/hr</span>
                               </span>
                             </div>
                           </div>
 
-                          {/* Cancellation Policy Chip */}
-                          <div className="bg-emerald-50/70 border border-emerald-200/70 rounded-xl p-2 text-[11px] flex items-center justify-between text-emerald-800">
-                            <div className="flex items-center gap-1.5 font-medium">
-                              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                              <span>Cancel up to {req.cancellation_policy_hours || req.cancellation_window_hours || 12}h notice</span>
+                          {/* Operating Specs Strip matching Image 2 */}
+                          <div className="grid grid-cols-2 gap-2 text-[11px]">
+                            <div className="p-2 rounded-lg bg-slate-50/60 border border-slate-100">
+                              <span className="text-slate-400 font-medium block text-[10px] uppercase tracking-wider">Min Booking</span>
+                              <span className="font-bold text-slate-800 flex items-center gap-1 mt-0.5">
+                                <Clock className="h-3 w-3 text-slate-400" />
+                                {req.min_booking_duration_label || req.min_booking_duration || '60 mins'}
+                              </span>
                             </div>
-                            <span className="font-bold font-mono">{req.refund_percentage}% Refund</span>
+                            <div className="p-2 rounded-lg bg-slate-50/60 border border-slate-100">
+                              <span className="text-slate-400 font-medium block text-[10px] uppercase tracking-wider">Ground Type</span>
+                              <span className="font-bold text-slate-800 text-[11px] block mt-0.5 truncate">
+                                {req.same_physical_sports ? 'Shared Ground' : 'Separate Ground'}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Cancellation Policy Banner matching Image 2 */}
+                          <div className="bg-emerald-50/70 border border-emerald-200/60 rounded-xl p-2.5 flex items-center gap-2 text-[11px] text-emerald-800">
+                            <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                            <span className="line-clamp-2">
+                              Free cancel up to <strong>{req.cancellation_policy_hours || req.cancellation_window_hours || 12}h</strong> prior ({req.refund_percentage || 100}% refund)
+                            </span>
                           </div>
 
                           {/* IF APPROVED: Reviewer Stamp */}
                           {isApproved && (
-                            <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-xl p-2.5 flex items-center gap-2 text-xs text-emerald-900">
-                              <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
-                              <div className="min-w-0">
-                                <p className="font-bold text-[11px] truncate">
-                                  Approved by: <span className="text-emerald-800 font-extrabold">{req.reviewed_by || 'Platform Super Admin'}</span>
-                                </p>
-                                {req.reviewed_at && (
-                                  <p className="text-[10px] text-emerald-700/80 font-mono">
-                                    {typeof req.reviewed_at === 'string'
-                                      ? (req.reviewed_at.includes('T') ? req.reviewed_at.split('T')[0] : req.reviewed_at.split(' ')[0])
-                                      : ''}
-                                  </p>
-                                )}
+                            <div className="bg-emerald-50/70 border border-emerald-200/60 rounded-xl p-2.5 flex items-center justify-between gap-2 text-[11px] text-emerald-900">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                                <span className="font-bold truncate">
+                                  Approved by <span className="font-extrabold text-emerald-950">{req.reviewed_by || 'Platform Super Admin'}</span>
+                                </span>
                               </div>
+                              {req.reviewed_at && (
+                                <span className="text-[10px] text-emerald-700/80 font-mono shrink-0">
+                                  {typeof req.reviewed_at === 'string'
+                                    ? (req.reviewed_at.includes('T') ? req.reviewed_at.split('T')[0] : req.reviewed_at.split(' ')[0])
+                                    : ''}
+                                </span>
+                              )}
                             </div>
                           )}
 
                           {/* IF REJECTED: Reviewer Stamp & Reason */}
                           {isRejected && (
-                            <div className="bg-rose-50/90 border border-rose-200 rounded-xl p-2.5 space-y-1.5 animate-in fade-in duration-150">
-                              <div className="flex items-center gap-2 text-xs text-rose-900">
-                                <ShieldCheck className="h-4 w-4 text-rose-600 shrink-0" />
-                                <div className="min-w-0">
-                                  <p className="font-bold text-[11px] truncate">
-                                    Rejected by: <span className="text-rose-800 font-extrabold">{req.reviewed_by || 'Platform Super Admin'}</span>
-                                  </p>
-                                  {req.reviewed_at && (
-                                    <p className="text-[10px] text-rose-700/80 font-mono">
-                                      {typeof req.reviewed_at === 'string'
-                                        ? (req.reviewed_at.includes('T') ? req.reviewed_at.split('T')[0] : req.reviewed_at.split(' ')[0])
-                                        : ''}
-                                    </p>
-                                  )}
+                            <div className="bg-rose-50/80 border border-rose-200/70 rounded-xl p-2.5 space-y-1.5 text-xs text-rose-900">
+                              <div className="flex items-center justify-between text-[11px]">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <ShieldCheck className="h-3.5 w-3.5 text-rose-600 shrink-0" />
+                                  <span className="font-bold truncate">
+                                    Rejected by <span className="font-extrabold text-rose-950">{req.reviewed_by || 'Platform Super Admin'}</span>
+                                  </span>
                                 </div>
+                                {req.reviewed_at && (
+                                  <span className="text-[10px] text-rose-700/80 font-mono shrink-0">
+                                    {typeof req.reviewed_at === 'string'
+                                      ? (req.reviewed_at.includes('T') ? req.reviewed_at.split('T')[0] : req.reviewed_at.split(' ')[0])
+                                      : ''}
+                                  </span>
+                                )}
                               </div>
                               {req.rejection_reason && (
-                                <p className="text-[11px] text-rose-800 font-bold">
+                                <p className="text-[10px] text-rose-800 font-bold">
                                   Reason: {req.rejection_reason}
                                 </p>
                               )}
                               {req.rejection_note && (
-                                <p className="text-[11px] text-rose-800 font-medium bg-white/80 p-2 rounded-lg border border-rose-100">
+                                <p className="text-[10px] text-rose-800 bg-white/80 p-2 rounded-lg border border-rose-100 font-medium">
                                   &ldquo;{req.rejection_note}&rdquo;
                                 </p>
                               )}
@@ -2564,23 +2578,29 @@ export default function VenueModularOverviewPage() {
                           )}
                         </div>
 
-                        {/* Action Buttons */}
-                        <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedCourtRequestForDrawer(req)}
-                            className="h-8 w-8 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-500 hover:text-[#F94001] hover:border-[#F94001]/40 hover:bg-[#FFF1EC] flex items-center justify-center transition-all shadow-2xs cursor-pointer shrink-0"
-                            title="View Court Request Details in Slide Bar"
-                          >
-                            <Eye className="h-3.5 w-3.5" />
-                          </button>
+                        {/* Card Footer matching Image 2 layout */}
+                        <div className="p-3 bg-slate-50/60 border-t border-slate-100 flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 text-slate-400 min-w-0">
+                            <span className="text-[10px] font-mono font-semibold text-slate-500 truncate">{req.id}</span>
+                            <span className="text-[10px] text-slate-300 shrink-0">&bull;</span>
+                            <span className="text-[10px] font-medium text-slate-500 shrink-0">Round {req.submission_round || 1}</span>
+                          </div>
 
-                          {isPending && (
-                            <>
+                          {isPending ? (
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedCourtRequestForDrawer(req)}
+                                className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                                title="Review Details in Slide Bar"
+                              >
+                                <Eye className="h-3.5 w-3.5 text-slate-500" />
+                                <span>Review</span>
+                              </button>
                               <button
                                 type="button"
                                 onClick={() => handleApproveCourtRequest(req)}
-                                className="flex-1 h-8 px-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1 shadow-2xs"
+                                className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
                                 title="Approve Court & Add to Arena"
                               >
                                 <Check className="h-3.5 w-3.5" />
@@ -2592,25 +2612,42 @@ export default function VenueModularOverviewPage() {
                                   setSelectedCourtRequestForDrawer(req);
                                   setIsDrawerRejectOpen(true);
                                 }}
-                                className="flex-1 h-8 px-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
+                                className="px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
                                 title="Reject with Feedback Notes"
                               >
                                 <X className="h-3.5 w-3.5" />
                                 <span>Reject</span>
                               </button>
-                            </>
+                              <button
+                                type="button"
+                                onClick={() => setDeleteConfirmReqId(req.id)}
+                                className="h-7 w-7 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 flex items-center justify-center transition-colors cursor-pointer"
+                                title="Delete Request"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedCourtRequestForDrawer(req)}
+                                className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-800 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                                title="View Court Request Details"
+                              >
+                                <Eye className="h-3 w-3 text-slate-500" />
+                                <span>View Details &rarr;</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setDeleteConfirmReqId(req.id)}
+                                className="h-7 w-7 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 flex items-center justify-center transition-colors cursor-pointer"
+                                title="Delete Request"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
                           )}
-
-                          {!isPending && <div className="flex-1" />}
-
-                          <button
-                            type="button"
-                            onClick={() => setDeleteConfirmReqId(req.id)}
-                            className="h-8 w-8 rounded-xl border border-slate-200 hover:bg-rose-50 hover:border-rose-200 text-slate-400 hover:text-rose-600 flex items-center justify-center transition-colors cursor-pointer shrink-0"
-                            title="Delete Request"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
                         </div>
                       </div>
                     );
