@@ -61,6 +61,13 @@ import {
   History,
   Download,
   Ban,
+  CalendarDays,
+  TrendingUp,
+  Wallet,
+  Receipt,
+  Headphones,
+  Tag,
+  Filter,
 } from 'lucide-react';
 
 const SPORT_ICONS: Record<string, string> = {
@@ -370,8 +377,13 @@ export default function VenueModularOverviewPage() {
   const [slotsState, setSlotsState] = useState<Record<string, 'AVAILABLE' | 'HOLD' | 'UNAVAILABLE'>>({});
 
   // Filters inside Bookings tab
-  const [bookingStatusFilter, setBookingStatusFilter] = useState<string>('ALL');
+  const [bookingDateFilter, setBookingDateFilter] = useState<string>('');
+  const [bookingCourtFilter, setBookingCourtFilter] = useState<string>('ALL');
+  const [bookingSportFilter, setBookingSportFilter] = useState<string>('ALL');
   const [bookingSearchQuery, setBookingSearchQuery] = useState<string>('');
+
+  // Selected Support Ticket Drawer State
+  const [selectedSupportTicketForDrawer, setSelectedSupportTicketForDrawer] = useState<SupportTicketItem | null>(null);
 
   // Support ticket filter
   const [ticketFilter, setTicketFilter] = useState<string>('ALL');
@@ -1075,19 +1087,229 @@ export default function VenueModularOverviewPage() {
     return liveVenueBookings;
   }, [liveVenueBookings]);
 
+  // Available courts and sports for Bookings tab dropdown filters
+  const availableVenueCourts = useMemo(() => {
+    const list: { id: string; name: string }[] = [];
+    courtsList.forEach((c) => {
+      if (c.name && !list.some((item) => item.name.toLowerCase() === c.name.toLowerCase())) {
+        list.push({ id: c.id, name: c.name });
+      }
+    });
+    venueBookings.forEach((b) => {
+      if (b.court_name && !list.some((item) => item.name.toLowerCase() === b.court_name.toLowerCase())) {
+        list.push({ id: b.court_id || b.court_name, name: b.court_name });
+      }
+    });
+    return list;
+  }, [courtsList, venueBookings]);
+
+  const availableVenueSports = useMemo(() => {
+    const sportsSet = new Set<string>();
+    if (currentVenue?.sports) {
+      if (Array.isArray(currentVenue.sports)) {
+        currentVenue.sports.forEach((s: string) => sportsSet.add(s));
+      } else if (typeof currentVenue.sports === 'string') {
+        currentVenue.sports
+          .split(',')
+          .map((s: string) => s.trim())
+          .filter(Boolean)
+          .forEach((s: string) => sportsSet.add(s));
+      }
+    }
+    courtsList.forEach((c) => {
+      if (c.sport) sportsSet.add(c.sport);
+    });
+    venueBookings.forEach((b) => {
+      if (b.sport) sportsSet.add(b.sport);
+    });
+    return Array.from(sportsSet);
+  }, [currentVenue, courtsList, venueBookings]);
+
   const filteredBookings = useMemo<BookingItem[]>(() => {
     return venueBookings.filter((b: BookingItem) => {
-      const matchesStatus = bookingStatusFilter === 'ALL' || b.booking_status === bookingStatusFilter;
+      // Date Filter
+      if (bookingDateFilter && b.booking_date !== bookingDateFilter) {
+        return false;
+      }
+
+      // Court Filter
+      if (
+        bookingCourtFilter !== 'ALL' &&
+        b.court_name.toLowerCase() !== bookingCourtFilter.toLowerCase() &&
+        b.court_id.toLowerCase() !== bookingCourtFilter.toLowerCase()
+      ) {
+        return false;
+      }
+
+      // Sport Filter
+      if (
+        bookingSportFilter !== 'ALL' &&
+        b.sport.toLowerCase() !== bookingSportFilter.toLowerCase()
+      ) {
+        return false;
+      }
+
+      // Search Query
       const q = bookingSearchQuery.toLowerCase().trim();
-      const matchesQuery =
-        !q ||
-        b.booking_code.toLowerCase().includes(q) ||
-        b.customer_name.toLowerCase().includes(q) ||
-        b.customer_phone.includes(q) ||
-        b.sport.toLowerCase().includes(q);
-      return matchesStatus && matchesQuery;
+      if (q) {
+        const matchesQuery =
+          b.booking_code.toLowerCase().includes(q) ||
+          b.customer_name.toLowerCase().includes(q) ||
+          b.customer_phone.includes(q) ||
+          b.court_name.toLowerCase().includes(q) ||
+          b.sport.toLowerCase().includes(q);
+        if (!matchesQuery) return false;
+      }
+
+      return true;
     });
-  }, [venueBookings, bookingStatusFilter, bookingSearchQuery]);
+  }, [venueBookings, bookingDateFilter, bookingCourtFilter, bookingSportFilter, bookingSearchQuery]);
+
+  // Dynamic Booking KPIs based on filtered bookings
+  const bookingKpiStats = useMemo(() => {
+    const totalCount = filteredBookings.length;
+    let onlineCollected = 0;
+    let pendingDue = 0;
+    let inPlayCount = 0;
+    let totalCourtVal = 0;
+
+    filteredBookings.forEach((b) => {
+      totalCourtVal += b.total_amount || 0;
+
+      if (b.booking_status === 'IN_PLAY') {
+        inPlayCount += 1;
+      }
+
+      if (b.booking_status !== 'CANCELLED' && b.payment_status !== 'FAILED') {
+        const adv = b.advance_amount !== undefined ? b.advance_amount : b.total_amount;
+        const bal = b.balance_amount !== undefined ? b.balance_amount : Math.max(0, (b.total_amount || 0) - adv);
+        onlineCollected += adv;
+        pendingDue += bal;
+      }
+    });
+
+    return {
+      totalCount,
+      onlineCollected,
+      pendingDue,
+      inPlayCount,
+      totalCourtVal,
+    };
+  }, [filteredBookings]);
+
+  // Support badge render helpers matching Support Helpdesk module
+  const renderSupportCategoryBadge = (category?: string) => {
+    const cat = (category || 'GENERAL').toUpperCase();
+    switch (cat) {
+      case 'PAYMENT':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50/90 text-blue-700 border border-blue-200/80 shadow-2xs">
+            <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+            Technical
+          </span>
+        );
+      case 'BOOKING':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-50/90 text-purple-700 border border-purple-200/80 shadow-2xs">
+            <span className="h-1.5 w-1.5 rounded-full bg-purple-500"></span>
+            Booking
+          </span>
+        );
+      case 'TECHNICAL':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50/90 text-amber-800 border border-amber-200/80 shadow-2xs">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+            Technical
+          </span>
+        );
+      case 'SETTLEMENTS':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50/90 text-emerald-800 border border-emerald-200/80 shadow-2xs">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+            Settlements
+          </span>
+        );
+      case 'GENERAL':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200/80 shadow-2xs">
+            <span className="h-1.5 w-1.5 rounded-full bg-slate-500"></span>
+            General
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50/90 text-rose-700 border border-rose-200/80 shadow-2xs">
+            <span className="h-1.5 w-1.5 rounded-full bg-rose-500"></span>
+            {category || 'Others'}
+          </span>
+        );
+    }
+  };
+
+  const renderSupportPriorityBadge = (priority?: string) => {
+    const prio = (priority || 'LOW').toUpperCase();
+    switch (prio) {
+      case 'URGENT':
+        return (
+          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-700">
+            <span className="h-2 w-2 rounded-full bg-rose-500 animate-pulse"></span>
+            Urgent
+          </span>
+        );
+      case 'HIGH':
+        return (
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+            High
+          </span>
+        );
+      case 'MEDIUM':
+        return (
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600">
+            <span className="h-1.5 w-1.5 rounded-full bg-slate-400"></span>
+            Medium
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500">
+            <span className="h-1.5 w-1.5 rounded-full bg-slate-300"></span>
+            Low
+          </span>
+        );
+    }
+  };
+
+  const renderSupportStatusBadge = (status?: string) => {
+    const st = (status || 'RESOLVED').toUpperCase();
+    switch (st) {
+      case 'OPEN':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200/80 shadow-2xs">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+            </span>
+            Open
+          </span>
+        );
+      case 'IN_PROGRESS':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-50 text-blue-800 border border-blue-200/80 shadow-2xs">
+            <span className="h-2 w-2 rounded-full bg-blue-600 animate-pulse"></span>
+            In Progress
+          </span>
+        );
+      case 'RESOLVED':
+      default:
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200/80 shadow-2xs">
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 stroke-[2.5]" />
+            Resolved
+          </span>
+        );
+    }
+  };
 
   // Filtered Cancellations
   const venueCancellations = useMemo<BookingItem[]>(() => {
@@ -2696,17 +2918,114 @@ export default function VenueModularOverviewPage() {
       ======================================================== */}
       {activeTab === 'bookings' && (
         <div className="space-y-4 animate-in fade-in duration-150">
-          {/* Filter Bar */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-200/90 shadow-2xs">
+          {/* Dynamic Booking KPI Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3.5">
+            {/* 1. Total Bookings */}
+            <div className="bg-white rounded-2xl p-4 border border-[#E5E7EB] shadow-2xs hover:border-slate-400/50 transition-all flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-[#5F6368] uppercase tracking-wider">
+                  Total Bookings
+                </span>
+                <div className="h-8 w-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
+                  <CalendarDays className="h-4 w-4" />
+                </div>
+              </div>
+              <div className="mt-2.5 flex items-baseline">
+                <span className="text-2xl font-black text-[#021526] font-display">
+                  {bookingKpiStats.totalCount}
+                </span>
+              </div>
+            </div>
+
+            {/* 2. Collected Online */}
+            <div className="bg-white rounded-2xl p-4 border border-[#E5E7EB] shadow-2xs hover:border-emerald-400/50 transition-all flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-[#5F6368] uppercase tracking-wider">
+                  Collected Online
+                </span>
+                <div className="h-8 w-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                  <TrendingUp className="h-4 w-4" />
+                </div>
+              </div>
+              <div className="mt-2.5 flex items-baseline gap-2">
+                <span className="text-2xl font-black text-emerald-700 font-mono tracking-tight">
+                  ₹{bookingKpiStats.onlineCollected.toLocaleString('en-IN')}
+                </span>
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                  Received
+                </span>
+              </div>
+            </div>
+
+            {/* 3. Pending Due */}
+            <div className="bg-white rounded-2xl p-4 border border-[#E5E7EB] shadow-2xs hover:border-amber-400/50 transition-all flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-[#5F6368] uppercase tracking-wider">
+                  Pending Due
+                </span>
+                <div className="h-8 w-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                  <Clock className="h-4 w-4" />
+                </div>
+              </div>
+              <div className="mt-2.5 flex items-baseline gap-2">
+                <span className="text-2xl font-black text-amber-600 font-mono tracking-tight">
+                  ₹{bookingKpiStats.pendingDue.toLocaleString('en-IN')}
+                </span>
+                <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                  Due
+                </span>
+              </div>
+            </div>
+
+            {/* 4. In-Play Right Now */}
+            <div className="bg-white rounded-2xl p-4 border border-[#E5E7EB] shadow-2xs hover:border-blue-400/50 transition-all flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-[#5F6368] uppercase tracking-wider">
+                  In-Play Right Now
+                </span>
+                <div className="h-8 w-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                  <Clock className="h-4 w-4" />
+                </div>
+              </div>
+              <div className="mt-2.5 flex items-baseline gap-2">
+                <span className="text-2xl font-black text-blue-600 font-display">
+                  {bookingKpiStats.inPlayCount}
+                </span>
+                <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200 animate-pulse">
+                  Live
+                </span>
+              </div>
+            </div>
+
+            {/* 5. Total Court Value */}
+            <div className="bg-white rounded-2xl p-4 border border-[#E5E7EB] shadow-2xs hover:border-orange-400/50 transition-all flex flex-col justify-between col-span-2 lg:col-span-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-[#5F6368] uppercase tracking-wider">
+                  Total Court Value
+                </span>
+                <div className="h-8 w-8 rounded-xl bg-orange-50 text-[#F94001] flex items-center justify-center shrink-0">
+                  <Wallet className="h-4 w-4" />
+                </div>
+              </div>
+              <div className="mt-2.5 flex items-baseline">
+                <span className="text-2xl font-black text-[#021526] font-mono tracking-tight">
+                  ₹{bookingKpiStats.totalCourtVal.toLocaleString('en-IN')}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Filter Bar with Search, Date Picker, Courts Dropdown, Sports Dropdown */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-200/90 shadow-2xs">
             {/* Search Input */}
-            <div className="relative flex-1 min-w-[240px]">
+            <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search booking code, customer name, phone, sport..."
+                placeholder="Search booking code, player, phone, sport..."
                 value={bookingSearchQuery}
                 onChange={(e) => setBookingSearchQuery(e.target.value)}
-                className="w-full h-9 pl-9 pr-8 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 outline-none focus:bg-white focus:border-[#F94001]"
+                className="w-full h-9 pl-9 pr-8 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 outline-none focus:bg-white focus:border-[#F94001] transition-colors"
               />
               {bookingSearchQuery && (
                 <button
@@ -2719,22 +3038,94 @@ export default function VenueModularOverviewPage() {
               )}
             </div>
 
-            {/* Status Filter */}
-            <div className="flex items-center gap-1.5 overflow-x-auto shrink-0">
-              {['ALL', 'CONFIRMED', 'IN_PLAY', 'COMPLETED', 'CANCELLED'].map((st) => (
-                <button
-                  key={st}
-                  type="button"
-                  onClick={() => setBookingStatusFilter(st)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-all ${
-                    bookingStatusFilter === st
-                      ? 'bg-slate-900 text-white font-bold shadow-2xs'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            {/* Filters Right: Date Picker, Court Dropdown, Sport Dropdown & Reset */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Filter by Date */}
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl shadow-2xs hover:border-[#F94001]/60 transition-colors h-9">
+                <CalendarDays className="h-3.5 w-3.5 text-[#F94001] shrink-0" />
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 whitespace-nowrap">
+                    Date:
+                  </span>
+                  <input
+                    type="date"
+                    value={bookingDateFilter}
+                    onChange={(e) => setBookingDateFilter(e.target.value)}
+                    className="bg-transparent text-xs font-bold text-slate-900 outline-none cursor-pointer p-0 leading-tight"
+                    title="Filter bookings by date"
+                  />
+                </div>
+                {bookingDateFilter && (
+                  <button
+                    type="button"
+                    onClick={() => setBookingDateFilter('')}
+                    className="text-slate-400 hover:text-slate-800 p-0.5 hover:bg-slate-200 rounded-md transition-colors cursor-pointer"
+                    title="Clear date filter"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+
+              {/* Court Dropdown */}
+              <div className="relative min-w-[140px]">
+                <select
+                  value={bookingCourtFilter}
+                  onChange={(e) => setBookingCourtFilter(e.target.value)}
+                  className={`w-full appearance-none pl-3 pr-7 py-2 rounded-xl border text-xs font-bold cursor-pointer transition-colors ${
+                    bookingCourtFilter !== 'ALL'
+                      ? 'border-[#F94001] bg-orange-50/80 text-[#F94001]'
+                      : 'border-slate-200 bg-slate-50 text-slate-800 focus:outline-none focus:border-[#F94001]'
                   }`}
                 >
-                  {st}
+                  <option value="ALL">All Courts</option>
+                  {availableVenueCourts.map((court) => (
+                    <option key={court.id || court.name} value={court.name}>
+                      {court.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="h-3.5 w-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
+
+              {/* Sport Dropdown */}
+              <div className="relative min-w-[130px]">
+                <select
+                  value={bookingSportFilter}
+                  onChange={(e) => setBookingSportFilter(e.target.value)}
+                  className={`w-full appearance-none pl-3 pr-7 py-2 rounded-xl border text-xs font-bold cursor-pointer transition-colors ${
+                    bookingSportFilter !== 'ALL'
+                      ? 'border-[#F94001] bg-orange-50/80 text-[#F94001]'
+                      : 'border-slate-200 bg-slate-50 text-slate-800 focus:outline-none focus:border-[#F94001]'
+                  }`}
+                >
+                  <option value="ALL">All Sports</option>
+                  {availableVenueSports.map((sport) => (
+                    <option key={sport} value={sport}>
+                      {sport}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="h-3.5 w-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
+
+              {/* Reset Filters Button */}
+              {(bookingDateFilter || bookingCourtFilter !== 'ALL' || bookingSportFilter !== 'ALL' || bookingSearchQuery) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBookingDateFilter('');
+                    setBookingCourtFilter('ALL');
+                    setBookingSportFilter('ALL');
+                    setBookingSearchQuery('');
+                  }}
+                  className="px-3 py-2 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 shrink-0"
+                  title="Reset all booking filters"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  <span>Reset</span>
                 </button>
-              ))}
+              )}
             </div>
           </div>
 
@@ -2745,11 +3136,12 @@ export default function VenueModularOverviewPage() {
                 <thead>
                   <tr className="border-b border-slate-200/90 bg-slate-50/75 text-slate-500 font-semibold tracking-wider text-[10px] uppercase select-none">
                     <th className="py-2.5 px-3">Booking ID</th>
-                    <th className="py-2.5 px-3">Customer ID & Name</th>
-                    <th className="py-2.5 px-3">Date & Time</th>
-                    <th className="py-2.5 px-3">Sport & Court</th>
-                    <th className="py-2.5 px-3">Slot Time & Duration</th>
-                    <th className="py-2.5 px-3">Payable Amt</th>
+                    <th className="py-2.5 px-3">Customer ID &amp; Name</th>
+                    <th className="py-2.5 px-3">Date &amp; Time</th>
+                    <th className="py-2.5 px-3">Sport &amp; Court</th>
+                    <th className="py-2.5 px-3">Slot Time &amp; Duration</th>
+                    <th className="py-2.5 px-3">Total Amount</th>
+                    <th className="py-2.5 px-3">Due Amount</th>
                     <th className="py-2.5 px-3">Venue Share</th>
                     <th className="py-2.5 px-3">Platform Fee</th>
                     <th className="py-2.5 px-3">Status</th>
@@ -2759,7 +3151,7 @@ export default function VenueModularOverviewPage() {
                 <tbody className="divide-y divide-slate-100">
                   {filteredBookings.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="py-12 text-center text-slate-400">
+                      <td colSpan={11} className="py-12 text-center text-slate-400">
                         No bookings matching criteria
                       </td>
                     </tr>
@@ -2782,14 +3174,38 @@ export default function VenueModularOverviewPage() {
                         </td>
                         <td className="py-2.5 px-3">
                           <span className="font-bold text-slate-800">{b.court_name}</span>
-                          <span className="text-[10px] text-slate-400 block">{b.sport}</span>
+                          <span className="text-[10px] text-[#F94001] font-bold block">{b.sport}</span>
                         </td>
                         <td className="py-2.5 px-3 whitespace-nowrap">
                           <span className="font-mono text-slate-700">{b.time_slot}</span>
                           <span className="text-[10px] text-slate-400 block">{b.duration_minutes / 60} hrs</span>
                         </td>
-                        <td className="py-2.5 px-3 font-mono font-black text-slate-900 whitespace-nowrap">
-                          ₹{b.total_amount}
+                        <td className="py-2.5 px-3 whitespace-nowrap">
+                          <div className="font-mono font-black text-slate-900 text-xs">
+                            ₹{b.total_amount.toLocaleString('en-IN')}
+                          </div>
+                          <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded text-[10px] font-bold font-mono bg-purple-50 text-purple-700 border border-purple-200">
+                            {b.payment_method || 'UPI'}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 whitespace-nowrap font-mono">
+                          {b.balance_amount && b.balance_amount > 0 ? (
+                            <div>
+                              <span className="font-bold text-xs text-amber-700">
+                                ₹{b.balance_amount.toLocaleString('en-IN')}
+                              </span>
+                              <span className="block text-[10px] font-sans font-bold text-amber-800 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200 w-fit mt-0.5">
+                                Due
+                              </span>
+                            </div>
+                          ) : (
+                            <div>
+                              <span className="font-medium text-xs text-slate-600">₹0</span>
+                              <span className="block text-[10px] font-sans font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200 w-fit mt-0.5">
+                                Cleared
+                              </span>
+                            </div>
+                          )}
                         </td>
                         <td className="py-2.5 px-3 font-mono font-bold text-emerald-700 whitespace-nowrap">
                           ₹{b.venue_share}
@@ -3643,7 +4059,7 @@ export default function VenueModularOverviewPage() {
         <div className="space-y-4 animate-in fade-in duration-150">
           <div className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
-              <h2 className="text-sm font-bold text-slate-900">Partner Helpdesk & Support Requests</h2>
+              <h2 className="text-sm font-bold text-slate-900">Partner Helpdesk &amp; Support Requests</h2>
               <p className="text-xs text-slate-500 mt-0.5">
                 Tickets, maintenance complaints, customer dispute resolutions, and payout inquiries for this arena.
               </p>
@@ -3653,65 +4069,100 @@ export default function VenueModularOverviewPage() {
             </span>
           </div>
 
-          <div className="space-y-3">
-            {venueSupportTickets.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-400">
-                <LifeBuoy className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-                <p className="font-bold text-slate-700 text-xs">No active support requests</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">All partner operational tickets for this venue are resolved.</p>
-              </div>
-            ) : (
-              venueSupportTickets.map((ticket) => (
-                <div key={ticket.id} className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-2xs space-y-2.5">
-                  <div className="flex items-start justify-between gap-3 pb-2 border-b border-slate-100">
-                    <div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
-                          {ticket.ticket_number}
-                        </span>
-                        <h3 className="font-bold text-xs text-slate-900">{ticket.subject}</h3>
-                        <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            ticket.priority === 'URGENT'
-                              ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                              : ticket.priority === 'HIGH'
-                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                              : 'bg-blue-50 text-blue-700 border border-blue-200'
-                          }`}
-                        >
-                          {ticket.priority} PRIORITY
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-500 mt-1">
-                        Filed by <strong className="text-slate-700">{ticket.created_person_name}</strong> ({ticket.contact_number}) on {ticket.created_at}
-                      </p>
-                    </div>
+          {/* Tickets Data Table (matching Support Helpdesk module) */}
+          <div className="rounded-2xl bg-white border border-[#E5E7EB] shadow-xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs min-w-[850px]">
+                <thead>
+                  <tr className="border-b border-[#E5E7EB] bg-slate-50/70 text-[#5F6368] font-bold text-[11px] uppercase tracking-wider">
+                    <th className="py-3 px-4 w-[130px]">Ticket ID</th>
+                    <th className="py-3 px-4">Subject</th>
+                    <th className="py-3 px-4 w-[130px]">Category</th>
+                    <th className="py-3 px-4 w-[220px]">Venue &amp; Partner</th>
+                    <th className="py-3 px-4 w-[100px]">Priority</th>
+                    <th className="py-3 px-4 w-[130px]">Status</th>
+                    <th className="py-3 px-4 w-[110px]">Reported</th>
+                    <th className="py-3 px-4 w-[90px] text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#F3F4F4]">
+                  {venueSupportTickets.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-14 text-center text-[#5F6368]">
+                        <LifeBuoy className="h-9 w-9 mx-auto text-slate-300 mb-2" />
+                        <p className="font-bold text-sm text-[#021526]">No active support requests</p>
+                        <p className="text-xs text-[#5F6368] mt-0.5">All partner operational tickets for this venue are resolved.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    venueSupportTickets.map((t) => (
+                      <tr
+                        key={t.id}
+                        onClick={() => setSelectedSupportTicketForDrawer(t)}
+                        className="hover:bg-slate-50/80 cursor-pointer transition-colors group"
+                      >
+                        {/* 1. Ticket ID */}
+                        <td className="py-3.5 px-4 font-mono font-bold text-xs text-[#021526] group-hover:text-[#F94001] transition-colors whitespace-nowrap">
+                          {t.ticket_number}
+                        </td>
 
-                    <span
-                      className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                        ticket.status === 'OPEN'
-                          ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                          : ticket.status === 'IN_PROGRESS'
-                          ? 'bg-blue-50 text-blue-800 border border-blue-200'
-                          : 'bg-slate-100 text-slate-700 border border-slate-200'
-                      }`}
-                    >
-                      {ticket.status}
-                    </span>
-                  </div>
+                        {/* 2. Subject */}
+                        <td className="py-3.5 px-4">
+                          <span className="font-semibold text-xs text-[#021526] group-hover:text-[#F94001] transition-colors line-clamp-1">
+                            {t.subject}
+                          </span>
+                        </td>
 
-                  <p className="text-xs text-slate-700 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
-                    {ticket.description}
-                  </p>
+                        {/* 3. Category */}
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          {renderSupportCategoryBadge(t.category)}
+                        </td>
 
-                  {ticket.related_booking_code && (
-                    <div className="text-[11px] text-slate-500 font-mono">
-                      Associated Booking Code: <strong className="text-[#F94001]">{ticket.related_booking_code}</strong>
-                    </div>
+                        {/* 4. Venue & Partner */}
+                        <td className="py-3.5 px-4">
+                          <p className="font-bold text-xs text-[#021526] truncate">{t.venue_name || currentVenue?.venue_name || 'Snow White'}</p>
+                          <p className="text-[11px] text-[#5F6368] truncate">{t.created_person_name || 'Partner'}</p>
+                        </td>
+
+                        {/* 5. Priority */}
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          {renderSupportPriorityBadge(t.priority)}
+                        </td>
+
+                        {/* 6. Status */}
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          {renderSupportStatusBadge(t.status)}
+                        </td>
+
+                        {/* 7. Reported */}
+                        <td className="py-3.5 px-4 text-[#5F6368] text-[11px] whitespace-nowrap">
+                          {(() => {
+                            const raw = t.created_at || '';
+                            if (!raw) return 'Today';
+                            return raw.split('T')[0] || raw.split(' ')[0] || raw;
+                          })()}
+                        </td>
+
+                        {/* 8. Action */}
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedSupportTicketForDrawer(t);
+                            }}
+                            className="inline-flex items-center gap-1 text-slate-500 hover:text-[#F94001] font-semibold text-xs transition-colors cursor-pointer"
+                          >
+                            <span>Details</span>
+                            <ChevronRight className="h-3.5 w-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
                   )}
-                </div>
-              ))
-            )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -3795,6 +4246,124 @@ export default function VenueModularOverviewPage() {
                 className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold cursor-pointer"
               >
                 Close Drawer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          SLIDE-OVER DRAWER FOR SUPPORT TICKET DETAILS
+      ======================================================== */}
+      {selectedSupportTicketForDrawer && (
+        <div
+          className="fixed inset-0 z-50 overflow-hidden bg-slate-900/60 backdrop-blur-xs flex justify-end animate-in fade-in duration-200"
+          onClick={() => setSelectedSupportTicketForDrawer(null)}
+        >
+          <div
+            className="w-full max-w-xl bg-white shadow-2xl h-full flex flex-col overflow-hidden animate-in slide-in-from-right duration-300 border-l border-slate-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-xl bg-orange-50 text-[#F94001] flex items-center justify-center border border-orange-200/60">
+                  <LifeBuoy className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-xs text-[#021526]">
+                      {selectedSupportTicketForDrawer.ticket_number}
+                    </span>
+                    {renderSupportStatusBadge(selectedSupportTicketForDrawer.status)}
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-0.5">Support Desk Incident Dossier</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedSupportTicketForDrawer(null)}
+                className="h-8 w-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 flex items-center justify-center cursor-pointer transition-colors"
+                title="Close Drawer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
+              <div>
+                <h3 className="font-bold text-base text-[#021526]">
+                  {selectedSupportTicketForDrawer.subject}
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Reported on {selectedSupportTicketForDrawer.created_at}
+                </p>
+              </div>
+
+              {/* Meta Grid */}
+              <div className="grid grid-cols-2 gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400">Category</span>
+                  <div className="mt-1">{renderSupportCategoryBadge(selectedSupportTicketForDrawer.category)}</div>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400">Priority</span>
+                  <div className="mt-1">{renderSupportPriorityBadge(selectedSupportTicketForDrawer.priority)}</div>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400">Filed By</span>
+                  <p className="font-bold text-slate-900 mt-0.5">{selectedSupportTicketForDrawer.created_person_name}</p>
+                  <p className="text-[11px] text-slate-500">{selectedSupportTicketForDrawer.contact_number}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400">Venue</span>
+                  <p className="font-bold text-slate-900 mt-0.5">{selectedSupportTicketForDrawer.venue_name || currentVenue?.venue_name}</p>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div className="space-y-1">
+                <span className="text-[10px] uppercase font-bold text-slate-400">Description</span>
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 leading-relaxed text-xs">
+                  {selectedSupportTicketForDrawer.description}
+                </div>
+              </div>
+
+              {/* Associated Booking Code if any */}
+              {selectedSupportTicketForDrawer.related_booking_code && (
+                <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-between">
+                  <span className="text-amber-800 font-medium text-xs">Linked Booking Code:</span>
+                  <span className="font-mono font-bold text-[#F94001] text-xs">
+                    {selectedSupportTicketForDrawer.related_booking_code}
+                  </span>
+                </div>
+              )}
+
+              {/* Resolution Notes if any */}
+              {selectedSupportTicketForDrawer.resolution_notes && (
+                <div className="space-y-1">
+                  <span className="text-[10px] uppercase font-bold text-emerald-700">Resolution Notes</span>
+                  <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 leading-relaxed text-xs">
+                    {selectedSupportTicketForDrawer.resolution_notes}
+                    {selectedSupportTicketForDrawer.resolved_at && (
+                      <p className="text-[10px] text-emerald-700 mt-1.5 font-medium">
+                        Resolved on {selectedSupportTicketForDrawer.resolved_at}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedSupportTicketForDrawer(null)}
+                className="px-4 py-2 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-[#F94001] transition-colors cursor-pointer"
+              >
+                Close Dossier
               </button>
             </div>
           </div>
