@@ -1108,7 +1108,7 @@ export default function CourtRequestsPage() {
             onClick={() => setSelectedRequestForDrawer(null)}
           />
 
-          <div className="relative w-full max-w-2xl bg-white shadow-2xl h-full flex flex-col overflow-hidden animate-in slide-in-from-right duration-300 border-l border-[#E5E7EB] z-10">
+          <div className="relative w-full max-w-[540px] bg-white shadow-2xl h-full flex flex-col overflow-hidden animate-in slide-in-from-right duration-300 border-l border-[#E5E7EB] z-10">
             {/* Header */}
             <div className="p-5 bg-white border-b border-[#E5E7EB] flex items-start justify-between gap-3 shrink-0">
               <div className="space-y-1">
@@ -1128,79 +1128,16 @@ export default function CourtRequestsPage() {
               <button
                 type="button"
                 onClick={() => setSelectedRequestForDrawer(null)}
-                className="h-8 w-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                className="h-8 w-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                title="Close"
               >
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4" />
               </button>
             </div>
 
             {/* Scrollable Body: All Required Attributes */}
             <div className="p-5 overflow-y-auto flex-1 space-y-4">
-              {/* CARD 1: APPLICATION & FACILITY PROPERTIES */}
-              <div className="p-4 rounded-2xl bg-slate-50/80 border border-[#E5E7EB] space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                  <div className="flex items-center gap-2">
-                    <Building2 className="h-4 w-4 text-[#F94001]" />
-                    <span className="text-xs font-black uppercase tracking-wider text-[#021526]">
-                      Application &amp; Facility Properties
-                    </span>
-                  </div>
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-black ${normStatus(selectedRequestForDrawer.status) === 'APPROVED'
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : normStatus(selectedRequestForDrawer.status) === 'REJECTED'
-                        ? 'bg-rose-100 text-rose-800'
-                        : 'bg-amber-100 text-amber-800'
-                      }`}
-                  >
-                    {selectedRequestForDrawer.status}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">
-                      Facility Name &amp; ID
-                    </span>
-                    <p className="font-bold text-slate-900 text-xs mt-0.5">
-                      {selectedRequestForDrawer.venue_name}
-                    </p>
-                    <span className="font-mono text-[10px] text-slate-500">
-                      {(selectedRequestForDrawer.venue_id || 'APP10235').toUpperCase()}
-                    </span>
-                  </div>
-
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">
-                      Location &amp; Region
-                    </span>
-                    <p className="font-medium text-slate-800 text-xs mt-0.5 flex items-center gap-1">
-                      <MapPin className="h-3 w-3 text-slate-400" />
-                      <span>{selectedRequestForDrawer.venue_city}</span>
-                    </p>
-                  </div>
-
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">
-                      Request Type
-                    </span>
-                    <p className="font-semibold text-slate-800 text-xs mt-0.5">
-                      Additional Court Creation
-                    </p>
-                  </div>
-
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">
-                      Submitted Date &amp; Time
-                    </span>
-                    <p className="font-mono text-slate-700 text-xs mt-0.5">
-                      {selectedRequestForDrawer.submitted_at || '08 Sept 2026, 03:00 PM'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* CARD 2: AUTHORIZED VENUE OWNER & CONTACT */}
+              {/* CARD 1: AUTHORIZED VENUE OWNER & CONTACT */}
               <div className="p-4 rounded-2xl bg-white border border-[#E5E7EB] shadow-xs space-y-3">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                   <div className="flex items-center gap-2">

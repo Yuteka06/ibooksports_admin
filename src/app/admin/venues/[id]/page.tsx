@@ -60,7 +60,19 @@ import {
   RotateCcw,
   History,
   Download,
+  Ban,
 } from 'lucide-react';
+
+const SPORT_ICONS: Record<string, string> = {
+  Cricket: '🏏',
+  Football: '⚽',
+  Badminton: '🏸',
+  Tennis: '🎾',
+  Basketball: '🏀',
+  Volleyball: '🏐',
+  Pickleball: '🏓',
+  Swimming: '🏊',
+};
 import {
   VenueDetail,
   BookingItem,
@@ -4341,30 +4353,26 @@ export default function VenueModularOverviewPage() {
           }}
         >
           <div
-            className="w-full max-w-lg bg-white h-full shadow-2xl flex flex-col border-l border-slate-200 animate-in slide-in-from-right duration-200"
+            className="w-full max-w-[540px] bg-white h-full shadow-2xl flex flex-col border-l border-slate-200 animate-in slide-in-from-right duration-200"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Drawer Header */}
-            <div className="p-5 border-b border-slate-200 flex items-center justify-between shrink-0 bg-slate-50/70">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded-md bg-slate-200 font-mono text-[11px] font-bold text-slate-800">
-                    {selectedCourtRequestForDrawer.id}
-                  </span>
-                  <span className="px-2 py-0.5 rounded-md bg-[#F94001]/10 text-[#F94001] font-mono text-[10px] font-bold">
-                    {selectedCourtRequestForDrawer.venue_id}
-                  </span>
-                  <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-mono text-[10px] font-bold">
-                    Round {selectedCourtRequestForDrawer.submission_round || 1}
-                  </span>
+            {/* Drawer Header matching Image 2 */}
+            <div className="p-5 bg-white border-b border-[#E5E7EB] flex items-start justify-between gap-3 shrink-0">
+              <div className="space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-widest text-[#F94001]">
+                  COURT EXTENSION REQUEST DOSSIER
+                </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-xl font-black font-display text-[#021526]">
+                    #{selectedCourtRequestForDrawer.id} &bull; {selectedCourtRequestForDrawer.court_name}
+                  </h2>
                 </div>
-                <h3 className="font-extrabold text-base text-slate-900 tracking-tight mt-1">
-                  {selectedCourtRequestForDrawer.court_name}
-                </h3>
                 <p className="text-xs text-slate-500 font-medium">
-                  {selectedCourtRequestForDrawer.venue_name} &bull; {selectedCourtRequestForDrawer.owner_name}
+                  {selectedCourtRequestForDrawer.venue_name || currentVenue.venue_name} &bull;{' '}
+                  {selectedCourtRequestForDrawer.venue_city || currentVenue.district || currentVenue.state}
                 </p>
               </div>
+
               <button
                 type="button"
                 onClick={() => {
@@ -4372,46 +4380,182 @@ export default function VenueModularOverviewPage() {
                   setIsDrawerRejectOpen(false);
                   setDrawerActionError(null);
                 }}
-                className="h-8 w-8 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 flex items-center justify-center cursor-pointer transition-colors"
+                className="h-8 w-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                title="Close"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            {/* Drawer Body */}
-            <div className="p-6 space-y-5 overflow-y-auto flex-1 text-xs">
-              {/* Status Header Box */}
-              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] font-mono text-slate-400 font-bold uppercase block">Current Workflow State</span>
-                  <span className="text-sm font-black text-slate-900 mt-0.5 block">
-                    {selectedCourtRequestForDrawer.status === 'SUBMITTED' && '1st Round Initial Submission'}
-                    {selectedCourtRequestForDrawer.status === 'RESUBMITTED' && `Resubmitted (Round ${selectedCourtRequestForDrawer.submission_round})`}
-                    {selectedCourtRequestForDrawer.status === 'APPROVED' && 'Approved & Added to Arena'}
-                    {selectedCourtRequestForDrawer.status === 'REJECTED' && 'Rejected (Awaiting Owner Revisions)'}
+            {/* Drawer Body: Cards Layout matching Image 2 */}
+            <div className="p-5 overflow-y-auto flex-1 space-y-4">
+              {/* CARD 1: AUTHORIZED VENUE OWNER & CONTACT */}
+              <div className="p-4 rounded-2xl bg-white border border-[#E5E7EB] shadow-xs space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-blue-600" />
+                    <span className="text-xs font-black uppercase tracking-wider text-[#021526]">
+                      Authorized Venue Owner &amp; Contact
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    KYC Verified Partner
                   </span>
                 </div>
-                <div>
-                  {selectedCourtRequestForDrawer.status === 'SUBMITTED' && (
-                    <span className="px-3 py-1 rounded-full bg-amber-50 text-amber-800 font-bold border border-amber-200">
-                      SUBMITTED
+
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-xs text-slate-700">
+                    {(selectedCourtRequestForDrawer.owner_name || currentVenue?.owner?.full_name || 'Owner')
+                      .trim()
+                      .split(/\s+/)
+                      .map((n: string) => (n ? n[0] : ''))
+                      .filter(Boolean)
+                      .join('')
+                      .toUpperCase()
+                      .slice(0, 2) || 'OW'}
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-900 text-xs">
+                      {selectedCourtRequestForDrawer.owner_name || currentVenue?.owner?.full_name || 'Owner'}
+                    </p>
+                    <div className="flex items-center gap-2.5 text-xs text-slate-500">
+                      <a
+                        href={`tel:${selectedCourtRequestForDrawer.owner_phone || currentVenue?.owner?.phone || '+91 9840128866'}`}
+                        className="hover:text-[#F94001] flex items-center gap-1 font-mono text-[11px]"
+                      >
+                        <Phone className="h-3 w-3 text-emerald-600" />
+                        <span>{selectedCourtRequestForDrawer.owner_phone || currentVenue?.owner?.phone || '+91 9840128866'}</span>
+                      </a>
+                      <span>&bull;</span>
+                      <span className="font-mono text-[10px] text-slate-400">
+                        Vendor ID: VEND-{(selectedCourtRequestForDrawer.venue_id || currentVenue.id || '10235').slice(-4)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* CARD 2: COURT SPECIFICATIONS & PLAYER APP ALLOCATION */}
+              <div className="p-4 rounded-2xl bg-white border border-[#E5E7EB] shadow-xs space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <div className="flex items-center gap-2">
+                    <Layers className="h-4 w-4 text-purple-600" />
+                    <span className="text-xs font-black uppercase tracking-wider text-[#021526]">
+                      Court Specifications &amp; Player App Allocation
                     </span>
-                  )}
-                  {selectedCourtRequestForDrawer.status === 'RESUBMITTED' && (
-                    <span className="px-3 py-1 rounded-full bg-purple-50 text-purple-800 font-bold border border-purple-200">
-                      RESUBMITTED
+                  </div>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800 flex items-center gap-1">
+                    <span>{SPORT_ICONS[selectedCourtRequestForDrawer.sport] || '🏏'}</span>
+                    <span>{selectedCourtRequestForDrawer.sport || 'Cricket'}</span>
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">
+                      Internal Court Name
                     </span>
-                  )}
-                  {selectedCourtRequestForDrawer.status === 'APPROVED' && (
-                    <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 font-bold border border-emerald-200">
-                      APPROVED
+                    <p className="font-extrabold text-slate-900 text-xs mt-0.5">
+                      {selectedCourtRequestForDrawer.court_name}
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">
+                      Player App Display Name
                     </span>
-                  )}
-                  {selectedCourtRequestForDrawer.status === 'REJECTED' && (
-                    <span className="px-3 py-1 rounded-full bg-rose-50 text-rose-800 font-bold border border-rose-200">
-                      REJECTED
+                    <p className="font-medium text-slate-800 text-xs mt-0.5">
+                      {selectedCourtRequestForDrawer.display_name || selectedCourtRequestForDrawer.court_name}
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">
+                      Ground Allocation
                     </span>
-                  )}
+                    <p className="text-slate-800 font-medium text-xs mt-0.5">
+                      {selectedCourtRequestForDrawer.same_physical_sports
+                        ? `Shared Physical Ground with ${selectedCourtRequestForDrawer.parent_court_name || 'Main Court'}`
+                        : 'Independent Dedicated Pitch / Court'}
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">
+                      Minimum Booking Duration
+                    </span>
+                    <p className="font-mono font-bold text-slate-800 text-xs mt-0.5">
+                      {selectedCourtRequestForDrawer.min_booking_duration || selectedCourtRequestForDrawer.min_booking_duration_label || '1 Hour'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* CARD 3: HOURLY RATES & REFUND POLICY */}
+              <div className="p-4 rounded-2xl bg-white border border-[#E5E7EB] shadow-xs space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-emerald-600" />
+                    <span className="text-xs font-black uppercase tracking-wider text-[#021526]">
+                      Hourly Rates &amp; Refund Policy
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-mono text-emerald-700 font-bold">
+                    Direct Gateway Standard
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 text-xs">
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">
+                      Base Hourly Rate
+                    </span>
+                    <p className="font-mono font-black text-sm text-[#021526] mt-0.5">
+                      ₹{selectedCourtRequestForDrawer.price_per_hour || selectedCourtRequestForDrawer.regular_price || 1100}/hr
+                    </p>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-amber-50/50 border border-amber-200/60">
+                    <span className="text-[10px] font-bold text-amber-700 uppercase">
+                      Peak Hours Rate
+                    </span>
+                    <p className="font-mono font-black text-sm text-amber-900 mt-0.5">
+                      ₹{selectedCourtRequestForDrawer.peak_price || selectedCourtRequestForDrawer.price_per_hour || 1400}/hr
+                    </p>
+                    <p className="text-[9px] font-mono text-amber-600 mt-0.5">
+                      {selectedCourtRequestForDrawer.peak_hours_start || '06:00 PM'} -{' '}
+                      {selectedCourtRequestForDrawer.peak_hours_end || '10:00 PM'}
+                    </p>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-purple-50/50 border border-purple-200/60">
+                    <span className="text-[10px] font-bold text-purple-700 uppercase">
+                      Weekend Rate
+                    </span>
+                    <p className="font-mono font-black text-sm text-purple-900 mt-0.5">
+                      ₹{selectedCourtRequestForDrawer.weekend_price || selectedCourtRequestForDrawer.price_per_hour || 1500}/hr
+                    </p>
+                    <p className="text-[9px] font-mono text-purple-600 mt-0.5">
+                      {selectedCourtRequestForDrawer.peak_days?.join(', ') || 'Fri, Sat, Sun'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">
+                    Cancellation &amp; Refund Rules
+                  </span>
+                  <p className="text-slate-700 font-medium">
+                    Free cancellation allowed up to{' '}
+                    <span className="font-bold text-[#021526]">
+                      {selectedCourtRequestForDrawer.cancellation_window_hours || selectedCourtRequestForDrawer.cancellation_policy_hours || 12} hours
+                    </span>{' '}
+                    before slot commencement with{' '}
+                    <span className="font-bold text-emerald-700">
+                      {selectedCourtRequestForDrawer.refund_percentage || 100}% refund
+                    </span>
+                    .
+                  </p>
                 </div>
               </div>
 
@@ -4420,87 +4564,15 @@ export default function VenueModularOverviewPage() {
                 <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 space-y-2">
                   <div className="flex items-center gap-1.5 text-rose-800 font-bold">
                     <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0" />
-                    <span>Rejection Reason: {selectedCourtRequestForDrawer.rejection_reason}</span>
+                    <span>Rejection Reason: {selectedCourtRequestForDrawer.rejection_reason || 'Specifications require revision.'}</span>
                   </div>
-                  {selectedCourtRequestForDrawer.rejection_note && (
+                  {(selectedCourtRequestForDrawer.rejection_note || selectedCourtRequestForDrawer.rejection_notes) && (
                     <p className="bg-white/90 p-3 rounded-xl border border-rose-100 text-rose-900 font-medium">
-                      &ldquo;{selectedCourtRequestForDrawer.rejection_note}&rdquo;
+                      &ldquo;{selectedCourtRequestForDrawer.rejection_note || selectedCourtRequestForDrawer.rejection_notes}&rdquo;
                     </p>
                   )}
                 </div>
               )}
-
-              {/* Court Specifications Summary */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-4.5 space-y-3 shadow-2xs">
-                <h4 className="font-extrabold text-slate-900 text-xs uppercase tracking-wider">
-                  Configured Specifications
-                </h4>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <span className="text-slate-400 text-[10px] font-mono block">SPORT</span>
-                    <span className="font-bold text-slate-900">{selectedCourtRequestForDrawer.sport}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 text-[10px] font-mono block">GROUND SHARING</span>
-                    <span className="font-bold text-slate-900">
-                      {selectedCourtRequestForDrawer.same_physical_sports ? 'Shares Physical Ground' : 'Separate Ground'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 text-[10px] font-mono block">MIN DURATION</span>
-                    <span className="font-bold text-slate-900">{selectedCourtRequestForDrawer.min_booking_duration_label}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 text-[10px] font-mono block">STANDARD RATE</span>
-                    <span className="font-mono font-bold text-slate-900">₹{selectedCourtRequestForDrawer.regular_price}/hr</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 text-[10px] font-mono block">PEAK HOURS &amp; RATE</span>
-                    <span className="font-mono font-bold text-[#F94001]">
-                      ₹{selectedCourtRequestForDrawer.peak_price}/hr ({selectedCourtRequestForDrawer.peak_hours_start}–{selectedCourtRequestForDrawer.peak_hours_end})
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 text-[10px] font-mono block">WEEKEND RATE</span>
-                    <span className="font-mono font-bold text-amber-700">
-                      ₹{selectedCourtRequestForDrawer.weekend_price}/hr ({selectedCourtRequestForDrawer.peak_days?.join(', ') || 'Fri-Sun'})
-                    </span>
-                  </div>
-                  <div className="col-span-2">
-                    <span className="text-slate-400 text-[10px] font-mono block">CANCELLATION &amp; REFUND</span>
-                    <span className="font-medium text-emerald-800">
-                      Cancel up to {selectedCourtRequestForDrawer.cancellation_policy_hours}h notice with {selectedCourtRequestForDrawer.refund_percentage}% refund
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Multi-Round Submission Timeline History */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-4.5 space-y-3 shadow-2xs">
-                <div className="flex items-center gap-2">
-                  <History className="h-4 w-4 text-slate-500" />
-                  <h4 className="font-extrabold text-slate-900 text-xs uppercase tracking-wider">
-                    Multi-Round Submission Timeline
-                  </h4>
-                </div>
-
-                <div className="space-y-3 relative pl-4 border-l-2 border-slate-200">
-                  {selectedCourtRequestForDrawer.history?.map((h, idx) => (
-                    <div key={idx} className="relative space-y-1">
-                      <div className="absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full bg-slate-400 border-2 border-white" />
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-800">
-                          Round {h.round}: {h.action}
-                        </span>
-                        <span className="text-[10px] font-mono text-slate-400">
-                          {h.timestamp ? new Date(h.timestamp).toLocaleDateString('en-IN') : 'Recent'}
-                        </span>
-                      </div>
-                      <p className="text-slate-600 font-medium text-[11px]">{h.note}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
 
               {/* Drawer Inline Rejection Form */}
               {isDrawerRejectOpen && (
@@ -4513,7 +4585,7 @@ export default function VenueModularOverviewPage() {
                     <button
                       type="button"
                       onClick={() => setIsDrawerRejectOpen(false)}
-                      className="text-rose-600 text-xs font-bold hover:underline"
+                      className="text-rose-600 text-xs font-bold hover:underline cursor-pointer"
                     >
                       Cancel
                     </button>
@@ -4524,7 +4596,7 @@ export default function VenueModularOverviewPage() {
                     <select
                       value={drawerRejectionReason}
                       onChange={(e) => setDrawerRejectionReason(e.target.value)}
-                      className="w-full h-9 px-3 rounded-xl border border-rose-300 bg-white text-slate-900 text-xs font-bold outline-none"
+                      className="w-full h-9 px-3 rounded-xl border border-rose-300 bg-white text-slate-900 text-xs font-bold outline-none cursor-pointer"
                     >
                       {REJECTION_REASONS.map((r) => (
                         <option key={r.value} value={r.value}>
@@ -4562,53 +4634,85 @@ export default function VenueModularOverviewPage() {
               )}
             </div>
 
-            {/* Drawer Bottom Sticky Action Bar */}
-            <div className="p-4 border-t border-slate-200 bg-slate-50 shrink-0 flex items-center gap-2">
-              {(selectedCourtRequestForDrawer.status === 'SUBMITTED' || selectedCourtRequestForDrawer.status === 'RESUBMITTED') && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => handleApproveCourtRequest(selectedCourtRequestForDrawer)}
-                    className="flex-1 h-10 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-                  >
-                    <Check className="h-4 w-4" />
-                    <span>Approve Court &amp; Add to Arena</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setIsDrawerRejectOpen(true)}
-                    className="h-10 px-4 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <X className="h-4 w-4" />
-                    <span>Reject with Notes</span>
-                  </button>
-                </>
-              )}
-
-              {selectedCourtRequestForDrawer.status === 'REJECTED' && (
+            {/* Sticky Action Footer matching Image 2 */}
+            <div className="p-4 bg-slate-50 border-t border-[#E5E7EB] flex flex-wrap items-center justify-between gap-2 shrink-0">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => {
-                    handleOpenEditCourtRequestModal(selectedCourtRequestForDrawer);
                     setSelectedCourtRequestForDrawer(null);
+                    setIsDrawerRejectOpen(false);
+                    setDrawerActionError(null);
                   }}
-                  className="flex-1 h-10 rounded-xl bg-[#F94001] hover:bg-[#E03800] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                  className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
                 >
-                  <RotateCcw className="h-4 w-4" />
-                  <span>Edit &amp; Resubmit Request (Round {(selectedCourtRequestForDrawer.submission_round || 1) + 1})</span>
+                  Close
                 </button>
-              )}
 
-              <button
-                type="button"
-                onClick={() => setDeleteConfirmReqId(selectedCourtRequestForDrawer.id)}
-                className="h-10 px-3 rounded-xl border border-slate-300 hover:bg-rose-50 hover:border-rose-300 text-slate-500 hover:text-rose-600 font-bold text-xs flex items-center justify-center gap-1 transition-colors cursor-pointer shrink-0"
-                title="Delete Court Request"
-              >
-                <Trash2 className="h-4 w-4" />
-                <span>Delete</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirmReqId(selectedCourtRequestForDrawer.id)}
+                  className="px-3.5 py-2 rounded-xl border border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                  title="Delete Court Request Permanently"
+                >
+                  <Ban className="h-3.5 w-3.5" />
+                  <span>Delete Request</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {selectedCourtRequestForDrawer.status === 'APPROVED' ? (
+                  <>
+                    <button
+                      type="button"
+                      disabled
+                      className="px-3 py-2 rounded-xl border border-slate-200 bg-slate-100 text-slate-400 font-bold text-xs opacity-50 cursor-not-allowed"
+                    >
+                      Reject
+                    </button>
+                    <button
+                      type="button"
+                      disabled
+                      className="px-4 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-xs opacity-80 cursor-not-allowed flex items-center gap-1.5"
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                      <span>Approved</span>
+                    </button>
+                  </>
+                ) : selectedCourtRequestForDrawer.status === 'REJECTED' ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleOpenEditCourtRequestModal(selectedCourtRequestForDrawer);
+                        setSelectedCourtRequestForDrawer(null);
+                      }}
+                      className="px-3.5 py-2 rounded-xl bg-[#F94001] hover:bg-[#E03800] text-white font-bold text-xs transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      <span>Resubmit</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setIsDrawerRejectOpen(true)}
+                      className="px-3.5 py-2 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 text-rose-700 font-bold text-xs transition-colors cursor-pointer"
+                    >
+                      Reject
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleApproveCourtRequest(selectedCourtRequestForDrawer)}
+                      className="px-4 py-2 rounded-xl bg-[#00875A] hover:bg-[#007048] text-white font-bold text-xs shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Check className="h-4 w-4" />
+                      <span>Approve</span>
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
