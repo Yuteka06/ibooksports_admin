@@ -34,6 +34,8 @@ import {
   ShieldCheck,
   Timer,
   PlusCircle,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { BookingItem } from '@/lib/mockData';
 import { apiClient } from '@/lib/api';
@@ -61,20 +63,37 @@ export default function BookingManagementPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [sportFilter, setSportFilter] = useState('ALL');
+  const [stateFilter, setStateFilter] = useState('ALL');
+  const [districtFilter, setDistrictFilter] = useState('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // FETCH LIVE BOOKINGS FROM BACKEND API
   const fetchLiveBookings = React.useCallback(async (showRefreshing = false) => {
     if (showRefreshing) setIsRefreshing(true);
     try {
       let rows: any[] = [];
+      let venuesList: any[] = [];
       try {
-        const res = await apiClient.get<any[]>('/bookings');
-        if (Array.isArray(res.data)) {
-          rows = res.data;
+        const [bookingsRes, venuesRes] = await Promise.allSettled([
+          apiClient.get<any[]>('/bookings'),
+          apiClient.get<any[]>('/venues'),
+        ]);
+        if (bookingsRes.status === 'fulfilled' && Array.isArray(bookingsRes.value.data)) {
+          rows = bookingsRes.value.data;
+        }
+        if (venuesRes.status === 'fulfilled' && Array.isArray(venuesRes.value.data)) {
+          venuesList = venuesRes.value.data;
         }
       } catch (err) {
         console.warn('Backend bookings fetch error:', err);
       }
+
+      const venueMap = new Map<string, any>();
+      venuesList.forEach((v) => {
+        if (v.id) venueMap.set(String(v.id).toLowerCase(), v);
+        if (v.venue_name) venueMap.set(String(v.venue_name).toLowerCase(), v);
+      });
 
       if (Array.isArray(rows) && rows.length > 0) {
         const mapped: BookingItem[] = rows.map((r: any) => {
@@ -118,6 +137,14 @@ export default function BookingManagementPage() {
             bStatus = 'CONFIRMED';
           }
 
+          const vName = (r.venue_name && r.venue_name !== 'Fast and Furious Sports' && r.venue_name !== 'TurfTown Arena') ? r.venue_name : (r.venueName && r.venueName !== 'Fast and Furious Sports' ? r.venueName : ((r.venue_id === 'APP68267' || r.venueId === 'APP68267') ? 'Snow White' : ((r.venue_id === 'APP43113' || r.venueId === 'APP43113' || r.venue_id === 'APP10236') ? 'Rex Arena' : ((r.venue_id === 'APP58662' || r.venueId === 'APP58662') ? 'Amithap Mama' : 'Snow White'))));
+
+          const matchedVenue = venueMap.get(String(r.venue_id || r.venueId || '').toLowerCase()) ||
+                               venueMap.get(String(vName).toLowerCase());
+
+          const bState = r.state || r.venue_state || matchedVenue?.state || (vName === 'Rex Arena' ? 'Kerala' : 'Tamil Nadu');
+          const bDistrict = r.district || r.venue_district || matchedVenue?.district || (vName === 'Rex Arena' ? 'Kozhikode' : (vName === 'Amithap Mama' ? 'Coimbatore' : 'Chennai'));
+
           return {
             id: String(r.id),
             booking_code: formatShortBookingId(r.booking_number || r.booking_code || r.bookingNumber, r.id),
@@ -125,7 +152,7 @@ export default function BookingManagementPage() {
             customer_name: r.customer_name || r.customerName || 'Player',
             customer_phone: r.customer_phone || r.customerPhone || '',
             venue_id: r.venue_id || r.venueId || 'APP68267',
-            venue_name: (r.venue_name && r.venue_name !== 'Fast and Furious Sports' && r.venue_name !== 'TurfTown Arena') ? r.venue_name : (r.venueName && r.venueName !== 'Fast and Furious Sports' ? r.venueName : ((r.venue_id === 'APP68267' || r.venueId === 'APP68267') ? 'Snow White' : ((r.venue_id === 'APP43113' || r.venueId === 'APP43113' || r.venue_id === 'APP10236') ? 'Rex Arena' : ((r.venue_id === 'APP58662' || r.venueId === 'APP58662') ? 'Amithap Mama' : 'Snow White')))),
+            venue_name: vName,
             court_id: r.court_id || r.courtId || 'court-1',
             court_name: r.court_name || r.courtName || 'Main Arena Court',
             sport: r.sport || 'FOOTBALL',
@@ -142,6 +169,8 @@ export default function BookingManagementPage() {
             payment_method: r.payment_method || 'UPI',
             transaction_id: r.transaction_id || `txn_${String(r.id).slice(0, 8)}`,
             created_at: r.created_at || new Date().toISOString(),
+            state: bState,
+            district: bDistrict,
           };
         });
         setBookings(mapped);
@@ -637,6 +666,39 @@ export default function BookingManagementPage() {
     [dateFilteredBookings]
   );
 
+  // Extract all unique states from bookings
+  const availableStates = useMemo(() => {
+    const set = new Set<string>();
+    bookings.forEach((b) => {
+      const s = b.state;
+      if (s && s.trim()) set.add(s.trim());
+    });
+    ['Kerala', 'Tamil Nadu', 'Karnataka'].forEach((st) => set.add(st));
+    return Array.from(set).sort();
+  }, [bookings]);
+
+  // Extract all unique districts (optionally filtered by selected state)
+  const availableDistricts = useMemo(() => {
+    const set = new Set<string>();
+    bookings.forEach((b) => {
+      const s = b.state;
+      const d = b.district;
+      if (stateFilter === 'ALL' || !s || s.toLowerCase() === stateFilter.toLowerCase()) {
+        if (d && d.trim()) set.add(d.trim());
+      }
+    });
+    if (stateFilter === 'Kerala' || stateFilter === 'ALL') {
+      ['Kozhikode', 'Malappuram', 'Ernakulam'].forEach((dist) => set.add(dist));
+    }
+    if (stateFilter === 'Tamil Nadu' || stateFilter === 'ALL') {
+      ['Chennai', 'Coimbatore', 'Madurai'].forEach((dist) => set.add(dist));
+    }
+    if (stateFilter === 'Karnataka' || stateFilter === 'ALL') {
+      ['Bengaluru Urban', 'Mysuru'].forEach((dist) => set.add(dist));
+    }
+    return Array.from(set).sort();
+  }, [bookings, stateFilter]);
+
   // 3. FINAL FILTERED BOOKINGS FOR TABLE ROWS
   const filteredBookings = useMemo(() => {
     return dateFilteredBookings.filter((b) => {
@@ -650,6 +712,18 @@ export default function BookingManagementPage() {
         return false;
       }
 
+      // State Filter
+      if (stateFilter !== 'ALL') {
+        const bState = b.state || '';
+        if (bState.toLowerCase() !== stateFilter.toLowerCase()) return false;
+      }
+
+      // District Filter
+      if (districtFilter !== 'ALL') {
+        const bDistrict = b.district || '';
+        if (bDistrict.toLowerCase() !== districtFilter.toLowerCase()) return false;
+      }
+
       // Search Query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
@@ -659,14 +733,22 @@ export default function BookingManagementPage() {
           b.customer_phone.includes(q) ||
           b.venue_name.toLowerCase().includes(q) ||
           b.court_name.toLowerCase().includes(q) ||
-          b.sport.toLowerCase().includes(q);
+          b.sport.toLowerCase().includes(q) ||
+          (b.state && b.state.toLowerCase().includes(q)) ||
+          (b.district && b.district.toLowerCase().includes(q));
 
         if (!matches) return false;
       }
 
       return true;
     });
-  }, [dateFilteredBookings, statusFilter, sportFilter, searchQuery]);
+  }, [dateFilteredBookings, statusFilter, sportFilter, stateFilter, districtFilter, searchQuery]);
+
+  // Pagination Calculations
+  const totalItems = filteredBookings.length;
+  const totalPages = Math.ceil(totalItems / pageSize) || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedBookings = filteredBookings.slice(startIndex, startIndex + pageSize);
 
   const handlePrintSlip = () => {
     if (typeof window !== 'undefined') {
@@ -696,61 +778,19 @@ export default function BookingManagementPage() {
         </div>
       )}
 
-      {/* 1. PAGE HEADER (WITH DATE PICKER IN TOP RIGHT CORNER) */}
+      {/* 1. PAGE HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E5E7EB] pb-5">
         <div>
-          <div className="inline-flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wider text-[#F94001] bg-[#FFF1EC] border border-[#F94001]/20 px-3 py-1 rounded-full mb-2">
-            <CalendarCheck className="h-3.5 w-3.5 text-[#F94001]" />
-            <span>Turf Booking Registry &bull; Real-Time Playtime Console</span>
-          </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#021526] font-display">
             Booking Management
           </h1>
           <p className="text-xs sm:text-sm text-[#5F6368] mt-1 font-medium">
-            Real-time court reservations, advance &amp; due payment tracking, player check-in codes, and slot rescheduling.
+            Real-time court reservations, advance &amp; due payment tracking, and slot rescheduling.
           </p>
         </div>
 
-        {/* TOP RIGHT CORNER: DATE PICKER & EXPORT BUTTON (HORIZONTAL ALIGNMENT) */}
+        {/* TOP RIGHT CORNER: EXPORT BUTTON */}
         <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-center">
-          {/* DATE PICKER */}
-          <div className="flex items-center gap-2 bg-white border border-[#CBD5E1] px-3.5 py-1.5 rounded-xl shadow-2xs hover:border-[#F94001]/60 transition-colors h-[42px]">
-            <CalendarDays className="h-4 w-4 text-[#F94001] shrink-0" />
-            <div className="flex flex-col text-left justify-center">
-              <span className="text-[9px] uppercase tracking-wider font-extrabold text-slate-400 leading-none">
-                Filter by Date
-              </span>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="bg-transparent text-xs font-bold text-[#021526] outline-none cursor-pointer p-0 leading-tight"
-                title="Select booking date to update KPIs and table"
-              />
-            </div>
-            {selectedDate && (
-              <button
-                type="button"
-                onClick={() => setSelectedDate('')}
-                className="text-slate-400 hover:text-slate-800 ml-1 p-0.5 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
-                title="Reset to all dates"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-
-          <button
-            type="button"
-            onClick={() => fetchLiveBookings(true)}
-            disabled={isRefreshing}
-            className="inline-flex items-center gap-2 rounded-xl bg-white border border-[#CBD5E1] hover:border-[#F94001] text-[#021526] hover:text-[#F94001] px-3.5 py-2 text-xs font-bold shadow-xs transition-all cursor-pointer h-[42px] whitespace-nowrap disabled:opacity-60"
-            title="Sync latest live bookings from Supabase"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 text-[#F94001] ${isRefreshing ? 'animate-spin' : ''}`} />
-            <span>{isRefreshing ? 'Syncing...' : 'Sync Live'}</span>
-          </button>
-
           <button
             type="button"
             onClick={() => {
@@ -760,15 +800,6 @@ export default function BookingManagementPage() {
           >
             <Download className="h-3.5 w-3.5 text-slate-500" />
             <span>Export CSV</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setCreateModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#021526] hover:bg-[#F94001] text-white px-3.5 py-2 text-xs font-bold shadow-xs transition-all cursor-pointer h-[42px] whitespace-nowrap"
-          >
-            <PlusCircle className="h-3.5 w-3.5" />
-            <span>New Booking (Hold Slot)</span>
           </button>
         </div>
       </div>
@@ -908,22 +939,28 @@ export default function BookingManagementPage() {
           })}
         </div>
 
-        {/* Right Search, Sport & Reset */}
-        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5">
+        {/* Right Search, State, District, Sport & Reset */}
+        <div className="flex flex-wrap items-center gap-2.5">
           {/* Search */}
-          <div className="relative min-w-[220px] flex-1">
+          <div className="relative min-w-[200px] flex-1">
             <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-[#5F6368]" />
             <input
               type="text"
               placeholder="Search booking code, player, venue..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
               className="w-full rounded-xl bg-slate-50 border border-[#E5E7EB] pl-10 pr-9 py-2 text-xs text-[#021526] placeholder-[#5F6368] focus:bg-white focus:border-[#F94001] focus:ring-2 focus:ring-[#F94001]/10 transition-all outline-none font-medium"
             />
             {searchQuery && (
               <button
                 type="button"
-                onClick={() => setSearchQuery('')}
+                onClick={() => {
+                  setSearchQuery('');
+                  setCurrentPage(1);
+                }}
                 className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
               >
                 <X className="h-4 w-4" />
@@ -931,12 +968,58 @@ export default function BookingManagementPage() {
             )}
           </div>
 
+          {/* State Selector */}
+          <div className="relative min-w-[125px]">
+            <select
+              suppressHydrationWarning={true}
+              value={stateFilter}
+              onChange={(e) => {
+                setStateFilter(e.target.value);
+                setDistrictFilter('ALL');
+                setCurrentPage(1);
+              }}
+              className="w-full appearance-none pl-8 pr-7 py-2 rounded-xl border border-[#E5E7EB] bg-slate-50 text-xs font-bold text-[#021526] focus:outline-none focus:border-[#F94001] transition-colors cursor-pointer"
+            >
+              <option value="ALL">All State</option>
+              {availableStates.map((st) => (
+                <option key={st} value={st}>
+                  {st}
+                </option>
+              ))}
+            </select>
+            <MapPin className="h-3.5 w-3.5 absolute left-2.5 top-2.5 text-slate-400 pointer-events-none" />
+          </div>
+
+          {/* District Selector */}
+          <div className="relative min-w-[125px]">
+            <select
+              suppressHydrationWarning={true}
+              value={districtFilter}
+              onChange={(e) => {
+                setDistrictFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full appearance-none pl-8 pr-7 py-2 rounded-xl border border-[#E5E7EB] bg-slate-50 text-xs font-bold text-[#021526] focus:outline-none focus:border-[#F94001] transition-colors cursor-pointer"
+            >
+              <option value="ALL">All District</option>
+              {availableDistricts.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+            <MapPin className="h-3.5 w-3.5 absolute left-2.5 top-2.5 text-slate-400 pointer-events-none" />
+          </div>
+
           {/* Sport Selector */}
-          <div className="relative min-w-[130px]">
+          <div className="relative min-w-[120px]">
             <select
               suppressHydrationWarning={true}
               value={sportFilter}
-              onChange={(e) => setSportFilter(e.target.value)}
+              onChange={(e) => {
+                setSportFilter(e.target.value);
+                setCurrentPage(1);
+              }}
               className="w-full appearance-none pl-8 pr-7 py-2 rounded-xl border border-[#E5E7EB] bg-slate-50 text-xs font-bold text-[#021526] focus:outline-none focus:border-[#F94001] transition-colors cursor-pointer"
             >
               <option value="ALL">All Sports</option>
@@ -949,14 +1032,16 @@ export default function BookingManagementPage() {
           </div>
 
           {/* Reset Filters */}
-          {(searchQuery || selectedDate || statusFilter !== 'ALL' || sportFilter !== 'ALL') && (
+          {(searchQuery || statusFilter !== 'ALL' || sportFilter !== 'ALL' || stateFilter !== 'ALL' || districtFilter !== 'ALL') && (
             <button
               type="button"
               onClick={() => {
                 setSearchQuery('');
-                setSelectedDate('');
                 setStatusFilter('ALL');
                 setSportFilter('ALL');
+                setStateFilter('ALL');
+                setDistrictFilter('ALL');
+                setCurrentPage(1);
               }}
               className="px-3 py-2 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 shrink-0"
               title="Reset all filters"
@@ -974,6 +1059,7 @@ export default function BookingManagementPage() {
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="border-b border-slate-200/90 bg-slate-50/75 text-slate-400 font-bold tracking-wider text-[11px] uppercase select-none">
+                <th className="py-3 px-4 whitespace-nowrap text-slate-400 font-bold tracking-wider text-[11px] uppercase">#</th>
                 <th className="py-3 px-4 whitespace-nowrap">Booking Code</th>
                 <th className="py-3 px-4 whitespace-nowrap">Player</th>
                 <th className="py-3 px-4 min-w-[200px]">Venue &amp; Court</th>
@@ -987,16 +1073,16 @@ export default function BookingManagementPage() {
             <tbody className="divide-y divide-slate-100">
               {filteredBookings.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-14 text-center text-slate-400">
+                  <td colSpan={9} className="py-14 text-center text-slate-400">
                     <Receipt className="h-9 w-9 mx-auto text-slate-300 mb-2" />
                     <p className="font-bold text-sm text-[#021526]">No booking reservations found</p>
                     <p className="text-[11px] text-slate-400 mt-0.5">
-                      Try adjusting your date picker, search query, or status filter
+                      Try adjusting your state, district, search query, or status filter
                     </p>
                   </td>
                 </tr>
               ) : (
-                filteredBookings.map((b) => {
+                paginatedBookings.map((b, index) => {
                   const isCopied = copiedText === b.booking_code;
                   const { advance, balance, isPartial, isRefunded, due_mode } = getAdvanceAndBalance(b);
                   const isPaid = !isPartial && !isRefunded && b.payment_status !== 'FAILED';
@@ -1011,6 +1097,11 @@ export default function BookingManagementPage() {
                       }}
                       className="hover:bg-slate-50/70 transition-colors group cursor-pointer"
                     >
+                      {/* 0. SERIAL NUMBER */}
+                      <td className="py-3.5 px-4 align-middle whitespace-nowrap font-mono text-xs font-bold text-slate-400">
+                        {startIndex + index + 1}
+                      </td>
+
                       {/* 1. BOOKING CODE */}
                       <td className="py-3.5 px-4 align-middle whitespace-nowrap">
                         <div className="inline-flex items-center gap-1.5">
@@ -1288,6 +1379,93 @@ export default function BookingManagementPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Bar */}
+        {totalItems > 0 && (
+          <div className="p-3.5 border-t border-slate-200/80 bg-slate-50/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+            <div className="flex items-center gap-3">
+              <span>
+                Showing <strong className="text-slate-900">{startIndex + 1}</strong> to{' '}
+                <strong className="text-slate-900">
+                  {Math.min(startIndex + pageSize, totalItems)}
+                </strong>{' '}
+                of <strong className="text-slate-900">{totalItems}</strong> bookings
+              </span>
+              <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200">
+                <span className="text-[11px] text-slate-500">Rows:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 outline-none cursor-pointer hover:border-slate-300"
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                className="h-8 px-2.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 text-xs font-semibold transition-all shadow-2xs cursor-pointer"
+                title="Previous Page"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+                <span>Prev</span>
+              </button>
+
+              <div className="flex items-center gap-1 px-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((p) => {
+                    return (
+                      p === 1 ||
+                      p === totalPages ||
+                      Math.abs(p - currentPage) <= 1
+                    );
+                  })
+                  .map((p, idx, arr) => {
+                    const prevPageNum = arr[idx - 1];
+                    const showEllipsis = prevPageNum && p - prevPageNum > 1;
+                    return (
+                      <React.Fragment key={p}>
+                        {showEllipsis && (
+                          <span className="px-1 text-slate-400 text-xs">...</span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setCurrentPage(p)}
+                          className={`h-8 min-w-[32px] px-2 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer ${
+                            currentPage === p
+                              ? 'bg-[#F94001] text-white border border-[#F94001]'
+                              : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      </React.Fragment>
+                    );
+                  })}
+              </div>
+
+              <button
+                type="button"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                className="h-8 px-2.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 text-xs font-semibold transition-all shadow-2xs cursor-pointer"
+                title="Next Page"
+              >
+                <span>Next</span>
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ========================================================================= */}
@@ -1493,22 +1671,6 @@ export default function BookingManagementPage() {
                             <span>{selectedBooking.customer_phone}</span>
                           </p>
                         </div>
-                      </div>
-                    </div>
-
-                    {/* QR Check-in Code */}
-                    <div className="p-4 rounded-2xl bg-white border border-[#E5E7EB] shadow-xs flex items-center justify-between">
-                      <div className="space-y-1">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase">Check-in Passcode</span>
-                        <p className="font-mono font-black text-lg text-slate-900">
-                          {typeof selectedBooking?.booking_code === 'string'
-                            ? (typeof selectedBooking.booking_code === 'string' ? selectedBooking.booking_code.split('-').pop() : selectedBooking.id)
-                            : (selectedBooking?.id ? String(selectedBooking.id).slice(-4) : '1001')}
-                        </p>
-                        <p className="text-[10px] text-slate-500">Player presents code at venue entry gate</p>
-                      </div>
-                      <div className="h-16 w-16 bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center text-slate-700">
-                        <QrCode className="h-10 w-10" />
                       </div>
                     </div>
 

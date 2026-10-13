@@ -201,6 +201,8 @@ export interface BookingItem {
   advance_amount?: number;
   balance_amount?: number;
   due_mode?: 'CASH' | 'ONLINE';
+  state?: string;
+  district?: string;
 }
 
 export type PaymentStatusType = 'FULLY_PAID' | 'ADVANCE_PAID' | 'PENDING' | 'REFUNDED' | 'FAILED';
