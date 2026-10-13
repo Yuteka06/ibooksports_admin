@@ -28,6 +28,7 @@ import {
   CreditCard,
   Landmark,
   Headphones,
+  RotateCcw,
   LogOut,
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
@@ -127,6 +128,12 @@ const NAV_SECTIONS: NavSectionConfig[] = [
         label: 'Payment Management',
         href: '/admin/payments',
         icon: CreditCard,
+        badge: null,
+      },
+      {
+        label: 'Cancellation Management',
+        href: '/admin/cancellations',
+        icon: RotateCcw,
         badge: null,
       },
       {

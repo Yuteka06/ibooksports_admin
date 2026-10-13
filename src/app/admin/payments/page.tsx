@@ -1361,7 +1361,7 @@ export default function PaymentManagementPage() {
                       </div>
 
                       {/* Quick Share Buttons */}
-                      <div className="grid grid-cols-2 gap-2 pt-1">
+                      <div className="grid grid-cols-1 gap-2 pt-1">
                         <a
                           href={`https://wa.me/${selectedTxn.customer_phone.replace(/\D/g, '')}?text=${encodeURIComponent(
                             `Hi ${selectedTxn.customer_name}, please pay your remaining balance of ₹${selectedTxn.balance_amount} for your court booking (${selectedTxn.booking_code}) at ${selectedTxn.venue_name}: https://pay.ibooksports.com/bal/${selectedTxn.booking_code}`
@@ -1373,21 +1373,6 @@ export default function PaymentManagementPage() {
                           <MessageSquare className="h-4 w-4 text-emerald-600" />
                           <span>Share via WhatsApp</span>
                         </a>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            showToast(
-                              'success',
-                              'SMS Sent',
-                              `Payment reminder dispatched to ${selectedTxn.customer_phone}`
-                            );
-                          }}
-                          className="p-2.5 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
-                        >
-                          <Phone className="h-4 w-4 text-blue-600" />
-                          <span>Send via SMS</span>
-                        </button>
                       </div>
                     </div>
 
