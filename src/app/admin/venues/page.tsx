@@ -151,10 +151,11 @@ export default function VenuesManagementPage() {
 
   // Extract status counts
   const statusCounts = useMemo(() => {
-    const counts = { ACTIVE: 0, INACTIVE: 0, MAINTENANCE: 0, ALL: venues.length };
+    const counts = { ACTIVE: 0, INACTIVE: 0, BLOCKED: 0, ALL: venues.length };
     venues.forEach((v) => {
-      if (v.status === 'INACTIVE') counts.INACTIVE += 1;
-      else if (v.status === 'MAINTENANCE') counts.MAINTENANCE += 1;
+      const st = (v.status || '').toUpperCase();
+      if (st === 'INACTIVE') counts.INACTIVE += 1;
+      else if (st === 'BLOCKED' || st === 'BLOCK' || st === 'MAINTENANCE') counts.BLOCKED += 1;
       else counts.ACTIVE += 1;
     });
     return counts;
@@ -204,7 +205,8 @@ export default function VenuesManagementPage() {
           selectedStatus === 'ALL' ||
           (selectedStatus === 'ACTIVE' && (v.status === 'ACTIVE' || !v.status)) ||
           (selectedStatus === 'INACTIVE' && v.status === 'INACTIVE') ||
-          (selectedStatus === 'MAINTENANCE' && v.status === 'MAINTENANCE');
+          ((selectedStatus === 'BLOCKED' || selectedStatus === 'BLOCK' || selectedStatus === 'MAINTENANCE') &&
+            (v.status === 'BLOCKED' || v.status === 'BLOCK' || v.status === 'MAINTENANCE'));
 
         const matchesSport =
           selectedSport === 'ALL' ||
@@ -381,15 +383,15 @@ export default function VenuesManagementPage() {
             </button>
             <button
               type="button"
-              onClick={() => setSelectedStatus('MAINTENANCE')}
+              onClick={() => setSelectedStatus('BLOCKED')}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                selectedStatus === 'MAINTENANCE'
-                  ? 'bg-white text-amber-700 shadow-2xs font-bold ring-1 ring-amber-500/20'
-                  : 'text-slate-500 hover:text-amber-700'
+                selectedStatus === 'BLOCKED' || selectedStatus === 'BLOCK' || selectedStatus === 'MAINTENANCE'
+                  ? 'bg-white text-rose-700 shadow-2xs font-bold ring-1 ring-rose-500/20'
+                  : 'text-slate-500 hover:text-rose-700'
               }`}
             >
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-              Maintenance ({statusCounts.MAINTENANCE})
+              <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+              Block ({statusCounts.BLOCKED})
             </button>
           </div>
 
@@ -509,12 +511,22 @@ export default function VenuesManagementPage() {
                 {selectedStatus === 'MAINTENANCE' && <span className="h-2 w-2 rounded-full bg-amber-500" />}
                 {selectedStatus === 'ALL' && <Activity className="h-3.5 w-3.5 text-slate-400" />}
                 <span className="truncate">
-                  {selectedStatus === 'ALL' ? 'Status: All Statuses' : selectedStatus === 'ACTIVE' ? 'Active Venues' : selectedStatus === 'INACTIVE' ? 'Inactive Venues' : 'Maintenance'}
+                  {selectedStatus === 'ALL'
+                    ? 'Status: All Statuses'
+                    : selectedStatus === 'ACTIVE'
+                    ? 'Active Venues'
+                    : selectedStatus === 'INACTIVE'
+                    ? 'Inactive Venues'
+                    : 'Block'}
                 </span>
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 <span className="px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold">
-                  {selectedStatus === 'ALL' ? venues.length : statusCounts[selectedStatus as keyof typeof statusCounts] || 0}
+                  {selectedStatus === 'ALL'
+                    ? venues.length
+                    : selectedStatus === 'BLOCKED' || selectedStatus === 'BLOCK' || selectedStatus === 'MAINTENANCE'
+                    ? statusCounts.BLOCKED
+                    : statusCounts[selectedStatus as keyof typeof statusCounts] || 0}
                 </span>
                 <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform ${openDropdown === 'status' ? 'rotate-180' : ''}`} />
               </div>
@@ -570,19 +582,19 @@ export default function VenuesManagementPage() {
                   <span className="text-[10px] px-1.5 py-0.2 rounded bg-rose-100 text-rose-800 font-bold">{statusCounts.INACTIVE}</span>
                 </button>
 
-                {/* Maintenance */}
+                {/* Block */}
                 <button
                   type="button"
-                  onClick={() => { setSelectedStatus('MAINTENANCE'); setOpenDropdown(null); }}
+                  onClick={() => { setSelectedStatus('BLOCKED'); setOpenDropdown(null); }}
                   className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-left transition-colors cursor-pointer ${
-                    selectedStatus === 'MAINTENANCE' ? 'bg-amber-50 text-amber-800 font-bold' : 'hover:bg-slate-50 text-slate-700'
+                    selectedStatus === 'BLOCKED' || selectedStatus === 'BLOCK' || selectedStatus === 'MAINTENANCE' ? 'bg-rose-50 text-rose-800 font-bold' : 'hover:bg-slate-50 text-slate-700'
                   }`}
                 >
                   <span className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-amber-500" />
-                    Under Maintenance
+                    <span className="h-2 w-2 rounded-full bg-rose-500" />
+                    Block
                   </span>
-                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 font-bold">{statusCounts.MAINTENANCE}</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-rose-100 text-rose-800 font-bold">{statusCounts.BLOCKED}</span>
                 </button>
               </div>
             )}
@@ -764,9 +776,9 @@ export default function VenuesManagementPage() {
                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                   : selectedStatus === 'INACTIVE'
                   ? 'bg-rose-50 text-rose-700 border-rose-200'
-                  : 'bg-amber-50 text-amber-700 border-amber-200'
+                  : 'bg-rose-50 text-rose-700 border-rose-200'
               }`}>
-                Status: {selectedStatus}
+                Status: {selectedStatus === 'BLOCKED' || selectedStatus === 'BLOCK' || selectedStatus === 'MAINTENANCE' ? 'Block' : selectedStatus}
                 <button type="button" onClick={() => setSelectedStatus('ALL')} className="hover:text-rose-600 cursor-pointer">
                   <X className="h-3 w-3" />
                 </button>

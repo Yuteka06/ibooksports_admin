@@ -15,7 +15,7 @@ export interface VenueDetail {
   sports: string;
   sports_list: string[];
   courts: number;
-  status: 'ACTIVE' | 'INACTIVE' | 'PENDING' | 'MAINTENANCE';
+  status: 'ACTIVE' | 'INACTIVE' | 'PENDING' | 'MAINTENANCE' | 'BLOCKED' | 'BLOCK';
   rating: number;
   total_reviews: number;
   opening_time: string;
