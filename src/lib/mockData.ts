@@ -305,8 +305,9 @@ export interface SupportTicketItem {
   venue_name: string;
   created_person_name: string;
   contact_number: string;
+  email?: string;
   created_at: string;
-  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED';
+  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
   resolution_notes?: string;
   resolved_at?: string;
   resolved_by?: string;

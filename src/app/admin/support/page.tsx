@@ -34,6 +34,13 @@ import {
 import { SupportTicketItem, VenueDetail } from '@/lib/mockData';
 import { apiClient } from '@/lib/api';
 
+/** The server's own error message, so the admin sees why an action failed. */
+const apiErrorMessage = (e: any, fallback: string): string => {
+  const m = e?.response?.data?.message;
+  if (Array.isArray(m)) return m.join(', ');
+  return (typeof m === 'string' && m) || e?.message || fallback;
+};
+
 export default function SupportHelpdeskPage() {
   const [mounted, setMounted] = useState(false);
   const [tickets, setTickets] = useState<SupportTicketItem[]>([]);
@@ -52,6 +59,14 @@ export default function SupportHelpdeskPage() {
   const [notifyRequester, setNotifyRequester] = useState(true);
   const [resolveError, setResolveError] = useState<string | null>(null);
   const [isEditingResolution, setIsEditingResolution] = useState(false);
+  const [isResolving, setIsResolving] = useState(false);
+
+  // Admin reply in the conversation
+  const [replyText, setReplyText] = useState('');
+  const [isSendingReply, setIsSendingReply] = useState(false);
+
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isRaising, setIsRaising] = useState(false);
 
   // Modal State for Raising New Ticket (Simulating Venue Side or Admin Entry)
   const [isRaiseModalOpen, setIsRaiseModalOpen] = useState(false);
@@ -81,9 +96,6 @@ export default function SupportHelpdeskPage() {
         const res = await apiClient.get<VenueDetail[]>('/venues');
         if (res.data && Array.isArray(res.data)) {
           setVenues(res.data);
-          if (res.data.length > 0) {
-            setNewTicketVenueId(res.data[0].id);
-          }
         }
       } catch (err) {
         console.warn('Failed to fetch live venues for support helpdesk', err);
@@ -98,12 +110,13 @@ export default function SupportHelpdeskPage() {
       const res = await apiClient.get('/support');
       if (res.data && Array.isArray(res.data)) {
         setTickets(res.data);
-      } else {
-        setTickets([]);
+        // Keep the open drawer in step (new vendor replies, status changes).
+        setSelectedTicket((cur) => (cur ? res.data.find((t: SupportTicketItem) => t.id === cur.id) || cur : cur));
       }
+      setLoadError(null);
     } catch (e) {
-      // Clean empty state
-      setTickets([]);
+      // Keep the last loaded list; an empty list would look like "no tickets".
+      setLoadError(apiErrorMessage(e, 'Support tickets could not be loaded.'));
     }
   };
 
@@ -148,99 +161,89 @@ export default function SupportHelpdeskPage() {
     setIsEditingResolution(startResolve || t.status !== 'RESOLVED');
   };
 
-  // Action: Move to IN_PROGRESS
-  const handleMoveToInProgress = async (ticketId: string) => {
-    setTickets((prev) =>
-      prev.map((t) => (t.id === ticketId ? { ...t, status: 'IN_PROGRESS' } : t))
-    );
-
-    if (selectedTicket && selectedTicket.id === ticketId) {
-      setSelectedTicket({ ...selectedTicket, status: 'IN_PROGRESS' });
-    }
-
-    try {
-      await apiClient.patch(`/support/${ticketId}/status`, { status: 'IN_PROGRESS' });
-    } catch (e) {}
-
-    const t = tickets.find((item) => item.id === ticketId);
-    setToastMessage({
-      type: 'info',
-      title: 'Ticket marked In Progress',
-      description: `${t?.ticket_number || 'Ticket'} is now under active investigation by admin team.`,
-    });
-    setTimeout(() => setToastMessage(null), 4000);
+  /** Put the server's version of a ticket into the list and the open drawer. */
+  const applyTicket = (updated: SupportTicketItem) => {
+    setTickets((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+    setSelectedTicket((cur) => (cur && cur.id === updated.id ? updated : cur));
   };
 
-  // Action: Submit Resolution Directly in Slide-out Drawer (No popup modal!)
+  const showToast = (type: 'success' | 'info' | 'error', title: string, description: string) => {
+    setToastMessage({ type, title, description });
+    setTimeout(() => setToastMessage(null), 4500);
+  };
+
+  // Action: change status (OPEN / IN_PROGRESS / CLOSED) - only after the server confirms
+  const changeStatus = async (ticketId: string, status: 'OPEN' | 'IN_PROGRESS' | 'CLOSED') => {
+    try {
+      const res = await apiClient.patch(`/support/${ticketId}/status`, { status });
+      applyTicket(res.data);
+      const label = status === 'IN_PROGRESS' ? 'In Progress' : status === 'OPEN' ? 'reopened' : 'closed';
+      showToast('info', `Ticket ${label}`, `${res.data?.ticket_number || 'Ticket'} is now ${status.replace('_', ' ')}.`);
+    } catch (e) {
+      showToast('error', 'Status not changed', apiErrorMessage(e, 'The ticket status could not be updated.'));
+    }
+  };
+  const handleMoveToInProgress = (ticketId: string) => changeStatus(ticketId, 'IN_PROGRESS');
+  const handleReopenTicket = (ticketId: string) => changeStatus(ticketId, 'OPEN');
+
+  // Action: resolve with notes (+ email) - only after the server confirms
   const handleConfirmResolutionInDrawer = async () => {
-    if (!selectedTicket) return;
+    if (!selectedTicket || isResolving) return;
     if (!resolutionNotes.trim()) {
       setResolveError('Resolution notes are mandatory before marking this ticket as resolved.');
       return;
     }
-
-    const resolvedTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const resolvedDate = new Date().toISOString().split('T')[0];
-    const resolvedStamp = `${resolvedDate} ${resolvedTime}`;
-
-    const updatedTicket: SupportTicketItem = {
-      ...selectedTicket,
-      status: 'RESOLVED',
-      resolution_notes: resolutionNotes.trim(),
-      resolved_at: resolvedStamp,
-      resolved_by: 'Super Admin',
-    };
-
-    setTickets((prev) =>
-      prev.map((t) => (t.id === selectedTicket.id ? updatedTicket : t))
-    );
-
-    setSelectedTicket(updatedTicket);
-    setIsEditingResolution(false);
-
+    setIsResolving(true);
     try {
-      await apiClient.patch(`/support/${selectedTicket.id}/resolve`, {
+      const res = await apiClient.patch(`/support/${selectedTicket.id}/resolve`, {
         resolution_notes: resolutionNotes.trim(),
         resolved_by: 'Super Admin',
         notify_requester: notifyRequester,
       });
-    } catch (e) {}
-
-    setToastMessage({
-      type: 'success',
-      title: 'Ticket Resolved Successfully',
-      description: `Resolution notes logged for ${selectedTicket.ticket_number}. ${
-        notifyRequester ? `Notification dispatched to ${selectedTicket.contact_number}.` : ''
-      }`,
-    });
-    setTimeout(() => setToastMessage(null), 4000);
-  };
-
-  // Action: Reopen Ticket
-  const handleReopenTicket = async (ticketId: string) => {
-    setTickets((prev) =>
-      prev.map((t) => (t.id === ticketId ? { ...t, status: 'OPEN' } : t))
-    );
-
-    if (selectedTicket && selectedTicket.id === ticketId) {
-      setSelectedTicket({ ...selectedTicket, status: 'OPEN' });
+      applyTicket(res.data);
+      setIsEditingResolution(false);
+      setResolveError(null);
+      const emailedTo: string | undefined = res.data?.email_sent_to;
+      showToast(
+        'success',
+        'Ticket Resolved',
+        `${res.data?.ticket_number || selectedTicket.ticket_number} resolved. ${
+          !notifyRequester ? 'No email sent.' : emailedTo ? `Resolution email sent to ${emailedTo}.` : 'No email on file, so no email was sent.'
+        }`,
+      );
+    } catch (e) {
+      setResolveError(apiErrorMessage(e, 'The ticket could not be resolved.'));
+    } finally {
+      setIsResolving(false);
     }
-
-    try {
-      await apiClient.patch(`/support/${ticketId}/status`, { status: 'OPEN' });
-    } catch (e) {}
-
-    setToastMessage({
-      type: 'info',
-      title: 'Ticket Reopened',
-      description: `Ticket status reverted to OPEN for further review.`,
-    });
-    setTimeout(() => setToastMessage(null), 4000);
   };
 
-  // Action: Raise New Inbound Ticket
+  // Action: admin reply in the conversation (an OPEN ticket moves to IN PROGRESS)
+  const handleSendReply = async () => {
+    if (!selectedTicket || isSendingReply) return;
+    const text = replyText.trim();
+    if (!text) return;
+    setIsSendingReply(true);
+    try {
+      const res = await apiClient.post(`/support/${selectedTicket.id}/messages`, { text });
+      applyTicket(res.data);
+      setReplyText('');
+    } catch (e) {
+      showToast('error', 'Reply not sent', apiErrorMessage(e, 'Your reply could not be sent.'));
+    } finally {
+      setIsSendingReply(false);
+    }
+  };
+
+  // Action: Raise New Inbound Ticket (admin portal) - added to the list only after the server saves it
   const handleCreateNewTicket = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isRaising) return;
+    const matchedVenue = venues.find((v) => v.id === newTicketVenueId);
+    if (!matchedVenue) {
+      setRaiseError('Please select the venue this ticket is about.');
+      return;
+    }
     if (!newTicketPersonName.trim()) {
       setRaiseError('Please specify the contact person name.');
       return;
@@ -258,47 +261,15 @@ export default function SupportHelpdeskPage() {
       return;
     }
 
-    const matchedVenue = venues.find((v) => v.id === newTicketVenueId) || venues[0];
-    const newSupportId = `SUP-2026-${100 + tickets.length + 1}`;
-
-    const newTicket: SupportTicketItem = {
-      id: `tkt_${Date.now()}`,
-      ticket_number: newSupportId,
-      venue_id: matchedVenue?.id || 'NO_VENUE',
-      venue_name: matchedVenue?.venue_name || 'General Support',
-      created_person_name: newTicketPersonName.trim(),
-      contact_number: newTicketContact.startsWith('+91') ? newTicketContact.trim() : `+91 ${newTicketContact.trim()}`,
-      category: newTicketCategory,
-      priority: newTicketPriority,
-      subject: newTicketSubject.trim(),
-      description: newTicketDescription.trim(),
-      related_booking_code: newTicketBookingId.trim() || undefined,
-      attachment_name: newTicketAttachmentName.trim() || undefined,
-      attachment_url: newTicketAttachmentName.trim() ? '#' : undefined,
-      status: 'OPEN',
-      source: 'VENUE_APP',
-      created_at: new Date().toISOString().replace('T', ' ').slice(0, 16),
-      conversation: [
-        {
-          sender: 'VENUE',
-          sender_name: newTicketPersonName.trim(),
-          message: newTicketDescription.trim(),
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        },
-      ],
-    };
-
-    setTickets([newTicket, ...tickets]);
-    setIsRaiseModalOpen(false);
-    setRaiseError(null);
-
-    // Call Backend Endpoint via apiClient
+    setIsRaising(true);
+    let created: SupportTicketItem;
     try {
       const res = await apiClient.post('/support', {
-        venue_id: matchedVenue?.id || 'ven_1001',
-        venue_name: matchedVenue?.venue_name || 'Sky Sports Arena',
+        venue_id: matchedVenue.id,
+        venue_name: matchedVenue.venue_name,
         person_name: newTicketPersonName.trim(),
         contact_number: newTicketContact.trim(),
+        email: matchedVenue.email || undefined,
         category: newTicketCategory,
         priority: newTicketPriority,
         subject: newTicketSubject.trim(),
@@ -306,14 +277,19 @@ export default function SupportHelpdeskPage() {
         booking_id: newTicketBookingId.trim() || undefined,
         attachment_name: newTicketAttachmentName.trim() || undefined,
       });
-      if (res.data) {
-        const created = res.data;
-        setTickets((prev) => [created, ...prev.filter((t) => t.id !== newTicket.id)]);
-      }
-    } catch (e) {}
-
+      created = res.data;
+    } catch (err) {
+      setRaiseError(apiErrorMessage(err, 'The ticket could not be created.'));
+      setIsRaising(false);
+      return;
+    }
+    setIsRaising(false);
+    setTickets((prev) => [created, ...prev]);
+    setIsRaiseModalOpen(false);
+    setRaiseError(null);
 
     // Reset Form
+    setNewTicketVenueId('');
     setNewTicketPersonName('');
     setNewTicketContact('');
     setNewTicketSubject('');
@@ -321,12 +297,7 @@ export default function SupportHelpdeskPage() {
     setNewTicketBookingId('');
     setNewTicketAttachmentName('');
 
-    setToastMessage({
-      type: 'success',
-      title: 'Inbound Support Ticket Raised',
-      description: `${newSupportId} registered from ${matchedVenue.venue_name} under OPEN status.`,
-    });
-    setTimeout(() => setToastMessage(null), 4500);
+    showToast('success', 'Support Ticket Raised', `${created.ticket_number} registered for ${created.venue_name} under OPEN status.`);
   };
 
   const renderCategoryBadge = (category: SupportTicketItem['category']) => {
@@ -960,6 +931,9 @@ export default function SupportHelpdeskPage() {
                     onChange={(e) => setNewTicketVenueId(e.target.value)}
                     className="w-full rounded-xl border border-slate-200 p-2.5 text-xs text-[#021526] focus:border-[#F94001] focus:outline-none"
                   >
+                    <option value="" disabled>
+                      {venues.length ? 'Select a venue…' : 'No approved venues yet'}
+                    </option>
                     {venues.map((v) => (
                       <option key={v.id} value={v.id}>
                         {v.venue_name} ({v.id}) — {v.district}, {v.state}
@@ -1254,11 +1228,66 @@ export default function SupportHelpdeskPage() {
                         <span className="text-[10px] text-[#5F6368]">Attached Verification Proof</span>
                       </div>
                     </div>
-                    <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md">
-                      Verified
-                    </span>
+                    {selectedTicket.attachment_url && selectedTicket.attachment_url !== '#' && (
+                      <a
+                        href={selectedTicket.attachment_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md hover:bg-blue-100"
+                      >
+                        Open
+                      </a>
+                    )}
                   </div>
                 )}
+
+                {/* Conversation with the venue + admin reply */}
+                <div className="rounded-2xl border border-[#E5E7EB] bg-white p-4 space-y-3 shadow-2xs">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                    <MessageSquare className="h-3.5 w-3.5" /> Conversation ({selectedTicket.conversation?.length || 0})
+                  </span>
+                  <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                    {(selectedTicket.conversation || []).map((m, idx) => (
+                      <div key={idx} className={`flex ${m.sender === 'ADMIN' ? 'justify-end' : 'justify-start'}`}>
+                        <div
+                          className={`max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed ${
+                            m.sender === 'ADMIN'
+                              ? 'bg-[#021526] text-white'
+                              : 'bg-slate-100 text-slate-800 border border-slate-200'
+                          }`}
+                        >
+                          <p className="whitespace-pre-wrap">{m.message}</p>
+                          <p className={`mt-1 text-[10px] ${m.sender === 'ADMIN' ? 'text-slate-300' : 'text-slate-500'}`}>
+                            {m.sender === 'ADMIN' ? 'You' : m.sender_name} · {m.timestamp}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {selectedTicket.status !== 'CLOSED' && (
+                    <div className="flex items-end gap-2 pt-1">
+                      <textarea
+                        rows={2}
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSendReply();
+                        }}
+                        placeholder="Reply to the venue… (Ctrl+Enter to send)"
+                        className="flex-1 rounded-xl border border-[#CBD5E1] bg-white p-2.5 text-xs text-[#021526] placeholder-slate-400 focus:outline-none focus:border-[#F94001]"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleSendReply}
+                        disabled={!replyText.trim() || isSendingReply}
+                        className="px-3 py-2.5 rounded-xl bg-[#F94001] hover:bg-[#e03a00] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Send className="h-3.5 w-3.5" />
+                        <span>{isSendingReply ? 'Sending…' : 'Send'}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
 
                 {/* 4. Resolution Console (Directly inside Drawer) */}
                 <div className="rounded-2xl border border-[#E5E7EB] bg-white p-4 space-y-3 shadow-2xs">
@@ -1279,20 +1308,20 @@ export default function SupportHelpdeskPage() {
                       </div>
                     </div>
 
-                    {selectedTicket.status === 'RESOLVED' && !isEditingResolution && (
+                    {selectedTicket.status === 'RESOLVED' && (
                       <button
                         type="button"
-                        onClick={() => setIsEditingResolution(true)}
+                        onClick={() => handleReopenTicket(selectedTicket.id)}
                         className="text-[11px] font-bold text-slate-700 hover:text-[#F94001] bg-white border border-slate-200 rounded-lg px-2.5 py-1 transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
                       >
-                        <Edit3 className="h-3 w-3" />
-                        <span>Edit Notes</span>
+                        <RotateCcw className="h-3 w-3" />
+                        <span>Reopen</span>
                       </button>
                     )}
                   </div>
 
                   {/* Read-only notes display when resolved */}
-                  {selectedTicket.status === 'RESOLVED' && !isEditingResolution ? (
+                  {selectedTicket.status === 'RESOLVED' || selectedTicket.status === 'CLOSED' ? (
                     <div className="p-3.5 rounded-xl bg-emerald-50/80 border border-emerald-200 space-y-2">
                       <p className="text-emerald-950 text-xs leading-relaxed font-medium">
                         {selectedTicket.resolution_notes}
@@ -1356,7 +1385,7 @@ export default function SupportHelpdeskPage() {
                           className="rounded text-emerald-600 focus:ring-emerald-500"
                         />
                         <span className="text-[11px] text-slate-600 font-medium">
-                          Dispatch automated resolution update to +91 {selectedTicket.contact_number}
+                          Email the resolution to the venue{selectedTicket.email ? ` (${selectedTicket.email})` : ' (onboarding email)'}
                         </span>
                       </label>
 
@@ -1365,20 +1394,12 @@ export default function SupportHelpdeskPage() {
                         <button
                           type="button"
                           onClick={handleConfirmResolutionInDrawer}
-                          className="flex-1 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+                          disabled={isResolving}
+                          className="flex-1 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
                         >
                           <Check className="h-4 w-4" />
-                          <span>Mark as Resolved &amp; Update</span>
+                          <span>{isResolving ? 'Resolving…' : 'Mark as Resolved & Notify'}</span>
                         </button>
-                        {selectedTicket.status === 'RESOLVED' && (
-                          <button
-                            type="button"
-                            onClick={() => setIsEditingResolution(false)}
-                            className="px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 text-xs font-bold hover:bg-slate-100 cursor-pointer"
-                          >
-                            Cancel
-                          </button>
-                        )}
                       </div>
                     </div>
                   )}
