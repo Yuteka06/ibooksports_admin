@@ -1332,7 +1332,14 @@ export default function SettlementManagementPage() {
                           try {
                             const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
                             const targetVenueId = selectedBatch.venue_id || selectedBatch.id;
-                            const res = await fetch(`${backendUrl}/onboarding/applications/${encodeURIComponent(targetVenueId)}/pdf`);
+                            let adminToken = '';
+                            try {
+                              const adminAuth = JSON.parse(localStorage.getItem('ibooksports_admin_auth') || '{}');
+                              adminToken = adminAuth?.accessToken || adminAuth?.token || '';
+                            } catch { }
+                            const res = await fetch(`${backendUrl}/onboarding/applications/${encodeURIComponent(targetVenueId)}/pdf`, {
+                              headers: adminToken ? { Authorization: `Bearer ${adminToken}` } : undefined,
+                            });
                             if (res.ok) {
                               const blob = await res.blob();
                               const url = URL.createObjectURL(blob);

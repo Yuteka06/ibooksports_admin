@@ -999,7 +999,16 @@ export const onboardingApi = {
   getDocumentUrl: (docId?: string | null) => {
     if (!docId) return '';
     if (docId.startsWith('http') || docId.startsWith('data:') || docId.startsWith('blob:')) return docId;
-    return `${API_BASE_URL}/onboarding/documents/${docId}/view`;
+    // Documents are private: <img>/<iframe> cannot send headers, so the admin token goes in ?token=
+    let adminToken = '';
+    if (typeof window !== 'undefined') {
+      try {
+        const adminAuth = localStorage.getItem('ibooksports_admin_auth');
+        adminToken = adminAuth ? JSON.parse(adminAuth)?.accessToken || JSON.parse(adminAuth)?.token || '' : '';
+      } catch { }
+    }
+    const query = adminToken ? `?token=${encodeURIComponent(adminToken)}` : '';
+    return `${API_BASE_URL}/onboarding/documents/${docId}/view${query}`;
   },
 
   // Step 2: Save Partner Details

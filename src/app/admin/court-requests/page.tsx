@@ -404,10 +404,12 @@ export default function CourtRequestsPage() {
         createdCourtId = res.court_id;
       }
     } catch (err) {
-      console.warn('Backend reviewCourtRequest error (proceeding locally):', err);
-    }
-    if (!createdCourtId) {
-      createdCourtId = `CRT-${Math.floor(1000 + Math.random() * 9000)}`;
+    const message =
+      (err as any)?.response?.data?.message || (err as Error)?.message || 'The server could not save this review.';
+      setToastMessage({ type: 'error', title: 'Approval Failed', description: String(message) });
+      setTimeout(() => setToastMessage(null), 5000);
+      await loadRequests();
+      return;
     }
 
     const updated: CourtExtensionRequest = {
@@ -436,7 +438,7 @@ export default function CourtRequestsPage() {
     setToastMessage({
       type: 'success',
       title: 'Court Request Approved',
-      description: `Court ID ${createdCourtId} generated. ${updated.court_name} for ${updated.venue_name} is now approved and active on the player app!`,
+      description: `Court ID ${createdCourtId || ''} created. ${updated.court_name} for ${updated.venue_name} is now approved and live.`,
     });
     setTimeout(() => setToastMessage(null), 4500);
   };
@@ -457,7 +459,12 @@ export default function CourtRequestsPage() {
         } as any),
       });
     } catch (err) {
-      console.warn('Backend reviewCourtRequest error (proceeding locally):', err);
+    const message =
+      (err as any)?.response?.data?.message || (err as Error)?.message || 'The server could not save this review.';
+      setToastMessage({ type: 'error', title: 'Rejection Failed', description: String(message) });
+      setTimeout(() => setToastMessage(null), 5000);
+      await loadRequests();
+      return;
     }
 
     const updated: CourtExtensionRequest = {

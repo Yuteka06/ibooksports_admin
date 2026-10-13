@@ -52,6 +52,14 @@ export default function PartnerOnboardingAdminTrackerPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [mounted, setMounted] = useState(false);
+  const [mapPopupVenue, setMapPopupVenue] = useState<{
+    venueName: string;
+    address?: string;
+    district?: string;
+    state?: string;
+    pincode?: string;
+    mapsUrl?: string;
+  } | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -303,13 +311,13 @@ export default function PartnerOnboardingAdminTrackerPage() {
 
 
   const isDraftStatus = (status?: string) => {
-    const s = (status || 'DRAFT').toUpperCase();
+    const s = (status || '').toUpperCase();
     return s === 'DRAFT';
   };
 
-  const isPendingStatus = (status?: string) => {
+  const isSubmittedStatus = (status?: string) => {
     const s = (status || '').toUpperCase();
-    return s === 'PENDING' || s === 'PENDING_REVIEW' || s === 'UNDER_REVIEW' || s === 'SUBMITTED';
+    return ['SUBMITTED', 'PENDING', 'PENDING_REVIEW', 'UNDER_REVIEW'].includes(s);
   };
 
   const isApprovedStatus = (status?: string) => {
@@ -317,13 +325,29 @@ export default function PartnerOnboardingAdminTrackerPage() {
     return s === 'APPROVED';
   };
 
-  const isCorrectionStatus = (status?: string) => {
+  const isRejectStatus = (status?: string) => {
     const s = (status || '').toUpperCase();
-    return ['REJECTED', 'NEEDS_CORRECTION', 'CORRECTIONS_REQUIRED', 'CORRECTION_REQUESTED', 'CORRECTION_REQUIRED', 'CHANGES_REQUESTED'].includes(s);
+    return s === 'REJECTED';
+  };
+
+  const isResubmissionStatus = (status?: string) => {
+    const s = (status || '').toUpperCase();
+    return [
+      'NEEDS_CORRECTION',
+      'CORRECTIONS_REQUIRED',
+      'CORRECTION_REQUESTED',
+      'CORRECTION_REQUIRED',
+      'CHANGES_REQUESTED',
+      'RESUBMISSION',
+      'RESUBMITTED',
+    ].includes(s);
   };
 
   const filteredApps = applications.filter((app) => {
     if (!app) return false;
+    // Exclude drafts so only Submitted, Approved, Reject, and Resubmission are displayed
+    if (isDraftStatus(app.status)) return false;
+
     const query = (searchQuery || '').trim().toLowerCase();
 
     const matchesSearch =
@@ -338,25 +362,24 @@ export default function PartnerOnboardingAdminTrackerPage() {
 
     const matchesStatus =
       statusFilter === 'ALL' ||
-      (statusFilter === 'DRAFT' && isDraftStatus(app.status)) ||
-      (statusFilter === 'PENDING' && isPendingStatus(app.status)) ||
+      (statusFilter === 'SUBMITTED' && isSubmittedStatus(app.status)) ||
       (statusFilter === 'APPROVED' && isApprovedStatus(app.status)) ||
-      (statusFilter === 'CORRECTIONS' && isCorrectionStatus(app.status)) ||
-      (statusFilter === 'PENDING_REVIEW' && isPendingStatus(app.status)) ||
-      (statusFilter === 'REJECTED' && isCorrectionStatus(app.status));
+      (statusFilter === 'REJECTED' && isRejectStatus(app.status)) ||
+      (statusFilter === 'RESUBMISSION' && isResubmissionStatus(app.status));
 
     return matchesSearch && matchesStatus;
   });
 
-  // Calculate Metrics
-  const totalCount = backendTotal !== null ? backendTotal : applications.length;
-  const draftCount = applications.filter((a) => isDraftStatus(a.status)).length;
-  const pendingCount = applications.filter((a) => isPendingStatus(a.status)).length;
-  const approvedCount = applications.filter((a) => isApprovedStatus(a.status)).length;
-  const correctionsCount = applications.filter((a) => isCorrectionStatus(a.status)).length;
+  // Calculate Metrics (excluding draft applications)
+  const nonDraftApps = applications.filter((a) => !isDraftStatus(a.status));
+  const totalCount = nonDraftApps.length;
+  const submittedCount = nonDraftApps.filter((a) => isSubmittedStatus(a.status)).length;
+  const approvedCount = nonDraftApps.filter((a) => isApprovedStatus(a.status)).length;
+  const rejectCount = nonDraftApps.filter((a) => isRejectStatus(a.status)).length;
+  const resubmissionCount = nonDraftApps.filter((a) => isResubmissionStatus(a.status)).length;
 
   const getStatusBadge = (status?: string) => {
-    const normalized = (status || 'DRAFT').toUpperCase();
+    const normalized = (status || '').toUpperCase();
     if (normalized === 'APPROVED') {
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono bg-emerald-50 text-emerald-800 border border-emerald-200">
@@ -367,20 +390,27 @@ export default function PartnerOnboardingAdminTrackerPage() {
     if (['PENDING', 'PENDING_REVIEW', 'UNDER_REVIEW', 'SUBMITTED'].includes(normalized)) {
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono bg-amber-50 text-amber-800 border border-amber-200">
-          <Clock className="h-3 w-3 text-amber-600" /> {normalized === 'UNDER_REVIEW' ? 'UNDER_REVIEW' : 'PENDING_REVIEW'}
+          <Clock className="h-3 w-3 text-amber-600" /> SUBMITTED
         </span>
       );
     }
-    if (['REJECTED', 'NEEDS_CORRECTION', 'CORRECTIONS_REQUIRED', 'CORRECTION_REQUESTED', 'CORRECTION_REQUIRED', 'CHANGES_REQUESTED'].includes(normalized)) {
+    if (normalized === 'REJECTED') {
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono bg-rose-50 text-rose-800 border border-rose-200">
-          <XCircle className="h-3 w-3 text-rose-600" /> {normalized === 'REJECTED' ? 'REJECTED' : 'CORRECTIONS'}
+          <XCircle className="h-3 w-3 text-rose-600" /> REJECTED
+        </span>
+      );
+    }
+    if (['NEEDS_CORRECTION', 'CORRECTIONS_REQUIRED', 'CORRECTION_REQUESTED', 'CORRECTION_REQUIRED', 'CHANGES_REQUESTED', 'RESUBMISSION', 'RESUBMITTED'].includes(normalized)) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono bg-orange-50 text-orange-800 border border-orange-200">
+          <AlertCircle className="h-3 w-3 text-orange-600" /> RESUBMISSION
         </span>
       );
     }
     return (
       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono bg-slate-100 text-slate-700 border border-slate-200">
-        <Layers className="h-3 w-3 text-slate-500" /> DRAFT
+        <Layers className="h-3 w-3 text-slate-500" /> {normalized || 'SUBMITTED'}
       </span>
     );
   };
@@ -516,7 +546,7 @@ export default function PartnerOnboardingAdminTrackerPage() {
         document.body
       )}
 
-      {/* PAGE HEADER & MINIMAL KPI */}
+      {/* PAGE HEADER */}
       <div className="flex flex-col gap-4 mb-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -527,37 +557,17 @@ export default function PartnerOnboardingAdminTrackerPage() {
               Track and verify 8-step partner registrations and court matrices.
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <a
-              href="https://ibooksports.com/onboarding"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#F94001] hover:bg-[#D93600] text-white text-xs font-bold transition-all"
-            >
-              <span>Open Partner Wizard</span>
-              <ExternalLink className="h-3.5 w-3.5" />
-            </a>
-            <button
-              type="button"
-              onClick={fetchApplications}
-              className="p-2 rounded-xl bg-slate-100 text-[#5F6368] hover:text-[#021526] transition-all cursor-pointer"
-              title="Refresh List"
-              suppressHydrationWarning
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
         </div>
 
-        {/* SEARCH, FILTERS & MINIMAL METRICS */}
+        {/* SEARCH, KPI STATUS FILTERS (DRAFT REMOVED) */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-3 rounded-2xl border border-slate-200">
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-full">
             {[
               { key: 'ALL', label: 'All', count: totalCount },
-              { key: 'DRAFT', label: 'Draft', count: draftCount },
-              { key: 'PENDING', label: 'Pending', count: pendingCount },
+              { key: 'SUBMITTED', label: 'Submitted', count: submittedCount },
               { key: 'APPROVED', label: 'Approved', count: approvedCount },
-              { key: 'CORRECTIONS', label: 'Corrections', count: correctionsCount },
+              { key: 'REJECTED', label: 'Reject', count: rejectCount },
+              { key: 'RESUBMISSION', label: 'Resubmission', count: resubmissionCount },
             ].map(({ key, label, count }) => (
               <button
                 key={key}
@@ -603,29 +613,30 @@ export default function PartnerOnboardingAdminTrackerPage() {
       {/* ========================================================================= */}
       <div className="rounded-2xl border border-[#CBD5E1] bg-white shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-[#021526] min-w-[1050px]" suppressHydrationWarning>
+          <table className="w-full text-left text-xs text-[#021526] min-w-[1100px]" suppressHydrationWarning>
             <thead className="bg-[#F8F9FA] border-b border-[#E5E7EB] text-[11px] font-bold uppercase text-[#5F6368] tracking-wider">
               <tr>
+                <th className="px-3 py-3.5 w-[50px] text-center">S.No</th>
                 <th className="px-4 py-3.5 w-[140px]">Application</th>
-                <th className="px-4 py-3.5 w-[170px]">Date &amp; Time</th>
+                <th className="px-4 py-3.5 w-[160px]">Date &amp; Time</th>
                 <th className="px-4 py-3.5 w-[200px]">Partner</th>
                 <th className="px-4 py-3.5 w-[220px]">Venue</th>
-                <th className="px-4 py-3.5 w-[180px]">Progress</th>
-                <th className="px-4 py-3.5 w-[130px]">Status</th>
-                <th className="px-4 py-3.5 w-[80px] text-center">Action</th>
+                <th className="px-4 py-3.5 w-[170px]">Progress</th>
+                <th className="px-4 py-3.5 w-[190px]">Status &amp; Review</th>
+                <th className="px-4 py-3.5 w-[70px] text-center">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E5E7EB]">
               {filteredApps.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-[#5F6368]">
+                  <td colSpan={8} className="px-6 py-12 text-center text-[#5F6368]">
                     <AlertCircle className="h-8 w-8 mx-auto opacity-40 mb-2" />
                     <p className="font-bold text-xs">No onboarding applications found.</p>
                     <p className="text-[11px] mt-0.5">Try clearing filters or search queries.</p>
                   </td>
                 </tr>
               ) : (
-                filteredApps.map((app) => {
+                filteredApps.map((app, index) => {
                   const stepNum = app.current_step || 1;
                   const progressPercent = Math.min(100, Math.round((stepNum / 8) * 100));
                   const fullTimestamp = String(app.updated_at || app.created_at || 'Just now');
@@ -639,8 +650,20 @@ export default function PartnerOnboardingAdminTrackerPage() {
                     ? dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
                     : (typeof fullTimestamp === 'string' && fullTimestamp.includes(' ') ? fullTimestamp.split(' ').slice(1).join(' ') : '');
 
+                  const venueId = (app as any).venue_id || 'VEN-' + (app.application_id || '').replace(/\D/g, '');
+                  const rejectionReasonText = app.rejection_reasons && app.rejection_reasons.length > 0 
+                    ? app.rejection_reasons[0].reason 
+                    : 'Application rejected';
+
                   return (
                     <tr key={app.application_id} className="hover:bg-[#FFF8F5]/60 transition-colors">
+                      {/* S.No */}
+                      <td className="px-3 py-3.5 text-center align-middle whitespace-nowrap">
+                        <span className="font-mono font-bold text-xs text-slate-500">
+                          {index + 1}
+                        </span>
+                      </td>
+
                       {/* ID */}
                       <td className="px-4 py-3.5 align-middle whitespace-nowrap">
                         <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-50 border border-slate-200">
@@ -687,16 +710,24 @@ export default function PartnerOnboardingAdminTrackerPage() {
                         <p className="text-[11px] text-[#5F6368] truncate mt-0.5">
                           {app.partner_details?.district || 'Coimbatore'}, {app.partner_details?.state || 'Tamil Nadu'}
                         </p>
-                        {app.business_details?.venue_google_maps_link && (
-                          <a
-                            href={app.business_details.venue_google_maps_link}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-[10px] text-[#F94001] hover:underline inline-flex items-center gap-1 mt-0.5"
+                        {app.business_details?.venue_google_maps_link ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setMapPopupVenue({
+                                venueName: app.business_details?.venue_name || 'Venue Location',
+                                address: app.business_details?.venue_address || app.partner_details?.address,
+                                district: app.partner_details?.district,
+                                state: app.partner_details?.state,
+                                pincode: app.partner_details?.pincode,
+                                mapsUrl: app.business_details?.venue_google_maps_link,
+                              })
+                            }
+                            className="text-[10px] text-[#F94001] hover:underline inline-flex items-center gap-1 mt-1 cursor-pointer font-medium"
                           >
-                            <MapPin className="h-3 w-3" /> View on Maps
-                          </a>
-                        )}
+                            <MapPin className="h-3 w-3 text-[#F94001]" /> View on Maps
+                          </button>
+                        ) : null}
                       </td>
 
                       {/* Step Engine Progress */}
@@ -716,9 +747,56 @@ export default function PartnerOnboardingAdminTrackerPage() {
                         </span>
                       </td>
 
-                      {/* Status */}
-                      <td className="px-4 py-3.5 whitespace-nowrap align-middle">
-                        {getStatusBadge(app.status)}
+                      {/* Status & Review Column */}
+                      <td className="px-4 py-3.5 align-middle">
+                        <div>
+                          {getStatusBadge(app.status)}
+                        </div>
+
+                        {/* APPROVED: Show Venue ID and Who Approved */}
+                        {isApprovedStatus(app.status) && (
+                          <div className="mt-1.5 space-y-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] text-slate-400 font-mono">Venue ID:</span>
+                              <span className="inline-flex items-center font-mono font-bold text-[11px] text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                                {venueId}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-slate-500">
+                              Approved by <span className="font-semibold text-slate-700">{app.approved_by || 'Super Admin'}</span>
+                            </p>
+                          </div>
+                        )}
+
+                        {/* REJECTED: Show Who Rejected and Reason */}
+                        {isRejectStatus(app.status) && (
+                          <div className="mt-1.5 space-y-0.5">
+                            <p className="text-[10px] text-rose-600 font-medium">
+                              Rejected by <span className="font-bold text-rose-800">{app.rejected_by || 'Super Admin'}</span>
+                            </p>
+                            <p className="text-[10px] text-slate-500 truncate max-w-[170px]" title={rejectionReasonText}>
+                              Reason: {rejectionReasonText}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* RESUBMISSION: Show Resubmission Details */}
+                        {isResubmissionStatus(app.status) && (
+                          <div className="mt-1">
+                            <span className="text-[10px] text-orange-600 font-medium">
+                              Changes Requested
+                            </span>
+                          </div>
+                        )}
+
+                        {/* SUBMITTED: Show Pending state */}
+                        {isSubmittedStatus(app.status) && (
+                          <div className="mt-1">
+                            <span className="text-[10px] text-slate-400">
+                              Awaiting Review
+                            </span>
+                          </div>
+                        )}
                       </td>
 
                       {/* Action Column: ONLY Eye Icon */}
@@ -769,9 +847,27 @@ export default function PartnerOnboardingAdminTrackerPage() {
                     Step {drawerApp.current_step || 1} of 8 ({Math.min(100, Math.round(((drawerApp.current_step || 1) / 8) * 100))}%)
                   </span>
                 </div>
-                <h2 className="text-base sm:text-lg font-black text-white font-display mt-0.5 truncate max-w-xl">
-                  {drawerApp.business_details?.venue_name || 'Partner Onboarding Dossier'}
-                </h2>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <h2 className="text-base sm:text-lg font-black text-white font-display mt-0.5 truncate max-w-xl">
+                    {drawerApp.business_details?.venue_name || 'Partner Onboarding Dossier'}
+                  </h2>
+                  {isApprovedStatus(drawerApp.status) && (
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[10px] text-emerald-400 font-mono">VENUE ID:</span>
+                      <span className="text-xs font-mono font-bold text-emerald-300 bg-emerald-950/60 border border-emerald-500/30 px-2 py-0.5 rounded">
+                        {(drawerApp as any).venue_id || 'VEN-' + (drawerApp.application_id || '').replace(/\D/g, '')}
+                      </span>
+                      <span className="text-[11px] text-slate-400">
+                        &bull; Approved by {drawerApp.approved_by || 'Super Admin'}
+                      </span>
+                    </div>
+                  )}
+                  {isRejectStatus(drawerApp.status) && (
+                    <span className="text-[11px] text-rose-300 mt-0.5">
+                      Rejected by {drawerApp.rejected_by || 'Super Admin'}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -1750,6 +1846,105 @@ export default function PartnerOnboardingAdminTrackerPage() {
                   <p className="text-[11px] text-[#5F6368]">No physical file was uploaded for this record.</p>
                 </div>
               )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* 4. VENUE LOCATION MAP POPUP MODAL */}
+      {mounted && mapPopupVenue && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="px-6 py-4 bg-[#021526] text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-white/10 text-[#F94001]">
+                  <MapPin className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-white">{mapPopupVenue.venueName}</h3>
+                  <p className="text-[11px] text-slate-300">Venue Location &amp; Directions</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMapPopupVenue(null)}
+                className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                title="Close popup"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-4">
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                <div className="flex items-start gap-2.5">
+                  <Building2 className="h-4 w-4 text-[#F94001] shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-bold text-[#021526]">{mapPopupVenue.venueName}</p>
+                    <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                      {mapPopupVenue.address || 'Address not specified'}
+                    </p>
+                    {(mapPopupVenue.district || mapPopupVenue.state) && (
+                      <p className="text-[11px] font-semibold text-slate-500 mt-1.5">
+                        {[mapPopupVenue.district, mapPopupVenue.state, mapPopupVenue.pincode].filter(Boolean).join(', ')}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {mapPopupVenue.mapsUrl ? (
+                <div className="space-y-3">
+                  <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-emerald-600" />
+                      <span className="text-xs font-bold text-emerald-900">Verified Google Maps Link</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full font-bold">Active</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <a
+                      href={mapPopupVenue.mapsUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex-1 py-2.5 px-4 rounded-xl bg-[#F94001] hover:bg-[#D93600] text-white text-xs font-bold text-center flex items-center justify-center gap-2 transition-all shadow-sm cursor-pointer"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Open in Google Maps
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (navigator.clipboard) {
+                          navigator.clipboard.writeText(mapPopupVenue.mapsUrl || '');
+                          showToast('success', 'Link Copied', 'Google Maps link copied to clipboard.');
+                        }
+                      }}
+                      className="py-2.5 px-4 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all cursor-pointer"
+                    >
+                      Copy Link
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-center">
+                  <p className="text-xs text-amber-800">No Google Maps link provided for this venue yet.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setMapPopupVenue(null)}
+                className="px-5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold transition-all cursor-pointer"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>,
