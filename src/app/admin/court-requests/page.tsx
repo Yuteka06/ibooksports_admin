@@ -202,6 +202,7 @@ export default function CourtRequestsPage() {
         (req.owner_name || '').toLowerCase().includes(q) ||
         (req.owner_phone || '').toLowerCase().includes(q) ||
         (req.sport || '').toLowerCase().includes(q) ||
+        (req.reviewed_by || '').toLowerCase().includes(q) ||
         reqState.toLowerCase().includes(q) ||
         reqDistrict.toLowerCase().includes(q);
 
@@ -762,13 +763,14 @@ export default function CourtRequestsPage() {
                 <th className="py-3 px-4 min-w-[140px]">Request Date &amp; Time</th>
                 <th className="py-3 px-4 min-w-[120px]">Hourly Rate</th>
                 <th className="py-3 px-4 min-w-[110px]">Status</th>
-                <th className="py-3 px-4 text-center w-[130px]">Actions</th>
+                <th className="py-3 px-4 min-w-[160px]">Approved / Rejected By</th>
+                <th className="py-3 px-4 text-center w-[80px]">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-14 text-center text-slate-400">
+                  <td colSpan={9} className="py-14 text-center text-slate-400">
                     <Inbox className="h-9 w-9 mx-auto text-slate-300 mb-2" />
                     <p className="font-bold text-sm text-[#021526]">No court requests found</p>
                     <p className="text-[11px] text-slate-400 mt-0.5">
@@ -909,70 +911,58 @@ export default function CourtRequestsPage() {
                         )}
                       </td>
 
+                      {/* 7. APPROVED / REJECTED BY */}
+                      <td className="py-3.5 px-4 align-middle whitespace-nowrap">
+                        {status === 'APPROVED' ? (
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-800">
+                              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                              <span>{req.reviewed_by || 'Platform Super Admin'}</span>
+                            </div>
+                            {req.reviewed_at && (
+                              <p className="text-[10px] text-slate-400 font-mono pl-5">
+                                {typeof req.reviewed_at === 'string'
+                                  ? req.reviewed_at.includes('T')
+                                    ? req.reviewed_at.split('T')[0]
+                                    : req.reviewed_at.split(' ')[0]
+                                  : ''}
+                              </p>
+                            )}
+                          </div>
+                        ) : status === 'REJECTED' ? (
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-800">
+                              <ShieldCheck className="h-3.5 w-3.5 text-rose-600 shrink-0" />
+                              <span>{req.reviewed_by || 'Platform Super Admin'}</span>
+                            </div>
+                            {req.reviewed_at && (
+                              <p className="text-[10px] text-slate-400 font-mono pl-5">
+                                {typeof req.reviewed_at === 'string'
+                                  ? req.reviewed_at.includes('T')
+                                    ? req.reviewed_at.split('T')[0]
+                                    : req.reviewed_at.split(' ')[0]
+                                  : ''}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-slate-300 font-bold pl-2">—</span>
+                        )}
+                      </td>
+
+                      {/* 8. ACTION (ONLY EYE ICON) */}
                       <td className="py-3.5 px-4 align-middle text-center whitespace-nowrap">
-                        <div className="flex items-center justify-center gap-1.5">
-                          {status === 'APPROVED' ? (
-                            <span className="h-7 px-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-[11px] inline-flex items-center gap-1 opacity-80 cursor-default">
-                              <Check className="h-3 w-3 text-emerald-600" />
-                              <span>Approved</span>
-                            </span>
-                          ) : status === 'REJECTED' ? (
-                            <span className="h-7 px-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 font-bold text-[11px] inline-flex items-center gap-1 opacity-80 cursor-default">
-                              <X className="h-3 w-3 text-rose-600" />
-                              <span>Declined</span>
-                            </span>
-                          ) : (
-                            <>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setPendingApprovalRequest(req);
-                                }}
-                                title="Quick Approve"
-                                className="h-7 w-7 rounded-lg bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white flex items-center justify-center transition-colors cursor-pointer border border-emerald-200 shadow-2xs"
-                              >
-                                <Check className="h-3.5 w-3.5" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleOpenDrawer(req);
-                                  setIsRejectOpen(true);
-                                }}
-                                title="Reject Request"
-                                className="h-7 w-7 rounded-lg bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white flex items-center justify-center transition-colors cursor-pointer border border-rose-200 shadow-2xs"
-                              >
-                                <X className="h-3.5 w-3.5" />
-                              </button>
-                            </>
-                          )}
-
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteRequest(req.id);
-                            }}
-                            title="Delete Request"
-                            className="h-7 w-7 rounded-lg bg-slate-100 hover:bg-rose-600 text-slate-500 hover:text-white flex items-center justify-center transition-colors cursor-pointer border border-slate-200 shadow-2xs"
-                          >
-                            <Ban className="h-3.5 w-3.5" />
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenDrawer(req);
-                            }}
-                            className="h-7 px-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-[#F94001] hover:border-[#F94001]/40 hover:bg-[#FFF1EC] text-xs font-semibold inline-flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
-                          >
-                            <Eye className="h-3 w-3 text-slate-500" />
-                            <span>Details &gt;</span>
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenDrawer(req);
+                          }}
+                          className="h-7.5 w-7.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-[#F94001] hover:border-[#F94001]/40 hover:bg-[#FFF1EC] transition-all inline-flex items-center justify-center cursor-pointer shadow-2xs"
+                          title="View Court Request Details"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                        </button>
                       </td>
                     </tr>
                   );
