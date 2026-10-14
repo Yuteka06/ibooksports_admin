@@ -75,8 +75,11 @@ export default function CourtRequestsPage() {
   const [pendingApprovalRequest, setPendingApprovalRequest] =
     useState<CourtExtensionRequest | null>(null);
 
-  // Reject Form inside Drawer
+  // Reject Form & Modal State
+  const [pendingRejectionRequest, setPendingRejectionRequest] =
+    useState<CourtExtensionRequest | null>(null);
   const [isRejectOpen, setIsRejectOpen] = useState(false);
+  const [isRejectSubmitting, setIsRejectSubmitting] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('PRICING_OUT_OF_BOUNDS');
   const [rejectionNote, setRejectionNote] = useState('');
   const [rejectError, setRejectError] = useState<string | null>(null);
@@ -447,6 +450,9 @@ export default function CourtRequestsPage() {
     const selectedPreset = REJECTION_REASONS.find((r) => r.value === rejectionReason);
     const finalNote = rejectionNote.trim() || selectedPreset?.label || 'Specifications require physical revision.';
 
+    setIsRejectSubmitting(true);
+    setRejectError(null);
+
     try {
       await adminApi.reviewCourtRequest(req.id, {
         status: 'REJECTED',
@@ -459,10 +465,12 @@ export default function CourtRequestsPage() {
         } as any),
       });
     } catch (err) {
-    const message =
-      (err as any)?.response?.data?.message || (err as Error)?.message || 'The server could not save this review.';
+      const message =
+        (err as any)?.response?.data?.message || (err as Error)?.message || 'The server could not save this review.';
+      setRejectError(String(message));
       setToastMessage({ type: 'error', title: 'Rejection Failed', description: String(message) });
       setTimeout(() => setToastMessage(null), 5000);
+      setIsRejectSubmitting(false);
       await loadRequests();
       return;
     }
@@ -492,7 +500,10 @@ export default function CourtRequestsPage() {
     }
 
     setIsRejectOpen(false);
+    setPendingRejectionRequest(null);
+    setIsRejectSubmitting(false);
     setRejectionNote('');
+    setRejectError(null);
 
     setToastMessage({
       type: 'error',
@@ -1312,8 +1323,8 @@ export default function CourtRequestsPage() {
                 </div>
               </div>
 
-              {/* CARD 5: REJECTION REASON / INLINE REJECT FORM */}
-              {selectedRequestForDrawer.rejection_notes && !isRejectOpen && (
+              {/* CARD 5: REJECTION REASON AUDIT */}
+              {selectedRequestForDrawer.rejection_notes && (
                 <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 space-y-1 text-xs">
                   <span className="text-[10px] font-bold uppercase text-rose-700 tracking-wider">
                     Previous Rejection Audit Reason
@@ -1321,62 +1332,6 @@ export default function CourtRequestsPage() {
                   <p className="text-rose-900 font-medium">
                     {selectedRequestForDrawer.rejection_notes}
                   </p>
-                </div>
-              )}
-
-              {/* Inline Reject Form */}
-              {isRejectOpen && (
-                <div className="p-4 rounded-2xl bg-rose-50/80 border border-rose-200 space-y-3 text-xs animate-in fade-in">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-black uppercase text-rose-800 tracking-wider">
-                      Specify Rejection Reason
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setIsRejectOpen(false)}
-                      className="text-rose-400 hover:text-rose-700 text-xs font-bold cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
-                      Reason Category
-                    </label>
-                    <select
-                      value={rejectionReason}
-                      onChange={(e) => setRejectionReason(e.target.value)}
-                      className="w-full p-2 rounded-xl border border-rose-200 bg-white text-xs font-bold text-slate-800 focus:outline-none"
-                    >
-                      {REJECTION_REASONS.map((r) => (
-                        <option key={r.value} value={r.value}>
-                          {r.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
-                      Detailed Feedback for Partner (Required)
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={rejectionNote}
-                      onChange={(e) => setRejectionNote(e.target.value)}
-                      placeholder="Explain precisely why this court request cannot be approved..."
-                      className="w-full p-2.5 rounded-xl border border-rose-200 bg-white text-xs text-slate-800 focus:outline-none placeholder:text-slate-400"
-                    />
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handleConfirmReject(selectedRequestForDrawer)}
-                    className="w-full py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
-                  >
-                    Confirm &amp; Reject Court Request
-                  </button>
                 </div>
               )}
             </div>
@@ -1445,7 +1400,12 @@ export default function CourtRequestsPage() {
                   <>
                     <button
                       type="button"
-                      onClick={() => setIsRejectOpen(true)}
+                      onClick={() => {
+                        setPendingRejectionRequest(selectedRequestForDrawer);
+                        setRejectionReason('PRICING_OUT_OF_BOUNDS');
+                        setRejectionNote('');
+                        setRejectError(null);
+                      }}
                       className="px-3.5 py-2 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 text-rose-700 font-bold text-xs transition-colors cursor-pointer"
                     >
                       Reject
@@ -1529,6 +1489,112 @@ export default function CourtRequestsPage() {
               >
                 <Check className="h-4 w-4" />
                 <span>Yes, Approve &amp; Activate</span>
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* =========================================================================
+          8. REJECT CONFIRMATION MODAL POPUP
+          ========================================================================= */}
+      {mounted && pendingRejectionRequest && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[10000] top-0 left-0 right-0 bottom-0 w-screen h-screen bg-[#021526]/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl border border-rose-200 max-w-md w-full p-6 space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
+              <div className="h-10 w-10 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+                <XCircle className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-base text-[#021526]">
+                  Reject Court Request
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Provide a clear reason and feedback notes for the venue partner.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-rose-50/50 border border-rose-200/80 text-xs space-y-2">
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Court Name:</span>
+                <span className="font-bold text-slate-900">{pendingRejectionRequest.court_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Facility / Venue:</span>
+                <span className="font-bold text-slate-900">{pendingRejectionRequest.venue_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Sport:</span>
+                <span className="font-bold text-slate-900">{pendingRejectionRequest.sport}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Hourly Base Rate:</span>
+                <span className="font-bold text-slate-900 font-mono">₹{pendingRejectionRequest.price_per_hour}/hr</span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">
+                  Reason Category *
+                </label>
+                <select
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:outline-none focus:border-rose-500 cursor-pointer"
+                >
+                  {REJECTION_REASONS.map((r) => (
+                    <option key={r.value} value={r.value}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">
+                  Feedback Notes for Partner (Required) *
+                </label>
+                <textarea
+                  rows={3}
+                  value={rejectionNote}
+                  onChange={(e) => {
+                    setRejectionNote(e.target.value);
+                    if (rejectError) setRejectError(null);
+                  }}
+                  placeholder="Explain precisely why this court request cannot be approved (e.g., pricing exceeds regional cap, lighting lux rating incomplete)..."
+                  className="w-full p-3 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 focus:outline-none focus:border-rose-500 placeholder:text-slate-400"
+                />
+              </div>
+
+              {rejectError && (
+                <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">
+                  {rejectError}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setPendingRejectionRequest(null);
+                  setRejectError(null);
+                }}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isRejectSubmitting}
+                onClick={() => handleConfirmReject(pendingRejectionRequest)}
+                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+              >
+                <XCircle className="h-4 w-4" />
+                <span>{isRejectSubmitting ? 'Rejecting...' : 'Confirm & Reject'}</span>
               </button>
             </div>
           </div>

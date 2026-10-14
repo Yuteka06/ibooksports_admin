@@ -259,6 +259,8 @@ export default function VenueModularOverviewPage() {
   const [reqRefundPercentage, setReqRefundPercentage] = useState<number>(100);
 
   // Drawer Rejection & Deletion State
+  const [pendingRejectCourtRequest, setPendingRejectCourtRequest] = useState<CourtExtensionRequest | null>(null);
+  const [isDrawerRejectSubmitting, setIsDrawerRejectSubmitting] = useState(false);
   const [isDrawerRejectOpen, setIsDrawerRejectOpen] = useState(false);
   const [drawerRejectionReason, setDrawerRejectionReason] = useState('PRICING_OUT_OF_BOUNDS');
   const [drawerRejectionNote, setDrawerRejectionNote] = useState('');
@@ -904,11 +906,13 @@ export default function VenueModularOverviewPage() {
     setTimeout(() => setStatusNotification(null), 3500);
   };
 
-  const handleRejectCourtRequest = (req: CourtExtensionRequest) => {
-    if (!drawerRejectionNote.trim()) {
-      setDrawerActionError('Rejection note is required so the venue owner understands what to correct.');
-      return;
-    }
+  const handleRejectCourtRequest = async (req: CourtExtensionRequest) => {
+    const selectedPreset = REJECTION_REASONS.find((rr) => rr.value === drawerRejectionReason);
+    const finalNote = drawerRejectionNote.trim() || selectedPreset?.label || 'Specifications require physical revision.';
+
+    setIsDrawerRejectSubmitting(true);
+    setDrawerActionError(null);
+
     const nowStr = new Date().toISOString();
     const historyItem: CourtExtensionHistory = {
       round: req.submission_round || 1,
@@ -916,7 +920,7 @@ export default function VenueModularOverviewPage() {
       actor_role: 'ADMIN',
       timestamp: nowStr,
       rejection_reason_code: drawerRejectionReason,
-      note: drawerRejectionNote.trim(),
+      note: finalNote,
     };
 
     const updated = courtRequests.map((r) => {
@@ -926,8 +930,8 @@ export default function VenueModularOverviewPage() {
           status: 'REJECTED' as const,
           reviewed_by: 'Platform Super Admin',
           reviewed_at: nowStr,
-          rejection_reason: REJECTION_REASONS.find((rr) => rr.value === drawerRejectionReason)?.label || drawerRejectionReason,
-          rejection_note: drawerRejectionNote.trim(),
+          rejection_reason: selectedPreset?.label || drawerRejectionReason,
+          rejection_note: finalNote,
           history: [...r.history, historyItem],
         };
       }
@@ -935,12 +939,19 @@ export default function VenueModularOverviewPage() {
     });
 
     saveCourtRequestsToStorage(updated);
-    adminApi.reviewCourtRequest(req.id, {
-      status: 'REJECTED',
-      rejection_reason: drawerRejectionNote.trim(),
-      reviewer_name: 'Platform Super Admin',
-    }).catch((e) => console.warn(e));
+    try {
+      await adminApi.reviewCourtRequest(req.id, {
+        status: 'REJECTED',
+        rejection_reason: finalNote,
+        reviewer_name: 'Platform Super Admin',
+      });
+    } catch (e: any) {
+      console.warn('Backend court request reject error:', e);
+    }
+
     setIsDrawerRejectOpen(false);
+    setPendingRejectCourtRequest(null);
+    setIsDrawerRejectSubmitting(false);
     setDrawerRejectionNote('');
     setDrawerActionError(null);
     setSelectedCourtRequestForDrawer(null);
@@ -6023,7 +6034,12 @@ export default function VenueModularOverviewPage() {
                   <>
                     <button
                       type="button"
-                      onClick={() => setIsDrawerRejectOpen(true)}
+                      onClick={() => {
+                        setPendingRejectCourtRequest(selectedCourtRequestForDrawer);
+                        setDrawerRejectionReason('PRICING_OUT_OF_BOUNDS');
+                        setDrawerRejectionNote('');
+                        setDrawerActionError(null);
+                      }}
                       className="px-3.5 py-2 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 text-rose-700 font-bold text-xs transition-colors cursor-pointer"
                     >
                       Reject
@@ -6079,6 +6095,120 @@ export default function VenueModularOverviewPage() {
                 className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors cursor-pointer shadow-xs"
               >
                 Confirm Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          REJECT COURT REQUEST CONFIRMATION MODAL POPUP
+      ======================================================== */}
+      {pendingRejectCourtRequest && (
+        <div
+          className="fixed inset-0 z-[10000] bg-[#021526]/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => {
+            setPendingRejectCourtRequest(null);
+            setDrawerActionError(null);
+          }}
+        >
+          <div
+            className="bg-white rounded-3xl shadow-2xl border border-rose-200 max-w-md w-full p-6 space-y-4 animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
+              <div className="h-10 w-10 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-base text-[#021526]">
+                  Reject Court Extension Request
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Provide a specific reason and feedback notes for the venue partner.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-rose-50/50 border border-rose-200/80 text-xs space-y-2">
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Court Name:</span>
+                <span className="font-bold text-slate-900">{pendingRejectCourtRequest.court_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Facility / Venue:</span>
+                <span className="font-bold text-slate-900">{pendingRejectCourtRequest.venue_name || currentVenue?.venue_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Sport:</span>
+                <span className="font-bold text-slate-900">{pendingRejectCourtRequest.sport}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Hourly Base Rate:</span>
+                <span className="font-bold text-slate-900 font-mono">₹{pendingRejectCourtRequest.price_per_hour}/hr</span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">
+                  Rejection Reason Category *
+                </label>
+                <select
+                  value={drawerRejectionReason}
+                  onChange={(e) => setDrawerRejectionReason(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:outline-none focus:border-rose-500 cursor-pointer"
+                >
+                  {REJECTION_REASONS.map((r) => (
+                    <option key={r.value} value={r.value}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">
+                  Feedback Notes for Partner (Required) *
+                </label>
+                <textarea
+                  rows={3}
+                  value={drawerRejectionNote}
+                  onChange={(e) => {
+                    setDrawerRejectionNote(e.target.value);
+                    if (drawerActionError) setDrawerActionError(null);
+                  }}
+                  placeholder="Explain why this request cannot be approved so the owner can correct it..."
+                  className="w-full p-3 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 focus:outline-none focus:border-rose-500 placeholder:text-slate-400"
+                />
+              </div>
+
+              {drawerActionError && (
+                <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">
+                  {drawerActionError}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setPendingRejectCourtRequest(null);
+                  setDrawerActionError(null);
+                }}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDrawerRejectSubmitting}
+                onClick={() => handleRejectCourtRequest(pendingRejectCourtRequest)}
+                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+              >
+                <X className="h-4 w-4" />
+                <span>{isDrawerRejectSubmitting ? 'Rejecting...' : 'Confirm & Reject'}</span>
               </button>
             </div>
           </div>
