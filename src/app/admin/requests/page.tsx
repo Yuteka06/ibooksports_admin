@@ -202,10 +202,8 @@ export default function PartnerRequestsPage() {
         ? existingToken
         : generateSecureHexToken();
 
-    const baseUrl =
-      typeof window !== 'undefined' && window.location.origin
-        ? window.location.origin
-        : 'https://ibooksports-admin.vercel.app';
+    // Partners open this link in the onboarding app, not the admin panel.
+    const baseUrl = (process.env.NEXT_PUBLIC_PARTNER_PORTAL_URL || 'http://onboarding.ibooksports.in').replace(/\/+$/, '');
 
     setCustomOnboardingLink(`${baseUrl}/onboarding/${token}`);
     setApproveError(null);
