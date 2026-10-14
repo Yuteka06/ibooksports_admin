@@ -104,6 +104,9 @@ export default function PaymentManagementPage() {
   
   // Slide-out Drawer State (Consolidated into 2 Tabs: Overview & Tax Invoice, Payment Link & Gateway Audit)
   const [selectedTxn, setSelectedTxn] = useState<PaymentTransactionItem | null>(null);
+  // Real Razorpay balance links created on demand, keyed by booking code
+  const [balanceLinks, setBalanceLinks] = useState<Record<string, string>>({});
+  const [sendingLink, setSendingLink] = useState(false);
   const [drawerTab, setDrawerTab] = useState<'overview_invoice' | 'payment_link_audit'>('overview_invoice');
   
   // Interactive copy feedback
@@ -119,6 +122,21 @@ export default function PaymentManagementPage() {
   const showToast = (type: 'success' | 'info' | 'error', title: string, description: string) => {
     setToastMessage({ type, title, description });
     setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  // Creates (or reuses) a real Razorpay link for the current balance and sends it to the customer on WhatsApp
+  const handleSendBalanceLink = async (bookingCode: string) => {
+    setSendingLink(true);
+    try {
+      const res = await apiClient.post<any>(`/bookings/${bookingCode}/send-balance-link`);
+      const link = res.data?.payment_link;
+      if (link) setBalanceLinks((prev) => ({ ...prev, [bookingCode]: link }));
+      showToast('success', 'Balance Link Sent', `Payment link for ₹${res.data?.amount} sent to the customer on WhatsApp.`);
+    } catch (err: any) {
+      showToast('error', 'Could Not Send Link', err?.response?.data?.message || err?.message || 'Please try again.');
+    } finally {
+      setSendingLink(false);
+    }
   };
 
   const handleCopy = (text: string, id: string) => {
@@ -1331,18 +1349,22 @@ export default function PaymentManagementPage() {
                       {/* Link Box */}
                       <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-2">
                         <span className="font-mono text-xs text-slate-700 truncate select-all">
-                          {selectedTxn.balance_payment_link ||
+                          {balanceLinks[selectedTxn.booking_code] ||
+                            selectedTxn.balance_payment_link ||
                             selectedTxn.payment_link ||
-                            `https://pay.ibooksports.com/bal/${selectedTxn.booking_code}`}
+                            'No link yet — use "Send Link on WhatsApp"'}
                         </span>
                         <button
                           type="button"
+                          disabled={
+                            !(balanceLinks[selectedTxn.booking_code] || selectedTxn.balance_payment_link || selectedTxn.payment_link)
+                          }
                           onClick={() => {
                             const link =
+                              balanceLinks[selectedTxn.booking_code] ||
                               selectedTxn.balance_payment_link ||
-                              selectedTxn.payment_link ||
-                              `https://pay.ibooksports.com/bal/${selectedTxn.booking_code}`;
-                            handleCopy(link, 'pay_link');
+                              selectedTxn.payment_link;
+                            if (link) handleCopy(link, 'pay_link');
                           }}
                           className="px-3 py-1.5 rounded-lg bg-[#021526] hover:bg-[#F94001] text-white font-bold text-xs transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
                         >
@@ -1362,17 +1384,17 @@ export default function PaymentManagementPage() {
 
                       {/* Quick Share Buttons */}
                       <div className="grid grid-cols-1 gap-2 pt-1">
-                        <a
-                          href={`https://wa.me/${selectedTxn.customer_phone.replace(/\D/g, '')}?text=${encodeURIComponent(
-                            `Hi ${selectedTxn.customer_name}, please pay your remaining balance of ₹${selectedTxn.balance_amount} for your court booking (${selectedTxn.booking_code}) at ${selectedTxn.venue_name}: https://pay.ibooksports.com/bal/${selectedTxn.booking_code}`
-                          )}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-2.5 rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
-                        >
-                          <MessageSquare className="h-4 w-4 text-emerald-600" />
-                          <span>Share via WhatsApp</span>
-                        </a>
+                        {selectedTxn.balance_amount > 0 && (
+                          <button
+                            type="button"
+                            disabled={sendingLink}
+                            onClick={() => handleSendBalanceLink(selectedTxn.booking_code)}
+                            className="p-2.5 rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-60 text-emerald-800 font-bold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                          >
+                            <MessageSquare className="h-4 w-4 text-emerald-600" />
+                            <span>{sendingLink ? 'Sending…' : 'Send Link on WhatsApp'}</span>
+                          </button>
+                        )}
                       </div>
                     </div>
 

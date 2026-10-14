@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import { BookingItem } from '@/lib/mockData';
 import { apiClient } from '@/lib/api';
+import { parseCancellationNotes } from '@/lib/cancellation';
 
 const formatShortBookingId = (rawCode?: string, id?: string): string => {
   const str = String(rawCode || id || '').trim();
@@ -111,10 +112,10 @@ export default function BookingManagementPage() {
 
           let pStatus: 'PAID' | 'PARTIAL_PAID' | 'ADVANCE_PAID' | 'PENDING' | 'REFUNDED' | 'FAILED' = 'PAID';
           const rawPStatus = (r.payment_status || r.paymentStatus || '').toLowerCase();
-          if (rawPStatus.includes('partially') || rawPStatus.includes('partial') || (paidAmt > 0 && balAmt > 0)) {
-            pStatus = 'PARTIAL_PAID';
-          } else if (rawPStatus.includes('refund')) {
+          if (rawPStatus.includes('refund')) {
             pStatus = 'REFUNDED';
+          } else if (rawPStatus.includes('partially') || rawPStatus.includes('partial') || (paidAmt > 0 && balAmt > 0)) {
+            pStatus = 'PARTIAL_PAID';
           } else if (rawPStatus.includes('fail')) {
             pStatus = 'FAILED';
           } else if (rawPStatus.includes('pending') || paidAmt === 0) {
@@ -127,6 +128,8 @@ export default function BookingManagementPage() {
           const rawBStatus = (r.booking_status || r.status || '').toLowerCase();
           if (rawBStatus.includes('cancel')) {
             bStatus = 'CANCELLED';
+          } else if (rawBStatus.includes('expire')) {
+            bStatus = 'EXPIRED';
           } else if (rawBStatus.includes('pending') || rawBStatus.includes('hold')) {
             bStatus = 'PENDING_PAYMENT';
           } else if (rawBStatus.includes('play')) {
@@ -171,6 +174,16 @@ export default function BookingManagementPage() {
             created_at: r.created_at || new Date().toISOString(),
             state: bState,
             district: bDistrict,
+            ...(bStatus === 'CANCELLED' && (() => {
+              const c = parseCancellationNotes(r.notes, r.payment_status || r.paymentStatus);
+              return {
+                cancellation_reason: c.reason,
+                cancelled_at: c.cancelledAt,
+                refund_amount: c.refundAmount,
+                refund_status: c.refundStatus,
+                refund_utr: c.refundReference,
+              };
+            })()),
           };
         });
         setBookings(mapped);
@@ -373,50 +386,51 @@ export default function BookingManagementPage() {
   };
 
   // Cancel Booking Action (Releases 15-min hold or cancels confirmed booking)
-  const handleCancelBooking = (bookingId: string) => {
+  // Goes through the backend cancel-refund endpoint so the refund window, Razorpay refund
+  // and customer WhatsApp notice are applied consistently.
+  const handleCancelBooking = async (bookingId: string, reason?: string) => {
     const target = bookings.find((b) => b.id === bookingId);
     const isHold = target?.booking_status === 'PENDING_PAYMENT';
-
-    updateSupabaseBookingRecord(bookingId, {
-      status: 'Cancelled',
-      payment_status: isHold ? 'Failed' : 'Refunded',
-    });
-
-    setBookings((prev) =>
-      prev.map((b) =>
-        b.id === bookingId
-          ? {
-              ...b,
-              booking_status: 'CANCELLED',
-              payment_status: isHold ? 'FAILED' : 'REFUNDED',
-              cancelled_at: new Date().toISOString(),
-              cancellation_reason: isHold
-                ? 'Hold cancelled / slot released'
-                : 'Customer cancelled booking / admin override',
-            }
-          : b
-      )
-    );
-    if (selectedBooking && selectedBooking.id === bookingId) {
-      setSelectedBooking({
-        ...selectedBooking,
-        booking_status: 'CANCELLED',
-        payment_status: isHold ? 'FAILED' : 'REFUNDED',
-        cancelled_at: new Date().toISOString(),
-        cancellation_reason: isHold
-          ? 'Hold cancelled / slot released'
-          : 'Customer cancelled booking / admin override',
-      });
-    }
     setCancelModalOpen(false);
+
+    let result: any;
+    try {
+      const res = await apiClient.post(`/bookings/${bookingId}/cancel-refund`, {
+        reason: reason || (isHold ? 'Hold released by admin' : 'Cancelled by admin'),
+      });
+      result = res.data;
+    } catch (err: any) {
+      showToast(
+        'error',
+        'Cancellation Failed',
+        err?.response?.data?.message || err?.message || 'Could not cancel this booking.'
+      );
+      return;
+    }
+
+    const refundStatus: 'REFUNDED' | 'PROCESSING' | 'NOT_APPLICABLE' =
+      result?.refund_status === 'Refunded' ? 'REFUNDED' : result?.refund_status === 'Refund Pending' ? 'PROCESSING' : 'NOT_APPLICABLE';
+    const patch: Partial<BookingItem> = {
+      booking_status: 'CANCELLED',
+      ...(refundStatus !== 'NOT_APPLICABLE' && { payment_status: 'REFUNDED' as const }),
+      cancelled_at: new Date().toISOString(),
+      cancellation_reason: reason || (isHold ? 'Hold released by admin' : 'Cancelled by admin'),
+      refund_amount: Number(result?.refund_amount || 0),
+      refund_status: refundStatus,
+      refund_utr: result?.refund_references?.[0],
+    };
+
+    setBookings((prev) => prev.map((b) => (b.id === bookingId ? { ...b, ...patch } : b)));
+    if (selectedBooking && selectedBooking.id === bookingId) {
+      setSelectedBooking({ ...selectedBooking, ...patch });
+    }
     showToast(
-      'error',
+      refundStatus === 'PROCESSING' ? 'info' : 'success',
       isHold ? 'Slot Hold Released' : 'Booking Cancelled',
-      isHold
-        ? `15-minute slot hold for ${target?.court_name} (${target?.time_slot}) released back to AVAILABLE.`
-        : `Reservation cancelled and full refund of ₹${selectedBooking?.total_amount} initiated.`
+      result?.message || 'Booking cancelled.'
     );
   };
+
 
   // Verify & Confirm Payment (Converts 15-minute hold to Confirmed and saves to Supabase)
   const handleConfirmPendingPayment = (bookingId: string) => {
@@ -1919,7 +1933,7 @@ export default function BookingManagementPage() {
               <p className="text-xs text-slate-500">
                 {selectedBooking.booking_status === 'PENDING_PAYMENT'
                   ? `Are you sure you want to release the active 15-minute hold for booking ${selectedBooking.booking_code}? The slot on ${selectedBooking.court_name} (${selectedBooking.time_slot}) will immediately become AVAILABLE for other customers.`
-                  : `Are you sure you want to cancel booking ${selectedBooking.booking_code}? An instant refund of ₹{selectedBooking.total_amount} will be processed.`}
+                  : `Are you sure you want to cancel booking ${selectedBooking.booking_code}? With 12+ hours' notice before kickoff the amount paid (₹${selectedBooking.advance_amount ?? selectedBooking.total_amount}) is refunded minus the ₹49 platform fee; within 12 hours it is non-refundable.`}
               </p>
             </div>
             <div className="flex items-center gap-2 pt-2">

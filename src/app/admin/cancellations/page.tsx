@@ -35,6 +35,13 @@ import {
 } from 'lucide-react';
 import { BookingItem } from '@/lib/mockData';
 import { apiClient } from '@/lib/api';
+import { parseCancellationNotes } from '@/lib/cancellation';
+
+const REFUND_STATUS_LABEL: Record<string, string> = {
+  REFUNDED: 'REFUNDED',
+  PROCESSING: 'REFUND PENDING',
+  NOT_APPLICABLE: 'NO REFUND',
+};
 
 export interface CancellationItem extends BookingItem {
   cancellation_id?: string;
@@ -43,162 +50,8 @@ export interface CancellationItem extends BookingItem {
   district?: string;
 }
 
-// Initial realistic network cancellation records matching User Image 2 & 3 references
-const SEED_CANCELLATIONS: CancellationItem[] = [
-  {
-    id: 'canc-3688',
-    booking_code: 'BK-3688',
-    customer_id: 'CUST-5e166d81',
-    customer_name: 'Hema',
-    customer_phone: '+91 98401 23456',
-    venue_id: 'APP68267',
-    venue_name: 'Snow White',
-    court_id: 'court-1',
-    court_name: 'Main Turf A',
-    sport: 'FOOTBALL',
-    booking_date: '2026-10-15',
-    time_slot: '07:00 PM - 08:00 PM',
-    duration_minutes: 60,
-    total_amount: 1600,
-    platform_fee: 100,
-    venue_share: 1500,
-    payment_status: 'REFUNDED',
-    booking_status: 'CANCELLED',
-    payment_method: 'UPI',
-    transaction_id: 'TXN-BK3688',
-    created_at: '2026-10-14T10:30:00Z',
-    cancellation_reason: 'Player requested schedule cancellation',
-    cancelled_at: '2026-10-15',
-    refund_amount: 1600,
-    refund_status: 'REFUNDED VIA UPI' as any,
-    refund_utr: 'UTR-RZP-992140182',
-    state: 'Tamil Nadu',
-    district: 'Chennai',
-  },
-  {
-    id: 'canc-4102',
-    booking_code: 'BK-4102',
-    customer_id: 'CUST-9b211a43',
-    customer_name: 'Karthik Raja',
-    customer_phone: '+91 94432 87654',
-    venue_id: 'APP58662',
-    venue_name: 'Amithap Mama',
-    court_id: 'court-2',
-    court_name: 'Cricket Pitch 1',
-    sport: 'CRICKET',
-    booking_date: '2026-10-14',
-    time_slot: '06:00 AM - 08:00 AM',
-    duration_minutes: 120,
-    total_amount: 2400,
-    platform_fee: 150,
-    venue_share: 2250,
-    payment_status: 'REFUNDED',
-    booking_status: 'CANCELLED',
-    payment_method: 'UPI',
-    transaction_id: 'TXN-BK4102',
-    created_at: '2026-10-12T08:15:00Z',
-    cancellation_reason: 'Heavy morning rainfall on open pitch',
-    cancelled_at: '2026-10-14',
-    refund_amount: 2400,
-    refund_status: 'REFUNDED VIA UPI' as any,
-    refund_utr: 'UTR-RZP-448190331',
-    state: 'Tamil Nadu',
-    district: 'Coimbatore',
-  },
-  {
-    id: 'canc-5519',
-    booking_code: 'BK-5519',
-    customer_id: 'CUST-3c882d19',
-    customer_name: 'Fahad Mohammed',
-    customer_phone: '+91 97455 11223',
-    venue_id: 'APP43113',
-    venue_name: 'Rex Arena',
-    court_id: 'court-3',
-    court_name: 'Badminton Court 2',
-    sport: 'BADMINTON',
-    booking_date: '2026-10-13',
-    time_slot: '08:00 PM - 09:00 PM',
-    duration_minutes: 60,
-    total_amount: 800,
-    platform_fee: 50,
-    venue_share: 750,
-    payment_status: 'REFUNDED',
-    booking_status: 'CANCELLED',
-    payment_method: 'WALLET',
-    transaction_id: 'TXN-BK5519',
-    created_at: '2026-10-11T14:20:00Z',
-    cancellation_reason: 'Court lighting maintenance overhaul',
-    cancelled_at: '2026-10-13',
-    refund_amount: 800,
-    refund_status: 'WALLET_CREDITED' as any,
-    refund_utr: 'WLT-REV-883902',
-    state: 'Kerala',
-    district: 'Kozhikode',
-  },
-  {
-    id: 'canc-6721',
-    booking_code: 'BK-6721',
-    customer_id: 'CUST-8a774f90',
-    customer_name: 'Deepak Kumar',
-    customer_phone: '+91 98840 99881',
-    venue_id: 'APP68267',
-    venue_name: 'Snow White',
-    court_id: 'court-1',
-    court_name: 'Main Turf A',
-    sport: 'FOOTBALL',
-    booking_date: '2026-10-12',
-    time_slot: '05:00 PM - 06:00 PM',
-    duration_minutes: 60,
-    total_amount: 1200,
-    platform_fee: 80,
-    venue_share: 1120,
-    payment_status: 'REFUNDED',
-    booking_status: 'CANCELLED',
-    payment_method: 'CREDIT_CARD',
-    transaction_id: 'TXN-BK6721',
-    created_at: '2026-10-10T16:45:00Z',
-    cancellation_reason: 'Customer double-booked duplicate slot',
-    cancelled_at: '2026-10-12',
-    refund_amount: 1200,
-    refund_status: 'REFUNDED VIA UPI' as any,
-    refund_utr: 'UTR-RZP-112349098',
-    state: 'Tamil Nadu',
-    district: 'Chennai',
-  },
-  {
-    id: 'canc-7840',
-    booking_code: 'BK-7840',
-    customer_id: 'CUST-2e991c04',
-    customer_name: 'Ananya Sharma',
-    customer_phone: '+91 98110 55443',
-    venue_id: 'APP58662',
-    venue_name: 'Amithap Mama',
-    court_id: 'court-1',
-    court_name: 'Football Turf 2',
-    sport: 'FOOTBALL',
-    booking_date: '2026-10-11',
-    time_slot: '09:00 PM - 10:00 PM',
-    duration_minutes: 60,
-    total_amount: 1500,
-    platform_fee: 100,
-    venue_share: 1400,
-    payment_status: 'REFUNDED',
-    booking_status: 'CANCELLED',
-    payment_method: 'UPI',
-    transaction_id: 'TXN-BK7840',
-    created_at: '2026-10-09T18:00:00Z',
-    cancellation_reason: 'Player injured during warm-up session',
-    cancelled_at: '2026-10-11',
-    refund_amount: 1500,
-    refund_status: 'REFUNDED VIA UPI' as any,
-    refund_utr: 'UTR-RZP-776412890',
-    state: 'Tamil Nadu',
-    district: 'Coimbatore',
-  },
-];
-
 export default function CancellationManagementPage() {
-  const [cancellations, setCancellations] = useState<CancellationItem[]>(SEED_CANCELLATIONS);
+  const [cancellations, setCancellations] = useState<CancellationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -273,8 +126,9 @@ export default function CancellationManagementPage() {
         );
       });
 
-      if (cancelledRows.length > 0) {
+      {
         const mapped: CancellationItem[] = cancelledRows.map((r: any) => {
+          const parsed = parseCancellationNotes(r.notes, r.payment_status || r.paymentStatus);
           const vName = r.venue_name || r.venueName || 'Snow White';
           const matchedVenue =
             venueMap.get(String(r.venue_id || r.venueId || '').toLowerCase()) ||
@@ -298,41 +152,32 @@ export default function CancellationManagementPage() {
             court_id: r.court_id || r.courtId || 'court-1',
             court_name: r.court_name || r.courtName || 'Main Court',
             sport: r.sport || 'FOOTBALL',
-            booking_date: r.booking_date || r.date || '2026-10-15',
+            booking_date: r.booking_date || r.date || '',
             time_slot: r.time_slot || r.timeSlot || '06:00 PM - 07:00 PM',
             duration_minutes: Number(r.duration_minutes || r.durationMinutes) || 60,
-            total_amount: Number(r.total_amount || r.totalAmount) || 1600,
-            platform_fee: Number(r.platform_fee || r.platformFee) || 100,
-            venue_share: Number(r.venue_share || r.venueShare) || 1500,
-            payment_status: 'REFUNDED',
+            total_amount: Number(r.total_amount || r.totalAmount) || 0,
+            platform_fee: Number(r.platform_fee || r.platformFee) || 0,
+            venue_share: Number(r.venue_share || r.venueShare) || 0,
+            payment_status: parsed.refundStatus === 'NOT_APPLICABLE' ? 'PAID' : 'REFUNDED',
             booking_status: 'CANCELLED',
             payment_method: r.payment_method || r.paymentMethod || 'UPI',
             transaction_id: r.transaction_id || r.transactionId || `TXN-${r.id}`,
             created_at: r.created_at || r.createdAt || new Date().toISOString(),
-            cancellation_reason: r.cancellation_reason || r.cancellationReason || 'Player requested schedule cancellation',
-            cancelled_at: r.cancelled_at || r.cancelledAt || '2026-10-15',
-            refund_amount: Number(r.refund_amount || r.refundAmount || r.total_amount || 1600),
-            refund_status: (r.refund_status || r.refundStatus || 'REFUNDED VIA UPI') as any,
-            refund_utr: r.refund_utr || r.refundUtr || `UTR-RZP-${Math.floor(100000000 + Math.random() * 900000000)}`,
+            cancellation_reason: parsed.reason || 'Not recorded',
+            cancelled_at: (parsed.cancelledAt || r.updated_at || r.updatedAt || '').slice(0, 10),
+            refund_amount: parsed.refundAmount,
+            refund_status: parsed.refundStatus,
+            refund_utr: parsed.refundReference,
             state: st,
             district: dist,
           };
         });
 
-        // Merge backend cancellations with base seed for consistent UI references
-        const merged = [...SEED_CANCELLATIONS];
-        mapped.forEach((m) => {
-          if (!merged.some((item) => item.booking_code === m.booking_code)) {
-            merged.push(m);
-          }
-        });
-        setCancellations(merged);
-      } else {
-        setCancellations(SEED_CANCELLATIONS);
+        setCancellations(mapped);
       }
     } catch (e) {
-      console.warn('Failed to load live cancellations, retaining seed records', e);
-      setCancellations(SEED_CANCELLATIONS);
+      console.warn('Failed to load live cancellations', e);
+      showToast('error', 'Could not load cancellations from the server');
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -431,14 +276,13 @@ export default function CancellationManagementPage() {
     let walletAmount = 0;
 
     filteredCancellations.forEach((c) => {
-      const amt = Number(c.refund_amount || c.total_amount || 0);
+      const amt = Number(c.refund_amount || 0);
       totalRefundAmount += amt;
 
-      const st = String(c.refund_status || '').toUpperCase();
-      if (st.includes('WALLET')) {
+      if (c.refund_status === 'PROCESSING') {
         walletCount += 1;
         walletAmount += amt;
-      } else {
+      } else if (c.refund_status === 'REFUNDED') {
         upiRefundCount += 1;
         upiRefundAmount += amt;
       }
@@ -564,7 +408,7 @@ export default function CancellationManagementPage() {
         <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs hover:border-blue-400/50 transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-              Direct UPI Reversals
+              Refunded via Razorpay
             </span>
             <div className="h-8 w-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
               <CreditCard className="h-4 w-4" />
@@ -582,7 +426,7 @@ export default function CancellationManagementPage() {
         <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs hover:border-purple-400/50 transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-              Wallet Credits
+              Refunds Pending
             </span>
             <div className="h-8 w-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
               <Landmark className="h-4 w-4" />
@@ -592,7 +436,7 @@ export default function CancellationManagementPage() {
             <span className="text-2xl font-black text-slate-900 font-mono">
               ₹{kpiStats.walletAmount.toLocaleString('en-IN')}
             </span>
-            <span className="text-xs font-bold text-purple-600">{kpiStats.walletCount} credited</span>
+            <span className="text-xs font-bold text-purple-600">{kpiStats.walletCount} to process</span>
           </div>
         </div>
       </div>
@@ -757,7 +601,7 @@ export default function CancellationManagementPage() {
 
                     {/* Cancelled At */}
                     <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">
-                      {c.cancelled_at || '2026-10-15'}
+                      {c.cancelled_at || '—'}
                     </td>
 
                     {/* Refund Amount */}
@@ -779,12 +623,14 @@ export default function CancellationManagementPage() {
                     <td className="py-2.5 px-3 whitespace-nowrap">
                       <span
                         className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                          String(c.refund_status || '').includes('WALLET')
-                            ? 'bg-purple-50 text-purple-700 border-purple-200'
-                            : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          c.refund_status === 'PROCESSING'
+                            ? 'bg-amber-50 text-amber-700 border-amber-200'
+                            : c.refund_status === 'REFUNDED'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-slate-50 text-slate-600 border-slate-200'
                         }`}
                       >
-                        {c.refund_status || 'REFUNDED VIA UPI'}
+                        {REFUND_STATUS_LABEL[c.refund_status || 'NOT_APPLICABLE'] || c.refund_status}
                       </span>
                     </td>
 
@@ -970,14 +816,14 @@ export default function CancellationManagementPage() {
                   <div className="flex items-center justify-between pt-1 border-t border-slate-100">
                     <span className="text-slate-500 font-medium">Cancelled At</span>
                     <span className="font-medium text-slate-900">
-                      {selectedCancellation.cancelled_at || '2026-10-15'}
+                      {selectedCancellation.cancelled_at || '—'}
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between pt-1 border-t border-slate-100">
                     <span className="text-slate-500 font-medium">Refund Status</span>
                     <span className="font-bold text-emerald-700 uppercase">
-                      {selectedCancellation.refund_status || 'REFUNDED VIA UPI'}
+                      {REFUND_STATUS_LABEL[selectedCancellation.refund_status || 'NOT_APPLICABLE'] || selectedCancellation.refund_status}
                     </span>
                   </div>
 
@@ -985,12 +831,12 @@ export default function CancellationManagementPage() {
                     <span className="text-slate-500 font-medium">Bank UTR Reference</span>
                     <div className="flex items-center gap-1.5">
                       <span className="font-bold text-slate-900 font-mono">
-                        {selectedCancellation.refund_utr || 'UTR-RZP-992140182'}
+                        {selectedCancellation.refund_utr || '—'}
                       </span>
                       <button
                         type="button"
                         onClick={() =>
-                          handleCopy(selectedCancellation.refund_utr || 'UTR-RZP-992140182', 'utr')
+                          selectedCancellation.refund_utr && handleCopy(selectedCancellation.refund_utr, 'utr')
                         }
                         className="text-slate-400 hover:text-slate-700 p-0.5 rounded cursor-pointer"
                         title="Copy UTR Reference"
