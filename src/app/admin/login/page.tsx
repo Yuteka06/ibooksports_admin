@@ -57,7 +57,8 @@ export default function AdminLoginPage() {
         password: password,
       });
 
-      const token = res.data?.accessToken || res.data?.token;
+      // access_token is the backend's only token field; accessToken / token keep older backends working.
+      const token = res.data?.access_token || res.data?.accessToken || res.data?.token;
       if (res.data?.success && token) {
         const adminData = res.data.admin || {
           email: cleanEmail,
