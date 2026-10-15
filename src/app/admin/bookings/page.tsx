@@ -325,13 +325,15 @@ export default function BookingManagementPage() {
   };
 
   // Helper to normalize payment type into strictly: 'UPI' | 'Card' | 'Net Banking'
-  const getCleanPaymentType = (method?: string): 'UPI' | 'Card' | 'Net Banking' => {
-    if (!method) return 'UPI';
-    const m = method.toLowerCase();
-    if (m.includes('upi')) return 'UPI';
+  // The bookings API only knows how the booking was paid (Online link / Cash / UPI QR);
+  // the exact Razorpay instrument (UPI, card, net banking) is shown in Payment Management.
+  const getCleanPaymentType = (method?: string): 'UPI' | 'Card' | 'Net Banking' | 'Cash' | 'Online' => {
+    const m = (method || '').toLowerCase();
+    if (m.includes('cash')) return 'Cash';
+    if (m.includes('upi') || m.includes('qr')) return 'UPI';
     if (m.includes('card')) return 'Card';
-    if (m.includes('banking') || m.includes('net')) return 'Net Banking';
-    return 'UPI';
+    if (m.includes('banking')) return 'Net Banking';
+    return 'Online';
   };
 
   // Helper for advance & balance amounts

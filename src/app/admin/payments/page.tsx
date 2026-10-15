@@ -148,22 +148,24 @@ export default function PaymentManagementPage() {
     }
   };
 
-  // Helper to normalize payment type into strictly: 'UPI' | 'Card' | 'Net Banking'
-  const getCleanPaymentType = (p: PaymentTransactionItem): 'UPI' | 'Card' | 'Net Banking' => {
-    if (p.payment_type === 'UPI' || p.payment_method?.toLowerCase().includes('upi')) {
-      return 'UPI';
+  // Payment channel as reported by the backend (real Razorpay method, or Cash at the counter)
+  type CleanPaymentType = 'UPI' | 'Card' | 'Net Banking' | 'Wallet' | 'Cash' | 'Online';
+  const getCleanPaymentType = (p: PaymentTransactionItem): CleanPaymentType => {
+    switch (p.payment_type) {
+      case 'UPI': return 'UPI';
+      case 'CREDIT_CARD':
+      case 'DEBIT_CARD': return 'Card';
+      case 'NET_BANKING': return 'Net Banking';
+      case 'WALLET': return 'Wallet';
+      case 'CASH': return 'Cash';
     }
-    if (
-      p.payment_type === 'CREDIT_CARD' ||
-      p.payment_type === 'DEBIT_CARD' ||
-      p.payment_method?.toLowerCase().includes('card')
-    ) {
-      return 'Card';
-    }
-    if (p.payment_type === 'NET_BANKING' || p.payment_method?.toLowerCase().includes('banking')) {
-      return 'Net Banking';
-    }
-    return 'UPI';
+    const m = (p.payment_method || '').toLowerCase();
+    if (m.includes('cash')) return 'Cash';
+    if (m.includes('upi') || m.includes('qr')) return 'UPI';
+    if (m.includes('card')) return 'Card';
+    if (m.includes('banking')) return 'Net Banking';
+    if (m.includes('wallet')) return 'Wallet';
+    return 'Online';
   };
 
   // Quick Action: Mark pending balance as cleared at counter (Cash) or via Online Link
@@ -303,7 +305,7 @@ export default function PaymentManagementPage() {
         if (pDistrict.toLowerCase() !== districtFilter.toLowerCase()) return false;
       }
 
-      // Payment Method filter: 'UPI' | 'Card' | 'Net Banking'
+      // Payment Method filter
       if (methodFilter !== 'ALL') {
         const cleanType = getCleanPaymentType(p);
         if (cleanType !== methodFilter) return false;
@@ -604,7 +606,7 @@ export default function PaymentManagementPage() {
             <Trophy className="h-3.5 w-3.5 absolute left-2.5 top-2.5 text-amber-500 pointer-events-none" />
           </div>
 
-          {/* Payment Type Filter: ONLY 'UPI' | 'Card' | 'Net Banking' */}
+          {/* Payment Type Filter */}
           <div className="relative min-w-[140px]">
             <select
               suppressHydrationWarning={true}
@@ -616,6 +618,8 @@ export default function PaymentManagementPage() {
               <option value="UPI">UPI</option>
               <option value="Card">Card</option>
               <option value="Net Banking">Net Banking</option>
+              <option value="Wallet">Wallet</option>
+              <option value="Cash">Cash</option>
             </select>
             <CreditCard className="h-3.5 w-3.5 absolute left-2.5 top-2.5 text-slate-500 pointer-events-none" />
           </div>

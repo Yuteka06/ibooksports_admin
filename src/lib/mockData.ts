@@ -208,7 +208,7 @@ export interface BookingItem {
 }
 
 export type PaymentStatusType = 'FULLY_PAID' | 'ADVANCE_PAID' | 'PENDING' | 'REFUNDED' | 'FAILED';
-export type PaymentMethodCategory = 'UPI' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'NET_BANKING' | 'CASH';
+export type PaymentMethodCategory = 'UPI' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'NET_BANKING' | 'WALLET' | 'CASH' | 'ONLINE';
 
 export interface PaymentTransactionItem {
   id: string;
