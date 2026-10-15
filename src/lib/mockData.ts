@@ -200,6 +200,8 @@ export interface BookingItem {
   refund_utr?: string;
   advance_amount?: number;
   balance_amount?: number;
+  /** Advance the customer must pay online to confirm a hold (from the [ADVANCE:x] note). Unset = full payment. */
+  advance_due?: number;
   due_mode?: 'CASH' | 'ONLINE';
   state?: string;
   district?: string;

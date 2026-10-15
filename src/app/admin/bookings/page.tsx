@@ -108,6 +108,9 @@ export default function BookingManagementPage() {
           const totalAmt = Number(r.total_amount ?? r.totalAmount ?? 0);
           const paidAmt = Number(r.paid_amount ?? r.paidAmount ?? r.advance_amount ?? (r.status === 'Confirmed' ? totalAmt : 0));
           const balAmt = Number(r.balance_amount ?? r.balanceAmount ?? Math.max(0, totalAmt - paidAmt));
+          // Unpaid advance bookings carry the advance to collect in notes as [ADVANCE:x]
+          const advanceTag = String(r.notes || '').match(/\[ADVANCE:([\d.]+)\]/);
+          const advanceDue = advanceTag ? Math.min(totalAmt, Number(advanceTag[1])) : undefined;
 
           let pStatus: 'PAID' | 'PARTIAL_PAID' | 'ADVANCE_PAID' | 'PENDING' | 'REFUNDED' | 'FAILED' = 'PAID';
           const rawPStatus = (r.payment_status || r.paymentStatus || '').toLowerCase();
@@ -166,9 +169,10 @@ export default function BookingManagementPage() {
             venue_share: totalAmt - Math.round(totalAmt * 0.1),
             advance_amount: paidAmt,
             balance_amount: balAmt,
+            advance_due: advanceDue,
             payment_status: pStatus,
             booking_status: bStatus,
-            payment_method: r.payment_method || 'UPI',
+            payment_method: r.payment_method || r.paymentMethod || 'UPI',
             transaction_id: r.transaction_id || `txn_${String(r.id).slice(0, 8)}`,
             created_at: r.created_at || new Date().toISOString(),
             state: bState,
@@ -293,6 +297,24 @@ export default function BookingManagementPage() {
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
+  // Real Razorpay balance link: the backend creates (or reuses) it and WhatsApps it to the player
+  const [balanceLink, setBalanceLink] = useState<{ bookingId: string; url: string } | null>(null);
+  const [sendingBalanceLink, setSendingBalanceLink] = useState(false);
+  const handleSendBalanceLink = async (bookingId: string) => {
+    setSendingBalanceLink(true);
+    try {
+      const res = await apiClient.post(`/bookings/${bookingId}/send-balance-link`, {});
+      const body: any = (res.data as any)?.data ?? res.data;
+      if (!body?.payment_link) throw new Error('No payment link was returned.');
+      setBalanceLink({ bookingId, url: body.payment_link });
+      showToast('success', 'Balance Link Sent', `₹${body.amount} payment link sent to the player on WhatsApp.`);
+    } catch (err: any) {
+      showToast('error', 'Could Not Send Link', err?.response?.data?.message || err?.message || 'Please try again.');
+    } finally {
+      setSendingBalanceLink(false);
+    }
+  };
+
   const handleCopy = (text: string, id: string) => {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
       navigator.clipboard.writeText(text);
@@ -323,6 +345,10 @@ export default function BookingManagementPage() {
       const balance = b.balance_amount || (b.total_amount - advance);
       const due_mode = b.due_mode || (b.booking_code === 'IBS-2603-9004' ? 'ONLINE' : 'CASH');
       return { advance, balance, isPartial: true, isRefunded: false, due_mode };
+    }
+    // Nothing collected yet (hold / failed): no advance received, the whole fee is still outstanding
+    if (b.payment_status === 'PENDING' || b.payment_status === 'FAILED') {
+      return { advance: 0, balance: b.total_amount, isPartial: false, isRefunded: false, due_mode: b.due_mode || 'CASH' };
     }
     return { advance: b.total_amount, balance: 0, isPartial: false, isRefunded: false, due_mode: b.due_mode || 'CASH' };
   };
@@ -539,7 +565,9 @@ export default function BookingManagementPage() {
   }, [dateFilteredBookings]);
   const totalPendingDue = useMemo(() => {
     return dateFilteredBookings.reduce((acc, b) => {
-      if (b.payment_status === 'REFUNDED' || b.payment_status === 'FAILED') return acc;
+      if (b.payment_status === 'REFUNDED' || b.payment_status === 'FAILED' || b.payment_status === 'PENDING') return acc;
+      // A cancelled / expired booking's leftover balance will never be collected
+      if (b.booking_status === 'CANCELLED' || b.booking_status === 'EXPIRED') return acc;
       const { balance } = getAdvanceAndBalance(b);
       return acc + balance;
     }, 0);
@@ -980,7 +1008,7 @@ export default function BookingManagementPage() {
                 paginatedBookings.map((b, index) => {
                   const isCopied = copiedText === b.booking_code;
                   const { advance, balance, isPartial, isRefunded, due_mode } = getAdvanceAndBalance(b);
-                  const isPaid = !isPartial && !isRefunded && b.payment_status !== 'FAILED';
+                  const isPaid = b.payment_status === 'PAID';
                   const cleanPaymentType = getCleanPaymentType(b.payment_method);
 
                   return (
@@ -1086,21 +1114,34 @@ export default function BookingManagementPage() {
                       {/* 5. PAYMENT SPLIT & AMOUNT COLLECT TYPE */}
                       <td className="py-3.5 px-4 align-middle whitespace-nowrap font-mono">
                         <div className="space-y-0.5">
-                          {b.payment_status === 'PENDING' && (
-                            <>
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-black text-xs text-amber-700">
-                                  ₹{b.total_amount.toLocaleString('en-IN')}
-                                </span>
-                                <span className="text-[10px] font-sans font-bold text-amber-800 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
-                                  Payment Due
-                                </span>
-                              </div>
-                              <p className="text-[10px] font-sans text-slate-400">
-                                Slot reserved for 15 mins
-                              </p>
-                            </>
-                          )}
+                          {b.payment_status === 'PENDING' && (() => {
+                            const hasAdvance = !!b.advance_due && b.advance_due < b.total_amount;
+                            const toPay = hasAdvance ? b.advance_due! : b.total_amount;
+                            return (
+                              <>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-black text-xs text-amber-700">
+                                    ₹{toPay.toLocaleString('en-IN')}
+                                  </span>
+                                  <span className="text-[10px] font-sans font-bold text-amber-800 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
+                                    {hasAdvance ? 'Advance Due' : 'Payment Due'}
+                                  </span>
+                                </div>
+                                {hasAdvance && (
+                                  <p className="text-[10px] font-sans text-slate-500">
+                                    ₹{(b.total_amount - toPay).toLocaleString('en-IN')} balance at venue
+                                  </p>
+                                )}
+                                <p className="text-[10px] font-sans text-slate-400">
+                                  {b.booking_status === 'EXPIRED'
+                                    ? `Not paid • Total ₹${b.total_amount.toLocaleString('en-IN')}`
+                                    : hasAdvance
+                                      ? `Total ₹${b.total_amount.toLocaleString('en-IN')} • Slot held 15 mins`
+                                      : 'Slot reserved for 15 mins'}
+                                </p>
+                              </>
+                            );
+                          })()}
 
                           {isPaid && (
                             <>
@@ -1132,7 +1173,11 @@ export default function BookingManagementPage() {
                                 <span className="font-bold font-mono text-slate-700">
                                   ₹{balance.toLocaleString('en-IN')}
                                 </span>
-                                {due_mode === 'ONLINE' ? (
+                                {(b.booking_status === 'CANCELLED' || b.booking_status === 'EXPIRED') ? (
+                                  <span className="font-sans font-semibold text-slate-500 bg-slate-50 px-1.5 py-0.2 rounded border border-slate-200">
+                                    Not collected
+                                  </span>
+                                ) : due_mode === 'ONLINE' ? (
                                   <span className="font-sans font-semibold text-sky-800 bg-sky-50 px-1.5 py-0.2 rounded border border-sky-200">
                                     Due: Online
                                   </span>
@@ -1620,7 +1665,9 @@ export default function BookingManagementPage() {
                                 </span>
                               </div>
                               <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200">
-                                <span className="text-[9px] text-emerald-700 font-bold uppercase block font-sans">Advance Online</span>
+                                <span className="text-[9px] text-emerald-700 font-bold uppercase block font-sans">
+                                  {isPartial ? 'Advance Paid' : 'Amount Paid'}
+                                </span>
                                 <span className="font-black text-sm text-emerald-800 mt-0.5 block">
                                   ₹{advance}
                                 </span>
@@ -1636,7 +1683,7 @@ export default function BookingManagementPage() {
                             </div>
 
                             {/* Balance Notification & Quick Action */}
-                            {balance > 0 && (
+                            {isPartial && balance > 0 && selectedBooking.booking_status !== 'CANCELLED' && selectedBooking.booking_status !== 'EXPIRED' && (
                               <div className="flex items-center justify-between p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs">
                                 <div className="space-y-0.5">
                                   <p className="font-bold text-amber-900 flex items-center gap-1">
@@ -1668,33 +1715,52 @@ export default function BookingManagementPage() {
                             </div>
                           </div>
 
-                          {/* Instant Balance Payment Link */}
-                          <div className="p-4 rounded-2xl bg-white border border-[#E5E7EB] shadow-xs space-y-2.5">
-                            <span className="text-xs font-black uppercase tracking-wider text-[#021526] block">
-                              Balance Payment Link
-                            </span>
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="text"
-                                readOnly
-                                value={`https://ibooksports.com/pay/${selectedBooking.booking_code}`}
-                                className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-700 outline-none"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => handleCopy(`https://ibooksports.com/pay/${selectedBooking.booking_code}`, 'paylink')}
-                                className="px-3 py-2 rounded-xl bg-[#021526] hover:bg-[#F94001] text-white font-bold text-xs transition-colors cursor-pointer flex items-center gap-1 shrink-0"
-                              >
-                                {copiedText === 'paylink' ? (
-                                  <Check className="h-3.5 w-3.5 text-emerald-400" />
+                          {/* Balance Payment Link — only when a balance is really due */}
+                          {isPartial && balance > 0 && !isRefunded &&
+                            selectedBooking.booking_status !== 'CANCELLED' && selectedBooking.booking_status !== 'EXPIRED' && (() => {
+                            const link = balanceLink?.bookingId === selectedBooking.id ? balanceLink.url : null;
+                            return (
+                              <div className="p-4 rounded-2xl bg-white border border-[#E5E7EB] shadow-xs space-y-2.5">
+                                <span className="text-xs font-black uppercase tracking-wider text-[#021526] block">
+                                  Balance Payment Link (₹{balance})
+                                </span>
+                                {link ? (
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="text"
+                                      readOnly
+                                      value={link}
+                                      className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-700 outline-none"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopy(link, 'paylink')}
+                                      className="px-3 py-2 rounded-xl bg-[#021526] hover:bg-[#F94001] text-white font-bold text-xs transition-colors cursor-pointer flex items-center gap-1 shrink-0"
+                                    >
+                                      {copiedText === 'paylink' ? (
+                                        <Check className="h-3.5 w-3.5 text-emerald-400" />
+                                      ) : (
+                                        <Copy className="h-3.5 w-3.5" />
+                                      )}
+                                      <span>Copy Link</span>
+                                    </button>
+                                  </div>
                                 ) : (
-                                  <Copy className="h-3.5 w-3.5" />
+                                  <button
+                                    type="button"
+                                    disabled={sendingBalanceLink}
+                                    onClick={() => handleSendBalanceLink(selectedBooking.id)}
+                                    className="w-full px-3 py-2 rounded-xl bg-[#021526] hover:bg-[#F94001] disabled:opacity-60 text-white font-bold text-xs transition-colors cursor-pointer"
+                                  >
+                                    {sendingBalanceLink ? 'Sending…' : `Send ₹${balance} Payment Link on WhatsApp`}
+                                  </button>
                                 )}
-                                <span>Copy Link</span>
-                              </button>
-                            </div>
-                            <p className="text-[10px] text-slate-400">Share via WhatsApp or SMS for contactless online settlement.</p>
-                          </div>
+                                <p className="text-[10px] text-slate-400">
+                                  Secure Razorpay link for the remaining balance. The booking updates automatically once the player pays.
+                                </p>
+                              </div>
+                            );
+                          })()}
                         </>
                       );
                     })()}
