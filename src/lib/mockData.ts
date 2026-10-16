@@ -240,6 +240,14 @@ export interface PaymentTransactionItem {
   platform_commission: number;
   tax_gst: number;
   net_venue_payout: number;
+  // Settlement fee lines: 0.5% of online_amount (cash carries no fee)
+  online_amount?: number;
+  cash_amount?: number;
+  platform_fee?: number;
+  platform_fee_gst?: number;
+  route_fee?: number;
+  route_fee_gst?: number;
+  total_deduction?: number;
   payment_type: PaymentMethodCategory;
   payment_method: string;
   gateway: 'RAZORPAY' | 'PHONEPE' | 'CASHFREE' | 'DIRECT_VENUE';
@@ -265,9 +273,12 @@ export interface SettlementBookingItem {
   actual_court_price: number;
   online_advance_paid: number;
   cash_collected_at_venue: number;
-  payment_mode: 'ONLINE_FULL' | 'ONLINE_ADVANCE_PLUS_CASH' | 'ONLINE_ADVANCE_PLUS_ONLINE';
+  payment_mode: 'ONLINE_FULL' | 'ONLINE_ADVANCE' | 'ONLINE_ADVANCE_PLUS_CASH' | 'ONLINE_ADVANCE_PLUS_ONLINE' | 'CASH' | 'UNPAID';
   platform_fee: number;
   platform_fee_gst: number;
+  route_fee?: number;
+  route_fee_gst?: number;
+  total_deduction?: number;
   net_venue_share: number;
 }
 
@@ -293,10 +304,22 @@ export interface SettlementBatchItem {
   cash_collected_at_venue: number;
   platform_commission_deducted: number;
   platform_fee_gst: number;
+  route_fee?: number;
+  route_fee_gst?: number;
+  total_deduction?: number;
   tds_deducted: number;
   net_payable: number;
   status: 'SETTLED' | 'PROCESSING' | 'PENDING_APPROVAL';
+  is_live?: boolean; // payable bookings not yet claimed by a stored batch
   utr_number?: string;
+  transfer_id?: string; // Razorpay Route direct transfer
+  transfer_status?: string;
+  failure_reason?: string;
+  linked_account?: {
+    status: 'NOT_STARTED' | 'IN_PROGRESS' | 'UNDER_REVIEW' | 'NEEDS_CLARIFICATION' | 'ACTIVATED' | 'SUSPENDED' | 'FAILED';
+    account_id?: string;
+    last_error?: string;
+  };
   settled_at?: string;
   itemized_bookings?: SettlementBookingItem[];
 }

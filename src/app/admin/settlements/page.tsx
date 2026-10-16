@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   Landmark,
   Search,
@@ -40,27 +40,34 @@ import {
   SettlementBookingItem,
 } from '@/lib/mockData';
 import { apiClient } from '@/lib/api';
+import { formatInr, settlementDeduction } from '@/lib/settlementFees';
 
 export default function SettlementManagementPage() {
   const [settlements, setSettlements] = useState<SettlementBatchItem[]>([]);
 
-  useEffect(() => {
-    const fetchSettlements = async () => {
-      try {
-        const res = await apiClient.get('/payments/settlements');
-        if (res.data?.data && Array.isArray(res.data.data)) {
-          setSettlements(res.data.data);
-        } else if (Array.isArray(res.data)) {
-          setSettlements(res.data);
-        } else {
-          setSettlements([]);
-        }
-      } catch (e) {
-        setSettlements([]);
+  const loadSettlements = useCallback(async (): Promise<SettlementBatchItem[]> => {
+    let list: SettlementBatchItem[] = [];
+    try {
+      const res = await apiClient.get('/payments/settlements');
+      if (res.data?.data && Array.isArray(res.data.data)) {
+        list = res.data.data;
+      } else if (Array.isArray(res.data)) {
+        list = res.data;
       }
-    };
-    fetchSettlements();
+    } catch {
+      list = [];
+    }
+    setSettlements(list);
+    return list;
   }, []);
+
+  useEffect(() => {
+    loadSettlements();
+  }, [loadSettlements]);
+
+  // Bank UTR typed per batch in the drawer, and a lock while a settlement action is running
+  const [utrInputs, setUtrInputs] = useState<Record<string, string>>({});
+  const [actionBusy, setActionBusy] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -139,7 +146,7 @@ export default function SettlementManagementPage() {
     [dateOrMonthFilteredSettlements]
   );
   const totalDeductions = useMemo(
-    () => dateOrMonthFilteredSettlements.reduce((acc, s) => acc + s.platform_commission_deducted + (s.platform_fee_gst || 0) + s.tds_deducted, 0),
+    () => Math.round(dateOrMonthFilteredSettlements.reduce((acc, s) => acc + settlementDeduction(s), 0) * 100) / 100,
     [dateOrMonthFilteredSettlements]
   );
 
@@ -189,153 +196,136 @@ export default function SettlementManagementPage() {
     }
   };
 
-  // Razorpay Payout Disbursal Handler (T+2)
-  const handleInitiatePayout = (batchId: string) => {
-    const batch = settlements.find((s) => s.id === batchId);
-    if (!batch) return;
+  // Records the bank transfer the admin made for a batch. The UTR comes from the bank / Razorpay dashboard;
+  // a live (not yet batched) row is turned into a batch by the backend first.
+  const handleMarkPaid = async (batch: SettlementBatchItem) => {
     if (batch.status === 'SETTLED') {
       showToast('info', 'Already Settled', `Batch ${batch.batch_number} has already been settled via UTR ${batch.utr_number}.`);
       return;
     }
-
-    const now = new Date();
-    const formattedDate = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-    const formattedTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    const generatedUtr = `RZPR${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${Math.floor(100000 + Math.random() * 900000)}`;
-
-    const updatedSettlements = settlements.map((s) => {
-      if (s.id === batchId) {
-        return {
-          ...s,
-          status: 'SETTLED' as const,
-          utr_number: generatedUtr,
-          settled_at: `${formattedDate} ${formattedTime}`,
-        };
-      }
-      return s;
-    });
-
-    setSettlements(updatedSettlements);
-    if (selectedBatch && selectedBatch.id === batchId) {
-      setSelectedBatch({
-        ...selectedBatch,
-        status: 'SETTLED',
-        utr_number: generatedUtr,
-        settled_at: `${formattedDate} ${formattedTime}`,
-      });
+    const utr = (utrInputs[batch.id] || '').trim();
+    // A cash-only batch has nothing to transfer and closes without a UTR
+    if ((utr || batch.net_payable > 0) && !/^[A-Za-z0-9]{6,30}$/.test(utr)) {
+      showToast('error', 'Bank UTR Required', 'Enter the UTR / reference number of the bank transfer (6–30 letters or digits).');
+      return;
     }
+    setActionBusy(true);
+    try {
+      const res = await apiClient.post(`/payments/settlements/${encodeURIComponent(batch.id)}/mark-settled`, utr ? { utrNumber: utr } : {});
+      const settled = res.data?.data;
+      showToast(
+        'success',
+        'Settlement Marked as Paid',
+        `₹${formatInr(settled?.netPayoutAmount ?? batch.net_payable)} to ${batch.bank_name} (${batch.account_number_masked}) · UTR: ${utr}`
+      );
+      setUtrInputs((prev) => ({ ...prev, [batch.id]: '' }));
+      setSelectedBatch(null);
+      await loadSettlements();
+    } catch (e) {
+      showToast('error', 'Could Not Mark as Paid', e instanceof Error ? e.message : 'Please try again.');
+    } finally {
+      setActionBusy(false);
+    }
+  };
 
-    showToast(
-      'success',
-      'Razorpay Payout Initiated',
-      `₹${batch.net_payable.toLocaleString('en-IN')} disbursed to ${batch.bank_name} (${batch.account_number_masked}) · UTR: ${generatedUtr}`
+  // Runs a settlement action against the backend, then reloads the list
+  const runBatchAction = async (
+    request: () => Promise<{ data?: { message?: string } }>,
+    success: { title: string; description: string },
+    failureTitle: string,
+    closeDrawer = true
+  ) => {
+    setActionBusy(true);
+    try {
+      const res = await request();
+      showToast('success', success.title, res.data?.message || success.description);
+      if (closeDrawer) setSelectedBatch(null);
+      const list = await loadSettlements();
+      if (!closeDrawer) setSelectedBatch((prev) => list.find((b) => b.id === prev?.id) ?? prev);
+    } catch (e) {
+      showToast('error', failureTitle, e instanceof Error ? e.message : 'Please try again.');
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  // One Razorpay Route direct transfer of the batch's net amount to the venue's linked account
+  const handlePayViaRoute = (batch: SettlementBatchItem) =>
+    runBatchAction(
+      () => apiClient.post(`/payments/settlements/${encodeURIComponent(batch.id)}/pay-route`, {}),
+      { title: 'Razorpay Transfer Started', description: `₹${formatInr(batch.net_payable)} to ${batch.venue_name}` },
+      'Razorpay Transfer Failed'
+    );
+
+  const handleRefreshTransfer = (batch: SettlementBatchItem) =>
+    runBatchAction(
+      () => apiClient.post(`/payments/settlements/${encodeURIComponent(batch.id)}/refresh-transfer`, {}),
+      { title: 'Transfer Status Updated', description: batch.batch_number },
+      'Could Not Read Transfer'
+    );
+
+  const handleReleaseTransfer = (batch: SettlementBatchItem) => {
+    if (
+      typeof window !== 'undefined' &&
+      !window.confirm('Only release this batch if the Razorpay dashboard shows NO transfer for it. Release now?')
+    ) {
+      return;
+    }
+    return runBatchAction(
+      () => apiClient.post(`/payments/settlements/${encodeURIComponent(batch.id)}/release-transfer`, {}),
+      { title: 'Batch Released', description: `${batch.batch_number} can be paid again.` },
+      'Could Not Release Batch'
     );
   };
 
-  // Automated T+2 Settlement Batch Creation for Day T Confirmed Matches
-  const handleGenerateTPlus2Batch = () => {
-    const today = new Date();
-    const dayT = new Date();
-    dayT.setDate(today.getDate() - 2); // T-2 days (match day)
-    const dayTStr = dayT.toISOString().slice(0, 10);
-    const todayStr = today.toISOString().slice(0, 10);
-    const cycleMonth = todayStr.substring(0, 7);
-
-    const batchNum = `STL-${todayStr.replace(/-/g, '').substring(0, 6)}-${String(settlements.length + 1).padStart(3, '0')}`;
-
-    // Standard T+2 model:
-    // Actual Court Gross = ₹42,000 (30 slots)
-    // 50% Online Advance Held = ₹21,000 (Razorpay)
-    // 50% Cash Collected at Counter = ₹21,000 (kept by vendor)
-    // 10% Platform Commission = ₹4,200
-    // 18% GST on Commission = ₹756
-    // 1% TDS (Sec 194-O) = ₹420
-    // Net Payable from online advance = ₹21,000 - ₹4,200 - ₹756 - ₹420 = ₹15,624
-    const actualCourtTotal = 42000;
-    const onlineAdvanceHeld = 21000;
-    const cashCollected = 21000;
-    const commission = 4200;
-    const commissionGst = 756;
-    const tds = 420;
-    const netPayable = onlineAdvanceHeld - commission - commissionGst - tds;
-
-    const newBatch: SettlementBatchItem = {
-      id: `stl_${Date.now()}`,
-      batch_number: batchNum,
-      venue_id: 'ven_1001',
-      venue_name: 'Sky Sports Arena & Box Turf',
-      owner_name: 'Karthik Rajan',
-      bank_name: 'HDFC Bank Ltd',
-      account_number_masked: '•••• •••• 9012',
-      ifsc_code: 'HDFC0001248',
-      period_start: dayTStr,
-      period_end: dayTStr,
-      settlement_date: todayStr,
-      cycle_month: cycleMonth,
-      cycle_year: today.getFullYear(),
-      t_plus_days: 2,
-      bookings_count: 30,
-      actual_court_price_total: actualCourtTotal,
-      gross_booking_amount: actualCourtTotal,
-      online_advance_held: onlineAdvanceHeld,
-      cash_collected_at_venue: cashCollected,
-      platform_commission_deducted: commission,
-      platform_fee_gst: commissionGst,
-      tds_deducted: tds,
-      net_payable: Math.round(netPayable * 10) / 10,
-      status: 'PENDING_APPROVAL',
-      itemized_bookings: [
-        {
-          booking_code: `IBS-${todayStr.replace(/-/g, '').substring(2, 6)}-8801`,
-          slot_date: dayTStr,
-          slot_time: '06:00 PM - 07:00 PM',
-          court_name: 'Main Football Turf A',
-          sport: 'Football',
-          actual_court_price: 1400,
-          online_advance_paid: 700,
-          cash_collected_at_venue: 700,
-          payment_mode: 'ONLINE_ADVANCE_PLUS_CASH',
-          platform_fee: 140,
-          platform_fee_gst: 25.2,
-          net_venue_share: 534.8,
-        },
-        {
-          booking_code: `IBS-${todayStr.replace(/-/g, '').substring(2, 6)}-8802`,
-          slot_date: dayTStr,
-          slot_time: '07:00 PM - 08:00 PM',
-          court_name: 'Box Cricket Pitch 1',
-          sport: 'Cricket',
-          actual_court_price: 1600,
-          online_advance_paid: 800,
-          cash_collected_at_venue: 800,
-          payment_mode: 'ONLINE_ADVANCE_PLUS_CASH',
-          platform_fee: 160,
-          platform_fee_gst: 28.8,
-          net_venue_share: 611.2,
-        },
-        {
-          booking_code: `IBS-${todayStr.replace(/-/g, '').substring(2, 6)}-8803`,
-          slot_date: dayTStr,
-          slot_time: '08:00 PM - 09:00 PM',
-          court_name: 'Synthetic Badminton Court 1',
-          sport: 'Badminton',
-          actual_court_price: 1000,
-          online_advance_paid: 500,
-          cash_collected_at_venue: 500,
-          payment_mode: 'ONLINE_ADVANCE_PLUS_CASH',
-          platform_fee: 100,
-          platform_fee_gst: 18.0,
-          net_venue_share: 382.0,
-        },
-      ],
-    };
-
-    setSettlements([newBatch, ...settlements]);
-    showToast(
-      'success',
-      'T+2 Settlement Batch Generated',
-      `Created ${batchNum} for Day T (${dayTStr}) matches. Net Bank Payable: ₹${newBatch.net_payable.toLocaleString('en-IN')}`
+  // Creates (or resumes) the venue's Razorpay linked account from its approved onboarding bank + PAN details
+  const handleSetupLinkedAccount = (batch: SettlementBatchItem, refreshOnly: boolean) =>
+    runBatchAction(
+      () =>
+        apiClient.post(
+          `/payments/linked-accounts/${encodeURIComponent(batch.venue_id)}${refreshOnly ? '/refresh' : ''}`,
+          {}
+        ),
+      { title: 'Linked Account Updated', description: batch.venue_name },
+      'Linked Account Setup Failed',
+      false
     );
+
+  // Cancels a stored PENDING batch; its bookings go back to unsettled for the next batch
+  const handleCancelBatch = async (batch: SettlementBatchItem) => {
+    if (typeof window !== 'undefined' && !window.confirm(`Cancel batch ${batch.batch_number}? Its bookings will be settled in a later batch.`)) {
+      return;
+    }
+    setActionBusy(true);
+    try {
+      await apiClient.post(`/payments/settlements/${encodeURIComponent(batch.id)}/cancel`, {});
+      showToast('info', 'Batch Cancelled', `${batch.batch_number} cancelled. Its bookings are unsettled again.`);
+      setSelectedBatch(null);
+      await loadSettlements();
+    } catch (e) {
+      showToast('error', 'Could Not Cancel Batch', e instanceof Error ? e.message : 'Please try again.');
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  // Creates one PENDING batch per venue from bookings payable now (T+2 after match day, not yet in a batch)
+  const handleGenerateTPlus2Batch = async () => {
+    setActionBusy(true);
+    try {
+      const res = await apiClient.post('/payments/settlements/generate-batch', {});
+      const created = Number(res.data?.total || 0);
+      showToast(
+        created ? 'success' : 'info',
+        created ? 'T+2 Settlement Batches Created' : 'Nothing to Settle',
+        res.data?.message || ''
+      );
+      await loadSettlements();
+    } catch (e) {
+      showToast('error', 'Could Not Create Batches', e instanceof Error ? e.message : 'Please try again.');
+    } finally {
+      setActionBusy(false);
+    }
   };
 
   return (
@@ -367,7 +357,7 @@ export default function SettlementManagementPage() {
             Settlement Management
           </h1>
           <p className="text-xs sm:text-sm text-[#5F6368] mt-1 font-medium">
-            Automated settlement cycles, platform fee deductions on cash &amp; advance bookings, TDS compliance, and direct bank disbursals.
+            Automated settlement cycles: 0.5% fee (platform + Razorpay Route, incl. GST) on money collected online, and direct bank disbursals.
           </p>
         </div>
 
@@ -518,8 +508,9 @@ export default function SettlementManagementPage() {
           <button
             type="button"
             onClick={handleGenerateTPlus2Batch}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#021526] hover:bg-[#F94001] text-white px-3.5 py-2 text-xs font-bold shadow-xs transition-all cursor-pointer h-[42px]"
-            title="Generate automated T+2 settlement batches for Day T matches"
+            disabled={actionBusy}
+            className="inline-flex items-center gap-2 rounded-xl bg-[#021526] hover:bg-[#F94001] text-white px-3.5 py-2 text-xs font-bold shadow-xs transition-all cursor-pointer h-[42px] disabled:opacity-60 disabled:cursor-wait"
+            title="Create settlement batches from bookings whose match day was at least 2 days ago"
           >
             <Sparkles className="h-3.5 w-3.5 text-amber-400" />
             <span>Run T+2 Settlement</span>
@@ -558,7 +549,7 @@ export default function SettlementManagementPage() {
           </div>
           <div className="mt-2.5 flex items-baseline gap-2">
             <span className="text-2xl font-black text-emerald-700 font-mono tracking-tight">
-              ₹{totalSettledToBanks.toLocaleString('en-IN')}
+              ₹{formatInr(totalSettledToBanks)}
             </span>
             <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
               Settled
@@ -615,10 +606,10 @@ export default function SettlementManagementPage() {
           </div>
           <div className="mt-2.5 flex items-baseline gap-2">
             <span className="text-2xl font-black text-rose-700 font-mono tracking-tight">
-              ₹{totalDeductions.toLocaleString('en-IN')}
+              ₹{formatInr(totalDeductions)}
             </span>
             <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
-              10% + GST
+              0.5% of online
             </span>
           </div>
         </div>
@@ -711,7 +702,7 @@ export default function SettlementManagementPage() {
                 <th className="py-3 px-3 w-[11%]">Cycle Date</th>
                 <th className="py-3 px-3 w-[10%]">Court Price</th>
                 <th className="py-3 px-3 w-[13%]">Online &amp; Cash Split</th>
-                <th className="py-3 px-3 w-[12%]">Deductions (Fee + GST)</th>
+                <th className="py-3 px-3 w-[12%]">Deductions (0.5%)</th>
                 <th className="py-3 px-3 w-[10%]">Net Payout &amp; Status</th>
                 <th className="py-3 px-3 text-left w-[6%]">Action</th>
               </tr>
@@ -731,7 +722,7 @@ export default function SettlementManagementPage() {
                 paginatedSettlements.map((s, index) => {
                   const isCopied = copiedText === s.batch_number;
                   const courtPrice = s.actual_court_price_total || s.gross_booking_amount;
-                  const totalDeduction = s.platform_commission_deducted + (s.platform_fee_gst || 0) + s.tds_deducted;
+                  const totalDeduction = settlementDeduction(s);
 
                   return (
                     <tr
@@ -830,10 +821,10 @@ export default function SettlementManagementPage() {
                       <td className="py-3 px-3 align-middle whitespace-nowrap font-mono">
                         <div className="space-y-0.5">
                           <p className="font-bold text-rose-600 text-xs">
-                            - ₹{totalDeduction.toLocaleString('en-IN')}
+                            - ₹{formatInr(totalDeduction)}
                           </p>
                           <p className="text-[10px] text-slate-400 font-sans truncate">
-                            Fee ₹{s.platform_commission_deducted} &bull; GST ₹{s.platform_fee_gst || 0}
+                            Platform ₹{formatInr(s.platform_commission_deducted + (s.platform_fee_gst || 0))} &bull; Route ₹{formatInr((s.route_fee || 0) + (s.route_fee_gst || 0))}
                           </p>
                         </div>
                       </td>
@@ -843,7 +834,7 @@ export default function SettlementManagementPage() {
                         <div className="space-y-1 font-mono">
                           <div>
                             <span className="font-black text-sm text-emerald-700 block leading-tight">
-                              ₹{s.net_payable.toLocaleString('en-IN')}
+                              ₹{formatInr(s.net_payable)}
                             </span>
                             <span className="text-[10px] font-sans text-slate-400">
                               Bank IMPS
@@ -892,13 +883,14 @@ export default function SettlementManagementPage() {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleInitiatePayout(s.id);
+                                setSelectedBatch(s);
+                                setDrawerTab('summary');
                               }}
                               className="px-2.5 py-1 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold inline-flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
-                              title="Initiate Razorpay Payout (T+2)"
+                              title="Record the bank transfer for this settlement"
                             >
                               <CreditCard className="h-3 w-3" />
-                              <span>Disburse</span>
+                              <span>Pay</span>
                             </button>
                           )}
                         </div>
@@ -1091,26 +1083,34 @@ export default function SettlementManagementPage() {
                       {/* Deductions breakdown */}
                       <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5 text-[11px] text-slate-600">
                         <div className="flex justify-between">
-                          <span className="font-sans">Platform Fee (10% of court price):</span>
-                          <span className="text-rose-600 font-bold">- ₹{selectedBatch.platform_commission_deducted.toLocaleString('en-IN')}</span>
+                          <span className="font-sans">Platform Fee (0.1737% of online):</span>
+                          <span className="text-rose-600 font-bold">- ₹{formatInr(selectedBatch.platform_commission_deducted)}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="font-sans">GST on Platform Fee (18%):</span>
-                          <span className="text-rose-600 font-bold">- ₹{(selectedBatch.platform_fee_gst || 0).toLocaleString('en-IN')}</span>
+                          <span className="text-rose-600 font-bold">- ₹{formatInr(selectedBatch.platform_fee_gst)}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="font-sans">TDS Under Sec 194O (1%):</span>
-                          <span className="text-rose-600 font-bold">- ₹{selectedBatch.tds_deducted.toLocaleString('en-IN')}</span>
+                          <span className="font-sans">Razorpay Route Fee (0.25% of online):</span>
+                          <span className="text-rose-600 font-bold">- ₹{formatInr(selectedBatch.route_fee)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-sans">GST on Route Fee (18%):</span>
+                          <span className="text-rose-600 font-bold">- ₹{formatInr(selectedBatch.route_fee_gst)}</span>
+                        </div>
+                        <div className="flex justify-between pt-1.5 border-t border-slate-200 font-bold text-slate-700">
+                          <span className="font-sans">Total Deduction (0.5% of online)</span>
+                          <span className="text-rose-600">- ₹{formatInr(settlementDeduction(selectedBatch))}</span>
                         </div>
                         <div className="pt-1.5 border-t border-slate-200 text-[10px] text-slate-500 font-sans">
-                          &bull; Platform commission &amp; GST for cash bookings are automatically deducted from the online advance balance before bank transfer.
+                          &bull; Fees apply only to money collected online through Razorpay. Cash collected at the venue carries no fee.
                         </div>
                       </div>
 
                       {/* Net Transferred to Bank */}
                       <div className="flex justify-between pt-2 border-t border-slate-200 text-base font-black text-emerald-700">
                         <span className="font-sans">Net Disbursed to Bank</span>
-                        <span>₹{selectedBatch.net_payable.toLocaleString('en-IN')}</span>
+                        <span>₹{formatInr(selectedBatch.net_payable)}</span>
                       </div>
                     </div>
 
@@ -1185,51 +1185,8 @@ export default function SettlementManagementPage() {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
-                            {(selectedBatch.itemized_bookings || [
-                              {
-                                booking_code: 'IBS-2603-9001',
-                                slot_date: selectedBatch.period_start,
-                                slot_time: '06:00 PM - 07:00 PM',
-                                court_name: 'Main Football Turf A',
-                                sport: 'Football',
-                                actual_court_price: 1600,
-                                online_advance_paid: 1600,
-                                cash_collected_at_venue: 0,
-                                payment_mode: 'ONLINE_FULL',
-                                platform_fee: 160,
-                                platform_fee_gst: 28.8,
-                                net_venue_share: 1379.2,
-                              },
-                              {
-                                booking_code: 'IBS-2603-9002',
-                                slot_date: selectedBatch.period_start,
-                                slot_time: '07:00 PM - 09:00 PM',
-                                court_name: 'Box Cricket Pitch 1',
-                                sport: 'Cricket',
-                                actual_court_price: 2800,
-                                online_advance_paid: 1400,
-                                cash_collected_at_venue: 1400,
-                                payment_mode: 'ONLINE_ADVANCE_PLUS_CASH',
-                                platform_fee: 280,
-                                platform_fee_gst: 50.4,
-                                net_venue_share: 1041.6,
-                              },
-                              {
-                                booking_code: 'IBS-2603-9015',
-                                slot_date: selectedBatch.period_start,
-                                slot_time: '09:00 PM - 10:00 PM',
-                                court_name: 'Main Football Turf A',
-                                sport: 'Football',
-                                actual_court_price: 1800,
-                                online_advance_paid: 900,
-                                cash_collected_at_venue: 900,
-                                payment_mode: 'ONLINE_ADVANCE_PLUS_CASH',
-                                platform_fee: 180,
-                                platform_fee_gst: 32.4,
-                                net_venue_share: 669.6,
-                              },
-                            ]).map((item, idx) => {
-                              const totalItemDeduction = (item.platform_fee || 0) + (item.platform_fee_gst || 0);
+                            {(selectedBatch.itemized_bookings || []).map((item, idx) => {
+                              const totalItemDeduction = settlementDeduction(item);
                               return (
                                 <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
                                   {/* Booking Ref */}
@@ -1268,12 +1225,12 @@ export default function SettlementManagementPage() {
 
                                   {/* Deduction */}
                                   <td className="py-2.5 px-3 align-middle text-right text-rose-600 font-medium whitespace-nowrap">
-                                    - ₹{totalItemDeduction.toFixed(1)}
+                                    - ₹{formatInr(totalItemDeduction)}
                                   </td>
 
                                   {/* Net Share */}
                                   <td className="py-2.5 px-3 align-middle text-right font-bold text-emerald-700 whitespace-nowrap">
-                                    ₹{item.net_venue_share.toLocaleString('en-IN')}
+                                    ₹{formatInr(item.net_venue_share)}
                                   </td>
                                 </tr>
                               );
@@ -1352,20 +1309,24 @@ export default function SettlementManagementPage() {
                             <span>+ ₹{(selectedBatch.cash_collected_at_venue || 0).toLocaleString('en-IN')}</span>
                           </div>
                           <div className="flex justify-between text-rose-600">
-                            <span className="font-sans">4. Less: Platform Fee (10% on Court Value):</span>
-                            <span>- ₹{selectedBatch.platform_commission_deducted.toLocaleString('en-IN')}</span>
+                            <span className="font-sans">4. Less: Platform Fee (0.1737% of online):</span>
+                            <span>- ₹{formatInr(selectedBatch.platform_commission_deducted)}</span>
                           </div>
                           <div className="flex justify-between text-rose-600">
                             <span className="font-sans">5. Less: GST on Platform Fee (18%):</span>
-                            <span>- ₹{(selectedBatch.platform_fee_gst || 0).toLocaleString('en-IN')}</span>
+                            <span>- ₹{formatInr(selectedBatch.platform_fee_gst)}</span>
                           </div>
                           <div className="flex justify-between text-rose-600">
-                            <span className="font-sans">6. Less: TDS Under Section 194O (1%):</span>
-                            <span>- ₹{selectedBatch.tds_deducted.toLocaleString('en-IN')}</span>
+                            <span className="font-sans">6. Less: Razorpay Route Fee (0.25% of online):</span>
+                            <span>- ₹{formatInr(selectedBatch.route_fee)}</span>
+                          </div>
+                          <div className="flex justify-between text-rose-600">
+                            <span className="font-sans">7. Less: GST on Route Fee (18%):</span>
+                            <span>- ₹{formatInr(selectedBatch.route_fee_gst)}</span>
                           </div>
                           <div className="flex justify-between pt-2 border-t border-slate-300 font-black text-sm text-emerald-700">
                             <span className="font-sans">Net Disbursed via Bank IMPS:</span>
-                            <span>₹{selectedBatch.net_payable.toLocaleString('en-IN')}</span>
+                            <span>₹{formatInr(selectedBatch.net_payable)}</span>
                           </div>
                         </div>
                       </div>
@@ -1442,21 +1403,130 @@ export default function SettlementManagementPage() {
                 )}
               </div>
 
+              {/* RAZORPAY ROUTE: venue linked account + last transfer problem */}
+              {(() => {
+                const linked = selectedBatch.linked_account;
+                const status = linked?.status || 'NOT_STARTED';
+                const awaitingRazorpay = !!linked?.account_id && ['IN_PROGRESS', 'UNDER_REVIEW', 'NEEDS_CLARIFICATION'].includes(status);
+                const statusTone =
+                  status === 'ACTIVATED'
+                    ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                    : status === 'FAILED' || status === 'SUSPENDED'
+                      ? 'text-rose-700 bg-rose-50 border-rose-200'
+                      : 'text-amber-700 bg-amber-50 border-amber-200';
+                return (
+                  <div className="px-4 py-3 border-t border-[#E5E7EB] bg-white space-y-2 text-xs shrink-0">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Razorpay Linked Account</span>
+                        <span className={`px-2 py-0.5 rounded-full border text-[10px] font-bold ${statusTone}`}>
+                          {status.replace(/_/g, ' ')}
+                        </span>
+                        {linked?.account_id && <span className="font-mono text-[10px] text-slate-500">{linked.account_id}</span>}
+                      </div>
+                      {status !== 'ACTIVATED' && (
+                        <button
+                          type="button"
+                          disabled={actionBusy}
+                          onClick={() => handleSetupLinkedAccount(selectedBatch, awaitingRazorpay)}
+                          className="px-3 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 text-[11px] font-bold transition-colors cursor-pointer disabled:opacity-60"
+                        >
+                          {awaitingRazorpay ? 'Check Status' : status === 'NOT_STARTED' ? 'Create Linked Account' : 'Retry Setup'}
+                        </button>
+                      )}
+                    </div>
+                    {linked?.last_error && <p className="text-rose-600 text-[11px]">{linked.last_error}</p>}
+                    {selectedBatch.failure_reason && (
+                      <p className="text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 text-[11px]">
+                        {selectedBatch.failure_reason}
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+
               {/* DRAWER FOOTER */}
-              <div className="p-4 bg-slate-50 border-t border-[#E5E7EB] flex items-center justify-between shrink-0">
+              <div className="p-4 bg-slate-50 border-t border-[#E5E7EB] flex flex-wrap items-center justify-between gap-2 shrink-0">
                 <span className="text-xs text-slate-500 font-medium">
-                  {selectedBatch.status === 'SETTLED' ? 'Completed Disbursal' : 'Processing Settlement'}
+                  {selectedBatch.status === 'SETTLED'
+                    ? selectedBatch.transfer_id
+                      ? `Transferred via Razorpay · ${selectedBatch.transfer_id}`
+                      : 'Completed Disbursal'
+                    : selectedBatch.status === 'PROCESSING'
+                      ? `Razorpay transfer ${selectedBatch.transfer_id || '(unconfirmed)'} · ${selectedBatch.transfer_status || 'processing'}`
+                      : selectedBatch.is_live
+                        ? 'Payable now · not in a batch yet'
+                        : 'Awaiting payout'}
                 </span>
-                <div className="flex items-center gap-2">
-                  {selectedBatch.status !== 'SETTLED' && (
+                <div className="flex flex-wrap items-center gap-2">
+                  {selectedBatch.status === 'PROCESSING' && (
+                    <>
+                      <button
+                        type="button"
+                        disabled={actionBusy}
+                        onClick={() => handleRefreshTransfer(selectedBatch)}
+                        className="px-4 py-2 rounded-xl bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 text-xs font-bold transition-colors cursor-pointer disabled:opacity-60"
+                      >
+                        Refresh Transfer Status
+                      </button>
+                      {!selectedBatch.transfer_id && (
+                        <button
+                          type="button"
+                          disabled={actionBusy}
+                          onClick={() => handleReleaseTransfer(selectedBatch)}
+                          className="px-4 py-2 rounded-xl bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold transition-colors cursor-pointer disabled:opacity-60"
+                        >
+                          Release Batch
+                        </button>
+                      )}
+                    </>
+                  )}
+                  {selectedBatch.status === 'PENDING_APPROVAL' && selectedBatch.net_payable > 0 && (
                     <button
                       type="button"
-                      onClick={() => handleInitiatePayout(selectedBatch.id)}
-                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
+                      disabled={actionBusy || selectedBatch.linked_account?.status !== 'ACTIVATED'}
+                      onClick={() => handlePayViaRoute(selectedBatch)}
+                      title={
+                        selectedBatch.linked_account?.status === 'ACTIVATED'
+                          ? 'One Razorpay Route transfer to the venue\'s linked account'
+                          : 'The venue\'s Razorpay linked account must be activated first'
+                      }
+                      className="px-4 py-2 rounded-xl bg-[#021526] hover:bg-[#F94001] text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <CreditCard className="h-4 w-4" />
-                      <span>Disburse via Razorpay (₹{selectedBatch.net_payable.toLocaleString('en-IN')})</span>
+                      <span>Pay via Razorpay (₹{formatInr(selectedBatch.net_payable)})</span>
                     </button>
+                  )}
+                  {selectedBatch.status === 'PENDING_APPROVAL' && (
+                    <>
+                      <input
+                        type="text"
+                        value={utrInputs[selectedBatch.id] || ''}
+                        onChange={(e) => setUtrInputs((prev) => ({ ...prev, [selectedBatch.id]: e.target.value }))}
+                        placeholder={selectedBatch.net_payable > 0 ? 'Paid outside? Bank UTR' : 'UTR (not needed)'}
+                        aria-label="Bank transfer UTR / reference number"
+                        className="h-9 w-44 rounded-xl border border-slate-300 bg-white px-3 text-xs font-mono text-slate-800 focus:outline-none focus:border-emerald-500"
+                      />
+                      <button
+                        type="button"
+                        disabled={actionBusy}
+                        onClick={() => handleMarkPaid(selectedBatch)}
+                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs disabled:opacity-60 disabled:cursor-wait"
+                      >
+                        <CreditCard className="h-4 w-4" />
+                        <span>Mark Paid Manually</span>
+                      </button>
+                      {!selectedBatch.is_live && (
+                        <button
+                          type="button"
+                          disabled={actionBusy}
+                          onClick={() => handleCancelBatch(selectedBatch)}
+                          className="px-4 py-2 rounded-xl bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold transition-colors cursor-pointer disabled:opacity-60"
+                        >
+                          Cancel Batch
+                        </button>
+                      )}
+                    </>
                   )}
                   <button
                     type="button"

@@ -904,6 +904,9 @@ export interface OnboardingSessionData {
     ifsc_code: string;
     account_type: string;
     branch_proof_document_id: string;
+    // Payout KYC for the Razorpay Route linked account
+    pan_number?: string;
+    business_type?: string;
   };
   status: OnboardingApplicationStatus;
   rejection_reasons?: OnboardingRejectionReason[];

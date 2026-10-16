@@ -1465,6 +1465,16 @@ export default function PartnerOnboardingAdminTrackerPage() {
                           {drawerApp.bank_details?.ifsc_code || '—'} {drawerApp.bank_details?.branch_name ? `(${drawerApp.bank_details.branch_name})` : ''}
                         </p>
                       </div>
+                      <div>
+                        <span className="text-[10px] text-slate-500 uppercase block font-mono font-bold mb-1">PAN (Razorpay payout KYC)</span>
+                        <p className="font-mono font-bold text-[#021526]">{drawerApp.bank_details?.pan_number || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-500 uppercase block font-mono font-bold mb-1">Business Type</span>
+                        <p className="font-bold text-[#021526] capitalize">
+                          {drawerApp.bank_details?.business_type?.replace(/_/g, ' ') || 'Not provided'}
+                        </p>
+                      </div>
                     </div>
 
                     {/* Bank Passbook / Cheque Action Row */}

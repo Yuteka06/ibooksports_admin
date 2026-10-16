@@ -45,6 +45,7 @@ import {
   PaymentMethodCategory,
 } from '@/lib/mockData';
 import { apiClient } from '@/lib/api';
+import { formatInr } from '@/lib/settlementFees';
 
 export default function PaymentManagementPage() {
   const [payments, setPayments] = useState<PaymentTransactionItem[]>([]);
@@ -467,11 +468,11 @@ export default function PaymentManagementPage() {
           </div>
         </div>
 
-        {/* Platform Revenue (10%) */}
+        {/* Platform Revenue: platform fee share of the 0.5% on online money */}
         <div className="bg-white rounded-2xl p-4 border border-[#E5E7EB] shadow-2xs hover:border-blue-400/50 transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-[#5F6368] uppercase tracking-wider">
-              Platform Fee (10%)
+              Platform Fee (Admin)
             </span>
             <div className="h-8 w-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
               <Percent className="h-4 w-4" />
@@ -479,7 +480,7 @@ export default function PaymentManagementPage() {
           </div>
           <div className="mt-2.5 flex items-baseline gap-2">
             <span className="text-2xl font-black text-blue-700 font-mono tracking-tight">
-              ₹{totalCommission.toLocaleString('en-IN')}
+              ₹{formatInr(totalCommission)}
             </span>
             <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
               iBookSports Net
@@ -1246,28 +1247,38 @@ export default function PaymentManagementPage() {
                         <span className="text-xs font-black uppercase tracking-wider text-[#021526] font-display">
                           Revenue &amp; Payout Audit
                         </span>
-                        <span className="text-[10px] text-slate-400">Razorpay MDR Split</span>
+                        <span className="text-[10px] text-slate-400">0.5% on online only</span>
                       </div>
 
                       <div className="flex justify-between text-slate-600">
-                        <span>Gross Collected via Razorpay</span>
-                        <span className="font-black text-[#021526]">₹{selectedTxn.received_amount}</span>
+                        <span>Collected Online via Razorpay</span>
+                        <span className="font-black text-[#021526]">₹{formatInr(selectedTxn.online_amount)}</span>
+                      </div>
+                      {(selectedTxn.cash_amount || 0) > 0 && (
+                        <div className="flex justify-between text-slate-500 text-[11px]">
+                          <span>Cash / Counter (no fee)</span>
+                          <span>₹{formatInr(selectedTxn.cash_amount)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-emerald-600 font-bold text-[11px]">
+                        <span>Platform Fee (iBookSports)</span>
+                        <span>- ₹{formatInr(selectedTxn.platform_fee ?? selectedTxn.platform_commission)}</span>
                       </div>
                       <div className="flex justify-between text-slate-500 text-[11px]">
-                        <span>Gateway MDR (2%)</span>
-                        <span>- ₹{selectedTxn.gateway_fee}</span>
+                        <span>GST on Platform Fee (18%)</span>
+                        <span>- ₹{formatInr(selectedTxn.platform_fee_gst)}</span>
                       </div>
                       <div className="flex justify-between text-slate-500 text-[11px]">
-                        <span>GST on MDR (18%)</span>
-                        <span>- ₹{selectedTxn.tax_gst}</span>
+                        <span>Razorpay Route Fee (0.25%)</span>
+                        <span>- ₹{formatInr(selectedTxn.route_fee ?? selectedTxn.gateway_fee)}</span>
                       </div>
-                      <div className="flex justify-between text-emerald-600 font-bold">
-                        <span>iBookSports Commission (10%)</span>
-                        <span>+ ₹{selectedTxn.platform_commission}</span>
+                      <div className="flex justify-between text-slate-500 text-[11px]">
+                        <span>GST on Route Fee (18%)</span>
+                        <span>- ₹{formatInr(selectedTxn.route_fee_gst)}</span>
                       </div>
                       <div className="flex justify-between pt-2 border-t border-slate-200 text-slate-900 font-black text-sm">
                         <span>Net Payable to Venue Partner</span>
-                        <span>₹{selectedTxn.net_venue_payout}</span>
+                        <span>₹{formatInr(selectedTxn.net_venue_payout)}</span>
                       </div>
                     </div>
 
