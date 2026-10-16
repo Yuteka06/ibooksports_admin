@@ -82,7 +82,7 @@ export default function PartnerOnboardingAdminTrackerPage() {
   // Document Inspection Lightbox State
   const [selectedDocPreview, setSelectedDocPreview] = useState<{
     title: string;
-    docType: 'AADHAAR' | 'PROFILE_PHOTO' | 'GST' | 'COURT_PHOTO' | 'BANK_PROOF';
+    docType: 'AADHAAR' | 'PROFILE_PHOTO' | 'GST' | 'COURT_PHOTO' | 'BANK_PROOF' | 'PAN_CARD';
     docNumber?: string;
     description?: string;
     applicantName?: string;
@@ -1515,6 +1515,45 @@ export default function PartnerOnboardingAdminTrackerPage() {
                           <Eye className="h-3.5 w-3.5 text-[#F94001]" />
                           <span>View Bank Proof</span>
                         </button>
+                      </div>
+                    )}
+
+                    {/* PAN Card Action Row (payout KYC for the Razorpay linked account) */}
+                    {drawerApp.bank_details?.pan_number && (
+                      <div className="pt-3 border-t border-[#E5E7EB] flex items-center justify-between gap-2.5">
+                        <div className="flex items-center gap-2">
+                          <CreditCard className="h-4 w-4 text-emerald-600 shrink-0" />
+                          <div>
+                            <span className="text-[11px] font-bold text-[#021526] block">
+                              PAN Card: {drawerApp.bank_details.pan_document_id || 'Not uploaded'}
+                            </span>
+                            <span className="text-[10px] text-[#5F6368]">
+                              Check the name and number match PAN {drawerApp.bank_details.pan_number}
+                            </span>
+                          </div>
+                        </div>
+                        {drawerApp.bank_details.pan_document_id && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const docId = drawerApp.bank_details?.pan_document_id;
+                              setSelectedDocPreview({
+                                title: 'PAN Card',
+                                docType: 'PAN_CARD',
+                                docNumber: drawerApp.bank_details?.pan_number || docId,
+                                fileUrl: onboardingApi.getDocumentUrl(docId),
+                                isPdf: docId?.toLowerCase().includes('.pdf'),
+                                applicantName: drawerApp.bank_details?.account_holder_name || drawerApp.partner_details?.name || 'Partner',
+                                venueName: drawerApp.business_details?.venue_name || 'Venue',
+                                description: 'PAN card uploaded by partner for Razorpay payout KYC',
+                              });
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-[#021526] hover:bg-[#06243f] text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
+                          >
+                            <Eye className="h-3.5 w-3.5 text-[#F94001]" />
+                            <span>View PAN Card</span>
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>

@@ -906,6 +906,7 @@ export interface OnboardingSessionData {
     branch_proof_document_id: string;
     // Payout KYC for the Razorpay Route linked account
     pan_number?: string;
+    pan_document_id?: string; // PAN card upload (document_type PAN_CARD)
     business_type?: string;
   };
   status: OnboardingApplicationStatus;
