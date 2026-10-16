@@ -273,7 +273,8 @@ export interface SettlementBookingItem {
   actual_court_price: number;
   online_advance_paid: number;
   cash_collected_at_venue: number;
-  payment_mode: 'ONLINE_FULL' | 'ONLINE_ADVANCE' | 'ONLINE_ADVANCE_PLUS_CASH' | 'ONLINE_ADVANCE_PLUS_ONLINE' | 'CASH' | 'UNPAID';
+  // UNVERIFIED_ONLINE: marked paid online but no Razorpay payment exists (never paid out)
+  payment_mode: 'ONLINE_FULL' | 'ONLINE_ADVANCE' | 'ONLINE_ADVANCE_PLUS_CASH' | 'ONLINE_ADVANCE_PLUS_ONLINE' | 'CASH' | 'UNVERIFIED_ONLINE' | 'UNPAID';
   platform_fee: number;
   platform_fee_gst: number;
   route_fee?: number;

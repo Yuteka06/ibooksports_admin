@@ -1217,8 +1217,11 @@ export default function SettlementManagementPage() {
                                       Onl: ₹{item.online_advance_paid}
                                     </p>
                                     {item.cash_collected_at_venue > 0 && (
-                                      <p className="text-amber-700 text-[10px]">
-                                        Cash: ₹{item.cash_collected_at_venue}
+                                      <p
+                                        className={`text-[10px] ${item.payment_mode === 'UNVERIFIED_ONLINE' ? 'text-rose-600 font-semibold' : 'text-amber-700'}`}
+                                        title={item.payment_mode === 'UNVERIFIED_ONLINE' ? 'Marked paid online, but no Razorpay payment exists. Not paid out.' : undefined}
+                                      >
+                                        {item.payment_mode === 'UNVERIFIED_ONLINE' ? 'Unverified online' : 'Cash'}: ₹{item.cash_collected_at_venue}
                                       </p>
                                     )}
                                   </td>
