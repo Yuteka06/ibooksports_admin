@@ -43,9 +43,31 @@ const apiErrorMessage = (e: any, fallback: string): string => {
   return (typeof m === 'string' && m) || e?.message || fallback;
 };
 
-/** Where the admin can fetch a ticket's attachment: the uploaded document, or a plain web link. */
+const inlineAttachmentUrls = new Map<string, string>();
+
+/**
+ * Older vendor-web tickets hold the file itself as a data: URL. Browsers refuse to open data: links in a
+ * new tab, so it is turned into a blob: URL once (the preview and "Open in New Tab" both use it).
+ */
+const inlineAttachmentUrl = (dataUrl: string): string => {
+  const cached = inlineAttachmentUrls.get(dataUrl);
+  if (cached) return cached;
+  const match = /^data:([\w/+.-]+);base64,([\s\S]+)$/.exec(dataUrl);
+  if (!match || typeof window === 'undefined') return '';
+  try {
+    const bytes = Uint8Array.from(atob(match[2]), (c) => c.charCodeAt(0));
+    const url = URL.createObjectURL(new Blob([bytes], { type: match[1] }));
+    inlineAttachmentUrls.set(dataUrl, url);
+    return url;
+  } catch {
+    return '';
+  }
+};
+
+/** Where the admin can fetch a ticket's attachment: the uploaded document, a file sent inline, or a web link. */
 const attachmentViewUrl = (t: SupportTicketItem): string => {
   if (t.attachment_id) return onboardingApi.getDocumentUrl(t.attachment_id);
+  if (t.attachment_url?.startsWith('data:')) return inlineAttachmentUrl(t.attachment_url);
   return t.attachment_url && /^https?:\/\//i.test(t.attachment_url) ? t.attachment_url : '';
 };
 
