@@ -55,7 +55,7 @@ import {
   Armchair,
   DoorOpen,
   Zap,
-  Shield,
+  SunMedium,
   Sparkles,
   RotateCcw,
   History,
@@ -72,6 +72,29 @@ import {
   Printer,
 } from 'lucide-react';
 
+// Amenity icons by the lucide name the backend stores (Settings > Sports & Amenities).
+const AMENITY_ICONS: Record<string, React.ElementType> = {
+  SunMedium,
+  Car,
+  DoorOpen,
+  Droplets,
+  HeartPulse,
+  Coffee,
+  ShieldCheck,
+  Armchair,
+  Building2,
+  Sparkles,
+};
+
+const AMENITY_CATEGORY_STYLES: Record<string, { bg: string; color: string }> = {
+  lighting: { bg: 'bg-orange-50 border-orange-200/60', color: 'text-[#F94001]' },
+  facility: { bg: 'bg-purple-50 border-purple-200/60', color: 'text-purple-600' },
+  refreshment: { bg: 'bg-blue-50 border-blue-200/60', color: 'text-blue-600' },
+  safety: { bg: 'bg-rose-50 border-rose-200/60', color: 'text-rose-600' },
+  equipment: { bg: 'bg-indigo-50 border-indigo-200/60', color: 'text-indigo-600' },
+};
+const DEFAULT_AMENITY_STYLE = { bg: 'bg-slate-50 border-slate-200/60', color: 'text-slate-600' };
+
 const SPORT_ICONS: Record<string, string> = {
   Cricket: '🏏',
   Football: '⚽',
@@ -84,6 +107,7 @@ const SPORT_ICONS: Record<string, string> = {
 };
 import {
   VenueDetail,
+  VenueAmenity,
   BookingItem,
   SettlementBatchItem,
   SupportTicketItem,
@@ -299,88 +323,8 @@ export default function VenueModularOverviewPage() {
     applicantName?: string;
   } | null>(null);
 
-  // Overview Amenities Filter & State
+  // Overview Amenities Filter
   const [amenityFilter, setAmenityFilter] = useState<string>('ALL');
-
-  const venueAmenitiesList = useMemo(() => [
-    {
-      id: 'led_floodlights',
-      name: 'LED Floodlights',
-      category: 'LIGHTING',
-      description: '500 Lux professional floodlighting',
-      icon: Sun,
-      iconBgClass: 'bg-orange-50 border-orange-200/60',
-      iconColorClass: 'text-[#F94001]',
-    },
-    {
-      id: 'car_bike_parking',
-      name: 'Car & Bike Parking',
-      category: 'FACILITY',
-      description: 'Covered and secure parking',
-      icon: Car,
-      iconBgClass: 'bg-purple-50 border-purple-200/60',
-      iconColorClass: 'text-purple-600',
-    },
-    {
-      id: 'changing_rooms',
-      name: 'Changing Rooms & Showers',
-      category: 'FACILITY',
-      description: 'Male and female separate changing rooms',
-      icon: DoorOpen,
-      iconBgClass: 'bg-emerald-50 border-emerald-200/60',
-      iconColorClass: 'text-emerald-600',
-    },
-    {
-      id: 'drinking_water',
-      name: 'Purified Drinking Water',
-      category: 'REFRESHMENT',
-      description: 'Free continuous hydration',
-      icon: Droplets,
-      iconBgClass: 'bg-blue-50 border-blue-200/60',
-      iconColorClass: 'text-blue-600',
-    },
-    {
-      id: 'first_aid',
-      name: 'First Aid Kit',
-      category: 'SAFETY',
-      description: 'On-site medical safety kit',
-      icon: HeartPulse,
-      iconBgClass: 'bg-rose-50 border-rose-200/60',
-      iconColorClass: 'text-rose-600',
-    },
-    {
-      id: 'snacks_cafeteria',
-      name: 'Snacks & Cafeteria',
-      category: 'REFRESHMENT',
-      description: 'Snack bar & hydration lounge',
-      icon: Coffee,
-      iconBgClass: 'bg-amber-50 border-amber-200/60',
-      iconColorClass: 'text-amber-600',
-    },
-    {
-      id: 'equipment_rental',
-      name: 'Equipment Rental',
-      category: 'EQUIPMENT',
-      description: 'Pro sport gear rental at counter',
-      icon: Shield,
-      iconBgClass: 'bg-indigo-50 border-indigo-200/60',
-      iconColorClass: 'text-indigo-600',
-    },
-    {
-      id: 'spectator_seating',
-      name: 'Spectator Seating / Gallery',
-      category: 'FACILITY',
-      description: 'Covered spectator stand',
-      icon: Armchair,
-      iconBgClass: 'bg-pink-50 border-pink-200/60',
-      iconColorClass: 'text-pink-600',
-    },
-  ], []);
-
-  const filteredAmenities = useMemo(() => {
-    if (amenityFilter === 'ALL') return venueAmenitiesList;
-    return venueAmenitiesList.filter((a) => a.category === amenityFilter);
-  }, [amenityFilter, venueAmenitiesList]);
 
   // Slots date selection & dynamic timeline dates
   const [selectedSlotDate, setSelectedSlotDate] = useState<'today' | 'tomorrow' | 'day_after' | 'custom'>('today');
@@ -540,6 +484,23 @@ export default function VenueModularOverviewPage() {
   const currentVenue = useMemo(() => {
     return venues.find((v) => v.id === venueId) || venues[0] || null;
   }, [venues, venueId]);
+
+  // Amenities the vendor has switched on for this venue (from the venue API).
+  const venueAmenitiesList = useMemo<VenueAmenity[]>(() => {
+    if (Array.isArray(currentVenue?.amenity_details)) return currentVenue.amenity_details;
+    // Older API responses only carry amenity names.
+    return (currentVenue?.amenities || []).map((name) => ({ amenity_id: name, name, category: 'Facility' }));
+  }, [currentVenue]);
+
+  const amenityCategories = useMemo(
+    () => Array.from(new Set(venueAmenitiesList.map((a) => a.category || 'Facility'))),
+    [venueAmenitiesList],
+  );
+
+  const filteredAmenities = useMemo(() => {
+    if (amenityFilter === 'ALL' || !amenityCategories.includes(amenityFilter)) return venueAmenitiesList;
+    return venueAmenitiesList.filter((a) => (a.category || 'Facility') === amenityFilter);
+  }, [amenityFilter, amenityCategories, venueAmenitiesList]);
 
   // Load real live bookings, settlements, and support tickets for this venue
   useEffect(() => {
@@ -2122,60 +2083,64 @@ export default function VenueModularOverviewPage() {
                     <span className="text-[11px] font-black text-slate-800 tracking-wider uppercase">Venue Amenities</span>
                   </div>
                   <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200/80">
-                    8 Active
+                    {venueAmenitiesList.length} Active
                   </span>
                 </div>
 
                 <div className="p-3 space-y-2.5">
-                  {/* Category Filter Pills */}
-                  <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1">
-                    {[
-                      { id: 'ALL', label: 'All' },
-                      { id: 'LIGHTING', label: 'Lighting' },
-                      { id: 'FACILITY', label: 'Facility' },
-                      { id: 'REFRESHMENT', label: 'Refreshments' },
-                      { id: 'SAFETY', label: 'Safety' },
-                      { id: 'EQUIPMENT', label: 'Equipment' },
-                    ].map((cat) => {
-                      const isActive = amenityFilter === cat.id;
-                      return (
-                        <button
-                          key={cat.id}
-                          type="button"
-                          onClick={() => setAmenityFilter(cat.id)}
-                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer shrink-0 ${
-                            isActive
-                              ? 'bg-slate-900 text-white shadow-2xs'
-                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                          }`}
-                        >
-                          {cat.label}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {venueAmenitiesList.length === 0 ? (
+                    <p className="px-1 py-3 text-xs text-slate-500">
+                      The vendor has not switched on any amenities for this venue.
+                    </p>
+                  ) : (
+                    <>
+                      {/* Category Filter Pills */}
+                      <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1">
+                        {['ALL', ...amenityCategories].map((cat) => {
+                          const isActive =
+                            amenityFilter === cat || (cat === 'ALL' && !amenityCategories.includes(amenityFilter));
+                          return (
+                            <button
+                              key={cat}
+                              type="button"
+                              onClick={() => setAmenityFilter(cat)}
+                              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer shrink-0 ${
+                                isActive
+                                  ? 'bg-slate-900 text-white shadow-2xs'
+                                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                              }`}
+                            >
+                              {cat === 'ALL' ? 'All' : cat}
+                            </button>
+                          );
+                        })}
+                      </div>
 
-                  {/* Compact Amenities Micro-Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {filteredAmenities.map((amenity) => {
-                      const IconComponent = amenity.icon;
-                      return (
-                        <div
-                          key={amenity.id}
-                          className="flex items-center gap-2.5 p-2 rounded-xl bg-slate-50/70 border border-slate-100"
-                        >
-                          <div className={`h-7 w-7 rounded-lg flex items-center justify-center shrink-0 border ${amenity.iconBgClass}`}>
-                            <IconComponent className={`h-3.5 w-3.5 ${amenity.iconColorClass}`} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-bold text-slate-900 truncate">{amenity.name}</p>
-                            <p className="text-[10px] text-slate-500 truncate">{amenity.description}</p>
-                          </div>
-                          <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" title="Active Amenity" />
-                        </div>
-                      );
-                    })}
-                  </div>
+                      {/* Compact Amenities Micro-Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {filteredAmenities.map((amenity) => {
+                          const IconComponent = AMENITY_ICONS[amenity.icon || ''] || Sparkles;
+                          const style =
+                            AMENITY_CATEGORY_STYLES[(amenity.category || '').toLowerCase()] || DEFAULT_AMENITY_STYLE;
+                          return (
+                            <div
+                              key={amenity.amenity_id}
+                              className="flex items-center gap-2.5 p-2 rounded-xl bg-slate-50/70 border border-slate-100"
+                            >
+                              <div className={`h-7 w-7 rounded-lg flex items-center justify-center shrink-0 border ${style.bg}`}>
+                                <IconComponent className={`h-3.5 w-3.5 ${style.color}`} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold text-slate-900 truncate">{amenity.name}</p>
+                                <p className="text-[10px] text-slate-500 truncate">{amenity.category || 'Facility'}</p>
+                              </div>
+                              <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" title="Active Amenity" />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -3119,11 +3084,10 @@ export default function VenueModularOverviewPage() {
                               <button
                                 type="button"
                                 onClick={() => setSelectedCourtRequestForDrawer(req)}
-                                className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-800 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                                className="h-7.5 w-7.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-[#F94001] hover:border-[#F94001]/40 hover:bg-[#FFF1EC] transition-all inline-flex items-center justify-center cursor-pointer shadow-2xs"
                                 title="View Court Request Details"
                               >
-                                <Eye className="h-3 w-3 text-slate-500" />
-                                <span>View Details &rarr;</span>
+                                <Eye className="h-3.5 w-3.5" />
                               </button>
                               <button
                                 type="button"
@@ -4495,10 +4459,10 @@ export default function VenueModularOverviewPage() {
                               e.stopPropagation();
                               setSelectedSupportTicketForDrawer(t);
                             }}
-                            className="inline-flex items-center gap-1 text-slate-500 hover:text-[#F94001] font-semibold text-xs transition-colors cursor-pointer"
+                            className="h-7.5 w-7.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-[#F94001] hover:border-[#F94001]/40 hover:bg-[#FFF1EC] transition-all inline-flex items-center justify-center cursor-pointer shadow-2xs"
+                            title="View Support Ticket"
                           >
-                            <span>Details</span>
-                            <ChevronRight className="h-3.5 w-3.5" />
+                            <Eye className="h-3.5 w-3.5" />
                           </button>
                         </td>
                       </tr>

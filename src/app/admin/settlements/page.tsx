@@ -24,6 +24,7 @@ import {
   FileText,
   Printer,
   ChevronRight,
+  ChevronLeft,
   TrendingUp,
   Percent,
   Wallet,
@@ -166,6 +167,21 @@ export default function SettlementManagementPage() {
       return true;
     });
   }, [dateOrMonthFilteredSettlements, statusFilter, searchQuery]);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const totalItems = filteredSettlements.length;
+  const totalPages = Math.ceil(totalItems / pageSize) || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedSettlements = useMemo(() => {
+    return filteredSettlements.slice(startIndex, startIndex + pageSize);
+  }, [filteredSettlements, startIndex, pageSize]);
+
+  // Reset page when filter inputs change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterType, selectedDate, selectedMonth, statusFilter, searchQuery]);
 
   const handlePrintAdviceSlip = () => {
     if (typeof window !== 'undefined') {
@@ -347,10 +363,6 @@ export default function SettlementManagementPage() {
       {/* 1. PAGE HEADER (WITH DATE & MONTH PICKER IN TOP RIGHT CORNER) */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[#E5E7EB] pb-5">
         <div>
-          <div className="inline-flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wider text-[#F94001] bg-[#FFF1EC] border border-[#F94001]/20 px-3 py-1 rounded-full mb-2">
-            <Landmark className="h-3.5 w-3.5 text-[#F94001]" />
-            <span>Partner Disbursal Console &bull; Automated Settlement Ledger</span>
-          </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#021526] font-display">
             Settlement Management
           </h1>
@@ -693,20 +705,21 @@ export default function SettlementManagementPage() {
           <table className="w-full table-fixed text-left text-xs border-collapse">
             <thead>
               <tr className="border-b border-slate-200/90 bg-slate-50/75 text-slate-400 font-bold tracking-wider text-[11px] uppercase select-none">
+                <th className="py-3 px-3 w-[5%] text-center">#</th>
                 <th className="py-3 px-3 w-[13%]">Settlement ID</th>
-                <th className="py-3 px-3 w-[21%]">Venue &amp; Bank Account</th>
+                <th className="py-3 px-3 w-[20%]">Venue &amp; Bank Account</th>
                 <th className="py-3 px-3 w-[11%]">Cycle Date</th>
                 <th className="py-3 px-3 w-[10%]">Court Price</th>
                 <th className="py-3 px-3 w-[13%]">Online &amp; Cash Split</th>
-                <th className="py-3 px-3 w-[13%]">Deductions (Fee + GST)</th>
-                <th className="py-3 px-3 w-[11%]">Net Payout &amp; Status</th>
-                <th className="py-3 px-3 text-left w-[8%]">Action</th>
+                <th className="py-3 px-3 w-[12%]">Deductions (Fee + GST)</th>
+                <th className="py-3 px-3 w-[10%]">Net Payout &amp; Status</th>
+                <th className="py-3 px-3 text-left w-[6%]">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredSettlements.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-14 text-center text-slate-400">
+                  <td colSpan={9} className="py-14 text-center text-slate-400">
                     <Receipt className="h-9 w-9 mx-auto text-slate-300 mb-2" />
                     <p className="font-bold text-sm text-[#021526]">No settlement batches found</p>
                     <p className="text-[11px] text-slate-400 mt-0.5">
@@ -715,7 +728,7 @@ export default function SettlementManagementPage() {
                   </td>
                 </tr>
               ) : (
-                filteredSettlements.map((s) => {
+                paginatedSettlements.map((s, index) => {
                   const isCopied = copiedText === s.batch_number;
                   const courtPrice = s.actual_court_price_total || s.gross_booking_amount;
                   const totalDeduction = s.platform_commission_deducted + (s.platform_fee_gst || 0) + s.tds_deducted;
@@ -729,6 +742,11 @@ export default function SettlementManagementPage() {
                       }}
                       className="hover:bg-slate-50/70 transition-colors group cursor-pointer"
                     >
+                      {/* 0. SERIAL NUMBER */}
+                      <td className="py-3 px-3 align-middle text-center font-mono text-[11px] font-bold text-slate-400">
+                        {startIndex + index + 1}
+                      </td>
+
                       {/* 1. SETTLEMENT ID */}
                       <td className="py-3 px-3 align-middle whitespace-nowrap">
                         <div className="inline-flex items-center gap-1.5">
@@ -854,24 +872,28 @@ export default function SettlementManagementPage() {
                         </div>
                       </td>
 
-                      {/* 8. ACTION (LEFT ALIGNED & COMPACT) */}
+                      {/* 8. ACTION (EYE ICON BUTTON) */}
                       <td className="py-3 px-3 align-middle text-left whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
                           <button
                             type="button"
                             onClick={(e) => {
+                              e.stopPropagation();
                               setSelectedBatch(s);
                               setDrawerTab('summary');
                             }}
-                            className="px-2.5 py-1 rounded-full border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-[#F94001] hover:border-[#F94001]/40 text-xs font-semibold inline-flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
+                            className="h-7.5 w-7.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-[#F94001] hover:border-[#F94001]/40 hover:bg-[#FFF1EC] transition-all inline-flex items-center justify-center cursor-pointer shadow-2xs"
+                            title="View Settlement Details"
                           >
-                            <Eye className="h-3 w-3 text-slate-500" />
-                            <span>Details &gt;</span>
+                            <Eye className="h-3.5 w-3.5" />
                           </button>
                           {s.status !== 'SETTLED' && (
                             <button
                               type="button"
-                              onClick={() => handleInitiatePayout(s.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleInitiatePayout(s.id);
+                              }}
                               className="px-2.5 py-1 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold inline-flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
                               title="Initiate Razorpay Payout (T+2)"
                             >
@@ -887,6 +909,58 @@ export default function SettlementManagementPage() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Pagination Bar */}
+        <div className="p-3.5 border-t border-slate-200/90 bg-slate-50/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+          <div className="flex items-center gap-3">
+            <span>
+              Showing <strong className="text-slate-900">{totalItems === 0 ? 0 : startIndex + 1}</strong> to{' '}
+              <strong className="text-slate-900">
+                {Math.min(startIndex + pageSize, totalItems)}
+              </strong>{' '}
+              of <strong className="text-slate-900">{totalItems}</strong> settlements
+            </span>
+            <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200">
+              <span className="text-[11px] text-slate-500">Rows:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 outline-none cursor-pointer hover:border-slate-300"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              disabled={currentPage <= 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-xs flex items-center gap-1 cursor-pointer"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+              <span>Prev</span>
+            </button>
+            <span className="px-2 text-xs font-bold text-slate-700">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              type="button"
+              disabled={currentPage >= totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-xs flex items-center gap-1 cursor-pointer"
+            >
+              <span>Next</span>
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       </div>
 

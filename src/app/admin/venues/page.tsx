@@ -25,6 +25,8 @@ import {
   Power,
   Wrench,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ShieldAlert,
   ShieldCheck,
   AlertTriangle,
@@ -217,6 +219,21 @@ export default function VenuesManagementPage() {
       })
       .sort((a, b) => a.venue_name.localeCompare(b.venue_name));
   }, [venues, searchQuery, selectedState, selectedDistrict, selectedStatus, selectedSport]);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const totalItems = filteredVenues.length;
+  const totalPages = Math.ceil(totalItems / pageSize) || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedVenues = useMemo(() => {
+    return filteredVenues.slice(startIndex, startIndex + pageSize);
+  }, [filteredVenues, startIndex, pageSize]);
+
+  // Reset page when filter inputs change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedState, selectedDistrict, selectedStatus, selectedSport]);
 
   // Global KPIs calculated from all venues
   const totalLiveVenues = venues.length;
@@ -802,10 +819,11 @@ export default function VenuesManagementPage() {
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="border-b border-slate-200/90 bg-slate-50/75 text-slate-500 font-semibold tracking-wider text-[11px] uppercase select-none">
+                <th className="py-3 px-3 text-center w-12 font-bold tracking-wider text-[11px] uppercase">#</th>
                 <th className="py-3 px-3.5 w-[105px]">Venue ID</th>
-                <th className="py-3 px-3.5 min-w-[220px]">Venue Name & Location</th>
+                <th className="py-3 px-3.5 min-w-[220px]">Venue Name &amp; Location</th>
                 <th className="py-3 px-3.5 min-w-[150px]">Owner Contact</th>
-                <th className="py-3 px-3.5 min-w-[140px]">Courts & Sports</th>
+                <th className="py-3 px-3.5 min-w-[140px]">Courts &amp; Sports</th>
                 <th className="py-3 px-3.5 min-w-[160px]">Today&apos;s Performance</th>
                 <th className="py-3 px-3.5 min-w-[125px]">Status</th>
                 <th className="py-3 px-3.5 text-center w-[75px]">Action</th>
@@ -814,7 +832,7 @@ export default function VenuesManagementPage() {
             <tbody className="divide-y divide-slate-100">
               {filteredVenues.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                  <td colSpan={8} className="py-12 text-center text-slate-400">
                     <p className="font-semibold text-xs text-slate-700">No matching venues found</p>
                     <p className="text-[11px] text-slate-400 mt-0.5">Try adjusting your search keyword, state, or status filter</p>
                     <button
@@ -832,7 +850,7 @@ export default function VenuesManagementPage() {
                   </td>
                 </tr>
               ) : (
-                filteredVenues.map((v) => {
+                paginatedVenues.map((v, index) => {
                   const displayId = formatVenueId(v.id);
                   const isCopied = copiedId === v.id;
                   const ownerPhone = v.owner?.phone || `+91 ${v.mobile_number}`;
@@ -861,6 +879,10 @@ export default function VenuesManagementPage() {
                         isInactive ? 'bg-slate-50/40 text-slate-600' : ''
                       }`}
                     >
+                      {/* 0. SERIAL NUMBER */}
+                      <td className="py-3 px-3 align-middle text-center font-mono text-[11px] font-bold text-slate-400">
+                        {startIndex + index + 1}
+                      </td>
                       {/* 1. VENUE ID */}
                       <td className="py-3 px-3.5 align-middle whitespace-nowrap">
                         <div className="inline-flex items-center gap-1">
@@ -1042,6 +1064,58 @@ export default function VenuesManagementPage() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Pagination Bar */}
+        <div className="p-3.5 border-t border-slate-200/90 bg-slate-50/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+          <div className="flex items-center gap-3">
+            <span>
+              Showing <strong className="text-slate-900">{totalItems === 0 ? 0 : startIndex + 1}</strong> to{' '}
+              <strong className="text-slate-900">
+                {Math.min(startIndex + pageSize, totalItems)}
+              </strong>{' '}
+              of <strong className="text-slate-900">{totalItems}</strong> venues
+            </span>
+            <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200">
+              <span className="text-[11px] text-slate-500">Rows:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 outline-none cursor-pointer hover:border-slate-300"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              disabled={currentPage <= 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-xs flex items-center gap-1 cursor-pointer"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+              <span>Prev</span>
+            </button>
+            <span className="px-2 text-xs font-bold text-slate-700">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              type="button"
+              disabled={currentPage >= totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-xs flex items-center gap-1 cursor-pointer"
+            >
+              <span>Next</span>
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       </div>
 

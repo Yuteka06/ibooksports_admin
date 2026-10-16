@@ -1307,10 +1307,10 @@ export default function BookingManagementPage() {
                               setSelectedBooking(b);
                               setDrawerTab('summary');
                             }}
-                            className="px-2.5 py-1 rounded-full border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-[#F94001] hover:border-[#F94001]/40 text-xs font-semibold inline-flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
+                            className="h-7.5 w-7.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-[#F94001] hover:border-[#F94001]/40 hover:bg-[#FFF1EC] transition-all inline-flex items-center justify-center cursor-pointer shadow-2xs"
+                            title="View Booking Details"
                           >
-                            <Eye className="h-3 w-3 text-slate-500" />
-                            <span>Details &gt;</span>
+                            <Eye className="h-3.5 w-3.5" />
                           </button>
                         </div>
                       </td>

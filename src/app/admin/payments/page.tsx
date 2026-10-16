@@ -35,6 +35,8 @@ import {
   Landmark,
   Layers,
   CalendarDays,
+  ChevronLeft,
+  ChevronRight,
   Trophy,
 } from 'lucide-react';
 import {
@@ -336,6 +338,21 @@ export default function PaymentManagementPage() {
       return true;
     });
   }, [dateFilteredPayments, statusFilter, stateFilter, districtFilter, methodFilter, selectedSport, searchQuery]);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const totalItems = filteredPayments.length;
+  const totalPages = Math.ceil(totalItems / pageSize) || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedPayments = useMemo(() => {
+    return filteredPayments.slice(startIndex, startIndex + pageSize);
+  }, [filteredPayments, startIndex, pageSize]);
+
+  // Reset page when filter inputs change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedDate, statusFilter, stateFilter, districtFilter, methodFilter, selectedSport, searchQuery]);
 
   const handlePrintInvoice = () => {
     if (typeof window !== 'undefined') {
@@ -652,6 +669,7 @@ export default function PaymentManagementPage() {
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="border-b border-slate-200/90 bg-slate-50/75 text-slate-400 font-bold tracking-wider text-[11px] uppercase select-none">
+                <th className="py-3 px-3 text-center w-12 whitespace-nowrap">#</th>
                 <th className="py-3 px-4 whitespace-nowrap">Transaction ID</th>
                 <th className="py-3 px-4 whitespace-nowrap">Booking Ref</th>
                 <th className="py-3 px-4 whitespace-nowrap">Player Details</th>
@@ -664,7 +682,7 @@ export default function PaymentManagementPage() {
             <tbody className="divide-y divide-slate-100">
               {filteredPayments.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-14 text-center text-slate-400">
+                  <td colSpan={8} className="py-14 text-center text-slate-400">
                     <Receipt className="h-9 w-9 mx-auto text-slate-300 mb-2" />
                     <p className="font-bold text-sm text-[#021526]">No payment transactions found</p>
                     <p className="text-[11px] text-slate-400 mt-0.5">
@@ -673,7 +691,7 @@ export default function PaymentManagementPage() {
                   </td>
                 </tr>
               ) : (
-                filteredPayments.map((p) => {
+                paginatedPayments.map((p, index) => {
                   const isCopied = copiedText === p.txn_id;
                   const isPartial = p.payment_status === 'ADVANCE_PAID';
                   const isPaid = p.payment_status === 'FULLY_PAID';
@@ -709,6 +727,11 @@ export default function PaymentManagementPage() {
                       }}
                       className="hover:bg-slate-50/70 transition-colors group cursor-pointer"
                     >
+                      {/* 0. SERIAL NUMBER */}
+                      <td className="py-3.5 px-3 align-middle text-center font-mono text-[11px] font-bold text-slate-400">
+                        {startIndex + index + 1}
+                      </td>
+
                       {/* 1. TRANSACTION ID (ONLY TRANSACTION ID - NO RAZORPAY REFERENCE ID AS REQUESTED) */}
                       <td className="py-3.5 px-4 align-middle whitespace-nowrap">
                         <div className="inline-flex items-center gap-1.5">
@@ -904,10 +927,10 @@ export default function PaymentManagementPage() {
                             setSelectedTxn(p);
                             setDrawerTab('overview_invoice');
                           }}
-                          className="px-2.5 py-1 rounded-full border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-[#F94001] hover:border-[#F94001]/40 text-xs font-semibold inline-flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
+                          className="h-7.5 w-7.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-[#F94001] hover:border-[#F94001]/40 hover:bg-[#FFF1EC] transition-all inline-flex items-center justify-center cursor-pointer shadow-2xs"
+                          title="View Payment Details"
                         >
-                          <Eye className="h-3 w-3 text-slate-500" />
-                          <span>Details &gt;</span>
+                          <Eye className="h-3.5 w-3.5" />
                         </button>
                       </td>
                     </tr>
@@ -916,6 +939,58 @@ export default function PaymentManagementPage() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Pagination Bar */}
+        <div className="p-3.5 border-t border-slate-200/90 bg-slate-50/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+          <div className="flex items-center gap-3">
+            <span>
+              Showing <strong className="text-slate-900">{totalItems === 0 ? 0 : startIndex + 1}</strong> to{' '}
+              <strong className="text-slate-900">
+                {Math.min(startIndex + pageSize, totalItems)}
+              </strong>{' '}
+              of <strong className="text-slate-900">{totalItems}</strong> transactions
+            </span>
+            <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200">
+              <span className="text-[11px] text-slate-500">Rows:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 outline-none cursor-pointer hover:border-slate-300"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              disabled={currentPage <= 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-xs flex items-center gap-1 cursor-pointer"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+              <span>Prev</span>
+            </button>
+            <span className="px-2 text-xs font-bold text-slate-700">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              type="button"
+              disabled={currentPage >= totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-xs flex items-center gap-1 cursor-pointer"
+            >
+              <span>Next</span>
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       </div>
 

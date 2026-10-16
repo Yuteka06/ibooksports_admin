@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Headphones,
   Search,
@@ -29,10 +29,12 @@ import {
   ExternalLink,
   Edit3,
   ChevronRight,
+  ChevronLeft,
   ChevronDown,
 } from 'lucide-react';
 import { SupportTicketItem, VenueDetail } from '@/lib/mockData';
-import { apiClient } from '@/lib/api';
+import { apiClient, onboardingApi } from '@/lib/api';
+import DocumentPreview from '@/components/admin/DocumentPreview';
 
 /** The server's own error message, so the admin sees why an action failed. */
 const apiErrorMessage = (e: any, fallback: string): string => {
@@ -40,6 +42,14 @@ const apiErrorMessage = (e: any, fallback: string): string => {
   if (Array.isArray(m)) return m.join(', ');
   return (typeof m === 'string' && m) || e?.message || fallback;
 };
+
+/** Where the admin can fetch a ticket's attachment: the uploaded document, or a plain web link. */
+const attachmentViewUrl = (t: SupportTicketItem): string => {
+  if (t.attachment_id) return onboardingApi.getDocumentUrl(t.attachment_id);
+  return t.attachment_url && /^https?:\/\//i.test(t.attachment_url) ? t.attachment_url : '';
+};
+
+const isPdfName = (name?: string) => /\.pdf$/i.test(name || '');
 
 export default function SupportHelpdeskPage() {
   const [mounted, setMounted] = useState(false);
@@ -53,6 +63,7 @@ export default function SupportHelpdeskPage() {
 
   // Selected Ticket for Details / Conversation Drawer
   const [selectedTicket, setSelectedTicket] = useState<SupportTicketItem | null>(null);
+  const [isAttachmentPreviewOpen, setIsAttachmentPreviewOpen] = useState(false);
 
   // In-Drawer Resolution State
   const [resolutionNotes, setResolutionNotes] = useState('');
@@ -126,6 +137,11 @@ export default function SupportHelpdeskPage() {
     return () => clearInterval(interval);
   }, []);
 
+  // A different (or no) ticket closes the attachment preview.
+  useEffect(() => {
+    setIsAttachmentPreviewOpen(false);
+  }, [selectedTicket?.id]);
+
   // KPI Statistics
   const totalCount = tickets.length;
   const openCount = tickets.filter((t) => t.status === 'OPEN').length;
@@ -152,6 +168,20 @@ export default function SupportHelpdeskPage() {
     }
     return true;
   });
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const totalItems = filteredTickets.length;
+  const totalPages = Math.ceil(totalItems / pageSize) || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedTickets = useMemo(() => {
+    return filteredTickets.slice(startIndex, startIndex + pageSize);
+  }, [filteredTickets, startIndex, pageSize]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, categoryFilter, priorityFilter, venueFilter, searchQuery]);
 
   // Action: Open Slide-out Drawer
   const handleOpenDrawer = (t: SupportTicketItem, startResolve: boolean = false) => {
@@ -795,6 +825,7 @@ export default function SupportHelpdeskPage() {
           <table className="w-full text-left text-xs min-w-[950px]" suppressHydrationWarning>
             <thead>
               <tr className="border-b border-[#E5E7EB] bg-slate-50/70 text-[#5F6368] font-bold text-[11px] uppercase tracking-wider">
+                <th className="py-3 px-3 w-12 text-center">#</th>
                 <th className="py-3 px-4 w-[130px]">Ticket ID</th>
                 <th className="py-3 px-4">Subject</th>
                 <th className="py-3 px-4 w-[130px]">Category</th>
@@ -802,25 +833,30 @@ export default function SupportHelpdeskPage() {
                 <th className="py-3 px-4 w-[100px]">Priority</th>
                 <th className="py-3 px-4 w-[130px]">Status</th>
                 <th className="py-3 px-4 w-[105px]">Reported</th>
-                <th className="py-3 px-4 w-[85px] text-right">Action</th>
+                <th className="py-3 px-4 w-[85px] text-center">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#F3F4F4]">
               {filteredTickets.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-14 text-center text-[#5F6368]">
+                  <td colSpan={9} className="py-14 text-center text-[#5F6368]">
                     <Headphones className="h-9 w-9 mx-auto text-slate-300 mb-2" />
                     <p className="font-bold text-sm text-[#021526]">No support tickets match criteria</p>
                     <p className="text-xs text-[#5F6368] mt-0.5">Try selecting a different filter or clearing search keywords.</p>
                   </td>
                 </tr>
               ) : (
-                filteredTickets.map((t) => (
+                paginatedTickets.map((t: SupportTicketItem, index: number) => (
                   <tr
                     key={t.id}
                     onClick={() => handleOpenDrawer(t, false)}
                     className="hover:bg-slate-50/80 cursor-pointer transition-colors group"
                   >
+                    {/* 0. SERIAL NUMBER */}
+                    <td className="py-3.5 px-3 font-mono text-center font-bold text-xs text-slate-400">
+                      {startIndex + index + 1}
+                    </td>
+
                     {/* Support ID */}
                     <td className="py-3.5 px-4 font-mono font-bold text-xs text-[#021526] group-hover:text-[#F94001] transition-colors">
                       {t.ticket_number}
@@ -866,16 +902,76 @@ export default function SupportHelpdeskPage() {
                     </td>
 
                     {/* Action */}
-                    <td className="py-3.5 px-4 text-right">
-                      <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-slate-400 group-hover:text-[#021526] transition-colors">
-                        Details <ChevronRight className="h-3.5 w-3.5" />
-                      </span>
+                    <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenDrawer(t, false);
+                        }}
+                        className="h-7.5 w-7.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-[#F94001] hover:border-[#F94001]/40 hover:bg-[#FFF1EC] transition-all inline-flex items-center justify-center cursor-pointer shadow-2xs mx-auto"
+                        title="View Support Ticket Details"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                      </button>
                     </td>
                   </tr>
                 ))
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Pagination Bar */}
+        <div className="p-3.5 border-t border-slate-200/90 bg-slate-50/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+          <div className="flex items-center gap-3">
+            <span>
+              Showing <strong className="text-slate-900">{totalItems === 0 ? 0 : startIndex + 1}</strong> to{' '}
+              <strong className="text-slate-900">
+                {Math.min(startIndex + pageSize, totalItems)}
+              </strong>{' '}
+              of <strong className="text-slate-900">{totalItems}</strong> tickets
+            </span>
+            <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200">
+              <span className="text-[11px] text-slate-500">Rows:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 outline-none cursor-pointer hover:border-slate-300"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              disabled={currentPage <= 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-xs flex items-center gap-1 cursor-pointer"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+              <span>Prev</span>
+            </button>
+            <span className="px-2 text-xs font-bold text-slate-700">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              type="button"
+              disabled={currentPage >= totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-xs flex items-center gap-1 cursor-pointer"
+            >
+              <span>Next</span>
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1216,27 +1312,29 @@ export default function SupportHelpdeskPage() {
 
                 {/* 3. Attachment Proof (if present) */}
                 {selectedTicket.attachment_name && (
-                  <div className="p-3.5 rounded-2xl bg-white border border-slate-200 flex items-center justify-between shadow-2xs">
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-2 rounded-xl bg-blue-50 text-blue-600">
-                        <FileText className="h-4 w-4" />
+                  <div className="p-3.5 rounded-2xl bg-white border border-slate-200 flex items-center justify-between gap-3 shadow-2xs">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="p-2 rounded-xl bg-blue-50 text-blue-600 shrink-0">
+                        <Paperclip className="h-4 w-4" />
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <span className="font-bold text-xs text-[#021526] block truncate max-w-[260px]">
                           {selectedTicket.attachment_name}
                         </span>
-                        <span className="text-[10px] text-[#5F6368]">Attached Verification Proof</span>
+                        <span className="text-[10px] text-[#5F6368]">
+                          {attachmentViewUrl(selectedTicket) ? 'Attached by the venue' : 'File was not uploaded'}
+                        </span>
                       </div>
                     </div>
-                    {selectedTicket.attachment_url && selectedTicket.attachment_url !== '#' && (
-                      <a
-                        href={selectedTicket.attachment_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md hover:bg-blue-100"
+                    {attachmentViewUrl(selectedTicket) && (
+                      <button
+                        type="button"
+                        onClick={() => setIsAttachmentPreviewOpen(true)}
+                        className="inline-flex items-center gap-1.5 shrink-0 text-[11px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-100 cursor-pointer transition-colors"
                       >
-                        Open
-                      </a>
+                        <Eye className="h-3.5 w-3.5" />
+                        View
+                      </button>
                     )}
                   </div>
                 )}
@@ -1420,6 +1518,89 @@ export default function SupportHelpdeskPage() {
                   Close Drawer
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Attachment preview popup (above the drawer) */}
+      {selectedTicket && isAttachmentPreviewOpen && attachmentViewUrl(selectedTicket) && (
+        <div
+          className="fixed inset-0 z-[10000] bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-150"
+          onClick={() => setIsAttachmentPreviewOpen(false)}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-4xl w-full p-5 sm:p-6 shadow-2xl space-y-4 border border-slate-200 flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="h-10 w-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
+                  {isPdfName(selectedTicket.attachment_name) ? (
+                    <FileText className="h-5 w-5 text-emerald-600" />
+                  ) : (
+                    <Paperclip className="h-5 w-5 text-blue-600" />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-extrabold text-sm sm:text-base text-slate-900 truncate">
+                    {selectedTicket.attachment_name || 'Attachment'}
+                  </h3>
+                  <p className="font-mono text-xs text-slate-500 truncate">
+                    {selectedTicket.ticket_number} · {selectedTicket.venue_name}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <a
+                  href={attachmentViewUrl(selectedTicket)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-colors shadow-2xs"
+                  title="Open original file in new tab"
+                >
+                  <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+                  <span className="hidden sm:inline">Open in New Tab</span>
+                </a>
+                {selectedTicket.attachment_id && (
+                  <a
+                    href={attachmentViewUrl(selectedTicket).replace('/view', '/download')}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#021526] hover:bg-[#06243f] text-white text-xs font-bold transition-colors shadow-xs"
+                    title="Download original file"
+                  >
+                    <Download className="h-3.5 w-3.5 text-[#F94001]" />
+                    <span className="hidden sm:inline">Download</span>
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setIsAttachmentPreviewOpen(false)}
+                  className="h-8 w-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center cursor-pointer transition-colors ml-1"
+                  aria-label="Close preview"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-hidden bg-slate-100 rounded-2xl border border-slate-200 flex items-center justify-center min-h-[400px] max-h-[70vh]">
+              <DocumentPreview
+                url={attachmentViewUrl(selectedTicket)}
+                title={selectedTicket.attachment_name || 'Attachment'}
+                imageClassName="max-h-[64vh] max-w-full object-contain rounded-lg shadow-xl"
+                frameClassName="w-full h-[68vh] bg-white border-0 rounded-2xl"
+              />
+            </div>
+
+            <div className="flex justify-end pt-1 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsAttachmentPreviewOpen(false)}
+                className="px-4 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors cursor-pointer"
+              >
+                Close Preview
+              </button>
             </div>
           </div>
         </div>

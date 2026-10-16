@@ -300,13 +300,6 @@ export default function AdminDashboardPage() {
       {/* ========================================================================= */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#E5E7EB] pb-5">
         <div>
-          <div className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-wider text-[#F94001] bg-[#FFF1EC] px-3 py-1 rounded-full mb-2 border border-[#F94001]/20">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#F94001] opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-[#F94001]" />
-            </span>
-            <span>iBookSports Command Center &bull; Live Telemetry</span>
-          </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#021526] font-display">
             Executive Arena &amp; Revenue Dashboard
           </h1>
@@ -975,6 +968,7 @@ export default function AdminDashboardPage() {
             <table className="w-full text-left text-xs min-w-[620px]">
               <thead>
                 <tr className="border-b border-slate-200 text-slate-400 text-[10px] font-extrabold uppercase tracking-wider">
+                  <th className="pb-3 pr-3 w-8">#</th>
                   <th className="pb-3 pr-3">Booking Code</th>
                   <th className="pb-3 pr-3">Player</th>
                   <th className="pb-3 pr-3">Venue &amp; Sport</th>
@@ -987,7 +981,7 @@ export default function AdminDashboardPage() {
               <tbody className="divide-y divide-slate-100 font-sans">
                 {recentBookings.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-8 text-center text-slate-400 text-xs">
+                    <td colSpan={8} className="py-8 text-center text-slate-400 text-xs">
                       <div className="flex flex-col items-center justify-center gap-1.5 py-4">
                         <Activity className="h-6 w-6 text-slate-300" />
                         <p className="font-bold text-slate-600">No live bookings yet</p>
@@ -996,7 +990,7 @@ export default function AdminDashboardPage() {
                     </td>
                   </tr>
                 ) : (
-                  recentBookings.slice(0, 5).map((b) => {
+                  recentBookings.slice(0, 5).map((b, index) => {
                     const bookingCode = b.booking_code || b.bookingNumber || b.booking_number || b.id || 'BK-1001';
                     const customerName = b.customer_name || b.customerName || 'Player';
                     const customerPhone = b.customer_phone || b.customerPhone || '';
@@ -1021,6 +1015,9 @@ export default function AdminDashboardPage() {
 
                     return (
                       <tr key={b.id || bookingCode} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="py-3 pr-3 font-mono font-bold text-slate-400 text-[11px]">
+                          {index + 1}
+                        </td>
                         <td className="py-3 pr-3 font-mono font-bold text-[#F94001]">
                           {bookingCode}
                         </td>

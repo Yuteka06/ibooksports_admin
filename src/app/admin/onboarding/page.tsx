@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import DocumentPreview from '@/components/admin/DocumentPreview';
 import Link from 'next/link';
@@ -32,6 +32,8 @@ import {
   Image as ImageIcon,
   Download,
   Calendar as CalendarIcon,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { onboardingApi, OnboardingSessionData } from '@/lib/api';
 import { VenueDetail } from '@/lib/mockData';
@@ -366,6 +368,20 @@ export default function PartnerOnboardingAdminTrackerPage() {
     return matchesSearch && matchesStatus;
   });
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const totalItems = filteredApps.length;
+  const totalPages = Math.ceil(totalItems / pageSize) || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedApps = useMemo(() => {
+    return filteredApps.slice(startIndex, startIndex + pageSize);
+  }, [filteredApps, startIndex, pageSize]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter]);
+
   // Calculate Metrics (excluding draft applications)
   const nonDraftApps = applications.filter((a) => !isDraftStatus(a.status));
   const totalCount = nonDraftApps.length;
@@ -632,7 +648,7 @@ export default function PartnerOnboardingAdminTrackerPage() {
                   </td>
                 </tr>
               ) : (
-                filteredApps.map((app, index) => {
+                paginatedApps.map((app: OnboardingSessionData, index: number) => {
                   const stepNum = app.current_step || 1;
                   const progressPercent = Math.min(100, Math.round((stepNum / 8) * 100));
                   const fullTimestamp = String(app.updated_at || app.created_at || 'Just now');
@@ -656,7 +672,7 @@ export default function PartnerOnboardingAdminTrackerPage() {
                       {/* S.No */}
                       <td className="px-3 py-3.5 text-center align-middle whitespace-nowrap">
                         <span className="font-mono font-bold text-xs text-slate-500">
-                          {index + 1}
+                          {startIndex + index + 1}
                         </span>
                       </td>
 
@@ -812,6 +828,58 @@ export default function PartnerOnboardingAdminTrackerPage() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Pagination Bar */}
+        <div className="p-3.5 border-t border-slate-200/90 bg-slate-50/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+          <div className="flex items-center gap-3">
+            <span>
+              Showing <strong className="text-slate-900">{totalItems === 0 ? 0 : startIndex + 1}</strong> to{' '}
+              <strong className="text-slate-900">
+                {Math.min(startIndex + pageSize, totalItems)}
+              </strong>{' '}
+              of <strong className="text-slate-900">{totalItems}</strong> applications
+            </span>
+            <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200">
+              <span className="text-[11px] text-slate-500">Rows:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 outline-none cursor-pointer hover:border-slate-300"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              disabled={currentPage <= 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-xs flex items-center gap-1 cursor-pointer"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+              <span>Prev</span>
+            </button>
+            <span className="px-2 text-xs font-bold text-slate-700">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              type="button"
+              disabled={currentPage >= totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-xs flex items-center gap-1 cursor-pointer"
+            >
+              <span>Next</span>
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       </div>
 

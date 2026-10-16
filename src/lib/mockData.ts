@@ -133,8 +133,16 @@ export interface VenueDetail {
     total_settled: number;
   };
 
-  // Amenities
+  // Amenities (only the ones the vendor has switched on)
   amenities: string[];
+  amenity_details?: VenueAmenity[];
+}
+
+export interface VenueAmenity {
+  amenity_id: string;
+  name: string;
+  category: string;
+  icon?: string;
 }
 
 export interface CustomerItem {
@@ -303,6 +311,8 @@ export interface SupportTicketItem {
   related_booking_code?: string;
   attachment_url?: string;
   attachment_name?: string;
+  /** Uploaded document id behind the attachment (viewable via the documents API). */
+  attachment_id?: string;
   venue_id: string;
   venue_name: string;
   created_person_name: string;
