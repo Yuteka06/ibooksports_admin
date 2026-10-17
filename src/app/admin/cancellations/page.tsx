@@ -641,7 +641,7 @@ export default function CancellationManagementPage() {
                       <button
                         type="button"
                         onClick={() => setSelectedCancellation(c)}
-                        className="h-7 w-7 rounded-lg border border-slate-200 hover:border-[#F94001]/40 hover:text-[#F94001] hover:bg-[#FFF1EC] bg-white text-slate-500 inline-flex items-center justify-center cursor-pointer transition-all shadow-2xs mx-auto"
+                        className="h-7.5 w-7.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-[#F94001] hover:border-[#F94001]/40 hover:bg-[#FFF1EC] transition-all inline-flex items-center justify-center cursor-pointer shadow-2xs mx-auto"
                         title="View Cancellation Dossier"
                       >
                         <Eye className="h-3.5 w-3.5" />

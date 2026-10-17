@@ -885,10 +885,10 @@ export default function PartnerRequestsPage() {
                               e.stopPropagation();
                               handleOpenDetails(req);
                             }}
-                            className="h-8 w-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 hover:text-[#F94001] hover:border-[#F94001]/40 hover:bg-[#FFF1EC] inline-flex items-center justify-center shadow-2xs transition-all cursor-pointer active:scale-95"
+                            className="h-7.5 w-7.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-[#F94001] hover:border-[#F94001]/40 hover:bg-[#FFF1EC] transition-all inline-flex items-center justify-center cursor-pointer shadow-2xs"
                             title="Open Partner Request Dossier"
                           >
-                            <Eye className="h-4 w-4 text-slate-600 hover:text-[#F94001]" />
+                            <Eye className="h-3.5 w-3.5" />
                           </button>
                         </div>
                       </td>

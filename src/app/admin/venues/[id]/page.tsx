@@ -3043,11 +3043,10 @@ export default function VenueModularOverviewPage() {
                               <button
                                 type="button"
                                 onClick={() => setSelectedCourtRequestForDrawer(req)}
-                                className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                                className="h-7.5 w-7.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-[#F94001] hover:border-[#F94001]/40 hover:bg-[#FFF1EC] transition-all inline-flex items-center justify-center cursor-pointer shadow-2xs"
                                 title="Review Details in Slide Bar"
                               >
-                                <Eye className="h-3.5 w-3.5 text-slate-500" />
-                                <span>Review</span>
+                                <Eye className="h-3.5 w-3.5" />
                               </button>
                               <button
                                 type="button"
@@ -3429,7 +3428,7 @@ export default function VenueModularOverviewPage() {
                           <button
                             type="button"
                             onClick={() => setSelectedBookingForDrawer(b)}
-                            className="h-7 w-7 rounded-lg border border-slate-200 hover:border-[#F94001]/40 hover:text-[#F94001] hover:bg-[#FFF1EC] bg-white text-slate-500 inline-flex items-center justify-center cursor-pointer transition-all shadow-2xs mx-auto"
+                            className="h-7.5 w-7.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-[#F94001] hover:border-[#F94001]/40 hover:bg-[#FFF1EC] transition-all inline-flex items-center justify-center cursor-pointer shadow-2xs mx-auto"
                             title="Inspect Booking Details"
                           >
                             <Eye className="h-3.5 w-3.5" />
@@ -3728,7 +3727,7 @@ export default function VenueModularOverviewPage() {
                                 e.stopPropagation();
                                 setSelectedStaffForDrawer(staff);
                               }}
-                              className="h-7 w-7 rounded-lg border border-slate-200 bg-white hover:bg-[#FFF1EC] text-slate-500 hover:text-[#F94001] hover:border-[#F94001]/40 inline-flex items-center justify-center shadow-2xs transition-all cursor-pointer mx-auto"
+                              className="h-7.5 w-7.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-[#F94001] hover:border-[#F94001]/40 hover:bg-[#FFF1EC] transition-all inline-flex items-center justify-center cursor-pointer shadow-2xs mx-auto"
                               title="View Staff Details"
                             >
                               <Eye className="h-3.5 w-3.5" />
@@ -4253,7 +4252,7 @@ export default function VenueModularOverviewPage() {
                           <button
                             type="button"
                             onClick={() => setSelectedCancellationForDrawer(b)}
-                            className="h-7 w-7 rounded-lg border border-slate-200 hover:border-[#F94001]/40 hover:text-[#F94001] hover:bg-[#FFF1EC] bg-white text-slate-500 inline-flex items-center justify-center cursor-pointer transition-all shadow-2xs mx-auto"
+                            className="h-7.5 w-7.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-[#F94001] hover:border-[#F94001]/40 hover:bg-[#FFF1EC] transition-all inline-flex items-center justify-center cursor-pointer shadow-2xs mx-auto"
                             title="View Cancellation Details"
                           >
                             <Eye className="h-3.5 w-3.5" />

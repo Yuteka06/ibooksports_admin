@@ -814,10 +814,10 @@ export default function PartnerOnboardingAdminTrackerPage() {
                         <button
                           type="button"
                           onClick={() => setDrawerApp(app)}
-                          className="p-2 rounded-xl border border-[#CBD5E1] bg-white text-[#5F6368] hover:bg-[#FFF1EC] hover:text-[#F94001] hover:border-[#F94001] transition-all cursor-pointer shadow-xs inline-flex items-center justify-center group active:scale-95"
+                          className="h-7.5 w-7.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-[#F94001] hover:border-[#F94001]/40 hover:bg-[#FFF1EC] transition-all inline-flex items-center justify-center cursor-pointer shadow-2xs mx-auto"
                           title="Inspect & Review Full Dossier"
                         >
-                          <Eye className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                          <Eye className="h-3.5 w-3.5" />
                         </button>
                       </td>
                     </tr>
