@@ -305,19 +305,14 @@ export default function AdminCmsPage() {
         </div>
       )}
 
-      {/* Screen Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center font-bold">
-              <FileText className="w-5 h-5" />
-            </div>
-            <h1 className="text-2xl font-black tracking-tight text-slate-900">
-              Vendor CMS & Legal Policies
-            </h1>
-          </div>
-          <p className="text-sm text-slate-500">
-            Rich Text Editor CMS to manage, update, and publish Vendor FAQs, Privacy Policy, and Terms & Conditions directly to the Vendor Portal.
+      {/* 1. PAGE HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E5E7EB] pb-5">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#021526] font-display">
+            CMS &amp; Legal Policies
+          </h1>
+          <p className="text-xs sm:text-sm text-[#5F6368] mt-1 font-medium">
+            Rich Text Editor CMS to manage, update, and publish Vendor FAQs, Privacy Policy, and Terms &amp; Conditions directly to the Vendor Portal.
           </p>
         </div>
 

@@ -558,18 +558,17 @@ export default function PartnerOnboardingAdminTrackerPage() {
         document.body
       )}
 
-      {/* PAGE HEADER */}
-      <div className="flex flex-col gap-4 mb-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-[#021526]">
-              Partner Onboarding
-            </h1>
-            <p className="text-[11px] text-[#5F6368] mt-0.5">
-              Track and verify 8-step partner registrations and court matrices.
-            </p>
-          </div>
+      {/* 1. PAGE HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E5E7EB] pb-5">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#021526] font-display">
+            Partner Onboarding
+          </h1>
+          <p className="text-xs sm:text-sm text-[#5F6368] mt-1 font-medium">
+            Track and verify 8-step partner registrations and court matrices.
+          </p>
         </div>
+      </div>
 
         {/* SEARCH, KPI STATUS FILTERS (IN_PROGRESS applications are not shown) */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-3 rounded-2xl border border-slate-200">
@@ -618,7 +617,6 @@ export default function PartnerOnboardingAdminTrackerPage() {
             />
           </div>
         </div>
-      </div>
 
       {/* ========================================================================= */}
       {/* 1. TABLE VIEW (FULL-WIDTH TRACKER TABLE)                                  */}

@@ -337,17 +337,19 @@ export default function CancellationManagementPage() {
         </div>
       )}
 
-      {/* Header Bar */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* 1. PAGE HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E5E7EB] pb-5">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-lg font-black text-slate-900 tracking-tight">Cancellation Management</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#021526] font-display">
+              Cancellation Management
+            </h1>
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
               {cancellations.length} Logged
             </span>
           </div>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Turf &amp; Business &bull; Multi-State Refund Audits, Customer Reversals &amp; UTR Tracking
+          <p className="text-xs sm:text-sm text-[#5F6368] mt-1 font-medium">
+            Multi-state refund audits, customer reversals, payment gateway reversals, and UTR tracking.
           </p>
         </div>
 

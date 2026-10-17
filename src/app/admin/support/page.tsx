@@ -465,13 +465,13 @@ export default function SupportHelpdeskPage() {
 
   return (
     <div className="space-y-6">
-      {/* PAGE HEADER (SIMPLE & MINIMAL) */}
+      {/* 1. PAGE HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E5E7EB] pb-5">
         <div>
-          <h1 className="text-2xl sm:text-[26px] font-black tracking-tight text-[#021526] font-display">
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#021526] font-display">
             Support Desk
           </h1>
-          <p className="text-xs text-[#5F6368] mt-1 max-w-xl leading-relaxed">
+          <p className="text-xs sm:text-sm text-[#5F6368] mt-1 font-medium">
             Manage inbound disputes, slot cancellations, technical glitches, and settlement adjustments raised by turf partners.
           </p>
         </div>

@@ -99,10 +99,10 @@ export default function ProfileChangesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+      {/* 1. PAGE HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E5E7EB] pb-5">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-[#021526] tracking-tight flex items-center gap-2">
-            <UserCog className="h-6 w-6 text-[#F94001]" />
+          <h1 className="text-2xl sm:text-3xl font-black text-[#021526] tracking-tight font-display">
             Profile Change Requests
           </h1>
           <p className="text-xs sm:text-sm text-[#5F6368] mt-1 font-medium">
@@ -113,10 +113,10 @@ export default function ProfileChangesPage() {
         <button
           type="button"
           onClick={load}
-          className="inline-flex items-center gap-2 rounded-xl bg-white border border-[#CBD5E1] text-[#021526] hover:bg-slate-50 px-3.5 py-2 text-xs font-bold shadow-xs cursor-pointer h-[38px]"
+          className="inline-flex items-center gap-2 rounded-xl bg-white border border-[#CBD5E1] text-[#021526] hover:bg-slate-50 px-3.5 py-2 text-xs font-bold shadow-xs cursor-pointer h-[38px] shrink-0"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
+          <span>Refresh</span>
         </button>
       </div>
 

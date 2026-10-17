@@ -266,24 +266,22 @@ export default function VenuesManagementPage() {
 
   return (
     <div className="animate-in fade-in duration-200 space-y-4 max-w-[1600px] mx-auto">
-      {/* 1. MINIMAL HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/80">
+      {/* 1. PAGE HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E5E7EB] pb-5">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 font-display">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#021526] font-display">
               Venue Management
             </h1>
-            <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/60 text-[10px] font-bold flex items-center gap-1">
+            <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60 text-[11px] font-bold flex items-center gap-1">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
               {activeVenuesCount} Active &bull; {inactiveVenuesCount} Inactive
             </span>
           </div>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Operational turf directory &bull; Filter by state, live active/inactive status, sports, and view real-time booking performance.
+          <p className="text-xs sm:text-sm text-[#5F6368] mt-1 font-medium">
+            Operational turf directory, multi-state arena listings, live active/inactive statuses, and real-time court telemetry.
           </p>
         </div>
-
-        
       </div>
 
       {/* STATUS NOTIFICATION TOAST */}

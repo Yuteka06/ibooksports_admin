@@ -678,11 +678,11 @@ export default function AdminSettingsPage() {
       {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#E5E7EB] pb-5">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-[#021526] font-display flex items-center gap-2.5">
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#021526] font-display flex items-center gap-2.5">
             <Settings className="h-6 w-6 text-[#F94001]" />
-            Settings & Support Portal
+            Settings &amp; Support Portal
           </h1>
-          <p className="text-xs text-[#5F6368] mt-1">
+          <p className="text-xs sm:text-sm text-[#5F6368] mt-1 font-medium">
             Manage administrative staff members, team access roles, automated email notifications, and support helpdesk.
           </p>
         </div>
