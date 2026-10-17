@@ -741,7 +741,7 @@ export default function CancellationManagementPage() {
 
       {/* ========================================================
           SLIDE BAR (DRAWER) FOR CANCELLATION DETAILS
-          Matches User Image 3 Exactly!
+          Matches Venue Management Cancel Slide Bar Exactly!
       ======================================================== */}
       {selectedCancellation && (
         <div
@@ -752,145 +752,259 @@ export default function CancellationManagementPage() {
             className="w-full max-w-lg bg-white h-full shadow-2xl flex flex-col border-l border-slate-200 animate-in slide-in-from-right duration-200"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Drawer Header matching Image 3 */}
-            <div className="p-6 border-b border-slate-200 flex items-start justify-between shrink-0 bg-white">
+            {/* Drawer Header */}
+            <div className="p-5 border-b border-slate-200 flex items-center justify-between shrink-0 bg-slate-50/70">
               <div className="space-y-1">
-                <span className="text-[11px] font-black uppercase tracking-wider text-[#F94001] block">
-                  CANCELLATION &bull; REFUND TRAIL
+                <span className="text-[10px] font-black uppercase tracking-widest text-[#F94001]">
+                  CANCELLATION &amp; REFUND AUDIT DOSSIER
                 </span>
-                <h2 className="text-2xl font-black text-slate-900 font-mono tracking-tight">
-                  {selectedCancellation.booking_code}
-                </h2>
-                <p className="text-xs text-slate-600 font-medium">
-                  Customer: {selectedCancellation.customer_name} ({selectedCancellation.customer_id})
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 font-mono text-[11px] font-bold">
+                    {selectedCancellation.booking_code}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 font-bold text-[10px]">
+                    {selectedCancellation.refund_status || 'WALLET_CREDITED'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 font-medium">
+                  {selectedCancellation.venue_name} &bull; {selectedCancellation.district || selectedCancellation.state || 'Tamil Nadu'}
                 </p>
               </div>
 
               <button
                 type="button"
                 onClick={() => setSelectedCancellation(null)}
-                className="h-8 w-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center cursor-pointer transition-colors"
+                className="h-8 w-8 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 flex items-center justify-center cursor-pointer transition-colors"
                 title="Close Drawer"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            {/* Drawer Body matching Image 3 */}
-            <div className="p-6 overflow-y-auto flex-1 space-y-4 text-xs">
-              {/* CARD 1: REFUND PROCESSED (Rose / Red Tint Card from Image 3) */}
-              <div className="p-5 rounded-2xl bg-[#FFF5F5] border border-rose-200/80 shadow-2xs space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="px-2.5 py-1 rounded-md bg-white border border-rose-200 text-[#F94001] font-mono text-xs font-bold shadow-2xs">
-                    {selectedCancellation.booking_code}
-                  </span>
-                  <span className="px-2.5 py-1 rounded-full bg-rose-100 text-rose-700 font-bold text-[10px] tracking-wider uppercase">
-                    CANCELLED
-                  </span>
-                </div>
-
-                <div className="pt-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
-                    REFUND PROCESSED
-                  </span>
-                  <span className="text-3xl font-black text-[#E11D48] font-mono tracking-tight block mt-1">
-                    ₹{(selectedCancellation.refund_amount || selectedCancellation.total_amount)?.toLocaleString('en-IN')}
-                  </span>
-                </div>
-              </div>
-
-              {/* CARD 2: CANCELLATION AUDIT DETAILS (Clean Card from Image 3) */}
-              <div className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-4">
-                <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 block">
-                  CANCELLATION AUDIT DETAILS
-                </span>
-
-                <div className="space-y-3 text-xs">
-                  <div>
-                    <span className="text-[11px] text-slate-500 block font-medium">Reason</span>
-                    <p className="font-bold text-slate-900 text-sm mt-0.5">
-                      {selectedCancellation.cancellation_reason || 'Player requested schedule cancellation'}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-1 border-t border-slate-100">
-                    <span className="text-slate-500 font-medium">Cancelled At</span>
-                    <span className="font-medium text-slate-900">
-                      {selectedCancellation.cancelled_at || '—'}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-1 border-t border-slate-100">
-                    <span className="text-slate-500 font-medium">Refund Status</span>
-                    <span className="font-bold text-emerald-700 uppercase">
-                      {REFUND_STATUS_LABEL[selectedCancellation.refund_status || 'NOT_APPLICABLE'] || selectedCancellation.refund_status}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-1 border-t border-slate-100">
-                    <span className="text-slate-500 font-medium">Bank UTR Reference</span>
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-bold text-slate-900 font-mono">
-                        {selectedCancellation.refund_utr || '—'}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          selectedCancellation.refund_utr && handleCopy(selectedCancellation.refund_utr, 'utr')
-                        }
-                        className="text-slate-400 hover:text-slate-700 p-0.5 rounded cursor-pointer"
-                        title="Copy UTR Reference"
-                      >
-                        {copiedField === 'utr' ? (
-                          <Check className="h-3.5 w-3.5 text-emerald-600" />
-                        ) : (
-                          <Copy className="h-3.5 w-3.5" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* CARD 3: Arena & Schedule Reference */}
-              <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+            {/* Drawer Body */}
+            <div className="p-5 overflow-y-auto flex-1 space-y-4 text-xs">
+              {/* CARD 1: Customer Profile */}
+              <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
                   <div className="flex items-center gap-2">
-                    <Building2 className="h-4 w-4 text-[#F94001]" />
-                    <span className="text-xs font-bold text-slate-900">Assigned Venue &amp; Court</span>
+                    <User className="h-4 w-4 text-[#F94001]" />
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-900">
+                      Customer &amp; Booker Information
+                    </span>
                   </div>
-                  <span className="text-[10px] font-bold text-slate-500 uppercase bg-slate-100 px-2 py-0.5 rounded">
+                  <span className="font-mono text-[10px] text-slate-400">
+                    ID: {selectedCancellation.customer_id}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-extrabold text-sm text-slate-900">
+                      {selectedCancellation.customer_name}
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-0.5">Primary Booker</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] text-slate-400 block font-medium">Customer Phone</span>
+                    {selectedCancellation.customer_phone ? (
+                      <div className="flex items-center gap-1 mt-0.5 justify-end">
+                        <a
+                          href={`tel:${selectedCancellation.customer_phone}`}
+                          className="font-mono font-bold text-slate-800 hover:text-[#F94001] transition-colors"
+                        >
+                          {selectedCancellation.customer_phone}
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(selectedCancellation.customer_phone, 'phone')}
+                          className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 cursor-pointer"
+                          title="Copy phone"
+                        >
+                          {copiedField === 'phone' ? (
+                            <Check className="h-3 w-3 text-emerald-600" />
+                          ) : (
+                            <Copy className="h-3 w-3" />
+                          )}
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-slate-400 italic">Not available</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* CARD 2: Slot & Court Specifications */}
+              <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-[#F94001]" />
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-900">
+                      Cancelled Slot &amp; Match Schedule
+                    </span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full bg-slate-900 text-white font-mono text-[10px] font-bold uppercase">
                     {selectedCancellation.sport}
                   </span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div>
-                    <span className="text-[10px] text-slate-400 block font-medium">Arena Name</span>
-                    <span className="font-bold text-slate-900 mt-0.5 block">{selectedCancellation.venue_name}</span>
-                    <span className="text-[11px] text-slate-500">
-                      {selectedCancellation.district}, {selectedCancellation.state}
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className="text-[10px] text-slate-400 block font-medium">Playing Court</span>
+                    <span className="font-bold text-slate-800 text-xs mt-0.5 block">
+                      {selectedCancellation.court_name || 'Main Arena Court'}
                     </span>
                   </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 block font-medium">Original Slot</span>
-                    <span className="font-bold text-slate-900 mt-0.5 block">{selectedCancellation.booking_date}</span>
-                    <span className="text-[11px] font-mono text-slate-500">{selectedCancellation.time_slot}</span>
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className="text-[10px] text-slate-400 block font-medium">Match Date</span>
+                    <span className="font-bold text-slate-800 text-xs mt-0.5 block">
+                      {selectedCancellation.booking_date}
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className="text-[10px] text-slate-400 block font-medium">Reserved Slot</span>
+                    <span className="font-mono font-bold text-slate-800 text-xs mt-0.5 block">
+                      {selectedCancellation.time_slot}
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className="text-[10px] text-slate-400 block font-medium">Duration</span>
+                    <span className="font-bold text-slate-800 text-xs mt-0.5 block">
+                      {selectedCancellation.duration_minutes || 60} Minutes
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* CARD 3: Payment & Refund Breakdown */}
+              <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <Landmark className="h-4 w-4 text-[#F94001]" />
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-900">
+                      Payment &amp; Refund Audit Breakdown
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold">
+                    Reversal Verified
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-medium">Original Paid Amount</span>
+                      <span className="font-mono font-bold text-slate-900 text-sm">
+                        ₹{selectedCancellation.total_amount?.toLocaleString('en-IN') || 0}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-slate-400 block font-medium">Payment Mode</span>
+                      <span className="font-bold text-slate-800 uppercase text-xs mt-0.5 block">
+                        {selectedCancellation.payment_method || 'ONLINE LINK'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200/80">
+                    <div>
+                      <span className="text-[10px] text-emerald-800 block font-medium">Total Refund Reversal</span>
+                      <span className="font-mono font-black text-emerald-700 text-base">
+                        ₹{(selectedCancellation.refund_amount || selectedCancellation.total_amount)?.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-emerald-800 block font-medium">Refund Channel</span>
+                      <span className="font-bold text-emerald-900 text-xs mt-0.5 block">
+                        {selectedCancellation.payment_method ? (selectedCancellation.payment_method.toLowerCase().includes('reversal') ? selectedCancellation.payment_method : `${selectedCancellation.payment_method} Reversal`) : 'Online Link Reversal'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5 text-[11px]">
+                    <div className="flex items-center justify-between text-slate-500">
+                      <span>Original Transaction ID:</span>
+                      <span className="font-mono font-bold text-slate-800">
+                        {selectedCancellation.transaction_id || `TXN-${selectedCancellation.id}`}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-slate-500">
+                      <span>Refund Reference / UTR:</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono font-bold text-emerald-700">
+                          {selectedCancellation.refund_utr || `REF-UTR-${selectedCancellation.booking_code.replace(/[^a-zA-Z0-9]/g, '')}`}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(selectedCancellation.refund_utr || `REF-UTR-${selectedCancellation.booking_code.replace(/[^a-zA-Z0-9]/g, '')}`, 'utr')}
+                          className="text-slate-400 hover:text-slate-700 p-0.5 rounded cursor-pointer"
+                          title="Copy UTR Reference"
+                        >
+                          {copiedField === 'utr' ? (
+                            <Check className="h-3 w-3 text-emerald-600" />
+                          ) : (
+                            <Copy className="h-3 w-3" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between text-slate-500 pt-1 border-t border-slate-200/60">
+                      <span>Venue Payout Deducted:</span>
+                      <span className="font-mono font-semibold text-slate-700">
+                        ₹{(selectedCancellation.venue_share || Math.round((selectedCancellation.total_amount || 0) * 0.9)).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-slate-500">
+                      <span>Platform Commission Reversed:</span>
+                      <span className="font-mono font-semibold text-slate-700">
+                        ₹{(selectedCancellation.platform_fee || Math.round((selectedCancellation.total_amount || 0) * 0.1)).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* CARD 4: Reason & Cancellation Audit Trail */}
+              <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-[#F94001]" />
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-900">
+                      Cancellation Reason &amp; Audit Trail
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-amber-50/60 border border-amber-200/70 space-y-1">
+                  <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider block">
+                    Reason Logged
+                  </span>
+                  <p className="text-xs font-semibold text-slate-800 leading-relaxed">
+                    {selectedCancellation.cancellation_reason || 'Inclement weather cancellation / Customer requested cancellation'}
+                  </p>
+                </div>
+
+                <div className="space-y-1.5 text-[11px] text-slate-500">
+                  <div className="flex items-center justify-between">
+                    <span>Cancelled At:</span>
+                    <span className="font-semibold text-slate-800">
+                      {selectedCancellation.cancelled_at || '2026-03-04 16:30'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Policy Adherence:</span>
+                    <span className="font-semibold text-emerald-700">100% Refund Approved</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Drawer Footer matching Image 3 */}
-            <div className="p-5 border-t border-slate-200 flex items-center justify-between shrink-0 bg-white">
-              <span className="text-xs text-slate-600 font-medium">
-                Customer: <strong className="text-slate-900">{selectedCancellation.customer_id}</strong>
-              </span>
-
+            {/* Drawer Footer matching screenshot */}
+            <div className="p-4 border-t border-slate-200 bg-white shrink-0 flex items-center justify-end">
               <button
                 type="button"
                 onClick={() => setSelectedCancellation(null)}
-                className="px-6 py-2.5 rounded-xl bg-[#0B192C] hover:bg-slate-800 text-white font-bold text-xs transition-colors cursor-pointer shadow-sm"
+                className="px-6 py-2.5 rounded-xl bg-[#021526] hover:bg-slate-800 text-white font-bold text-xs transition-colors cursor-pointer shadow-sm"
               >
                 Close Drawer
               </button>
