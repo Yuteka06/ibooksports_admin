@@ -305,6 +305,7 @@ export interface SettlementBatchItem {
   cash_collected_at_venue: number;
   platform_commission_deducted: number;
   platform_fee_gst: number;
+  route_amount?: number; // online − venue convenience fee − GST (what goes through Razorpay Route)
   route_fee?: number;
   route_fee_gst?: number;
   total_deduction?: number;

@@ -1261,15 +1261,15 @@ export default function PaymentManagementPage() {
                         </div>
                       )}
                       <div className="flex justify-between text-emerald-600 font-bold text-[11px]">
-                        <span>Platform Fee (iBookSports)</span>
+                        <span>Venue Convenience Fee (0.1737%)</span>
                         <span>- ₹{formatInr(selectedTxn.platform_fee ?? selectedTxn.platform_commission)}</span>
                       </div>
                       <div className="flex justify-between text-slate-500 text-[11px]">
-                        <span>GST on Platform Fee (18%)</span>
+                        <span>GST on Venue Convenience Fee (18%)</span>
                         <span>- ₹{formatInr(selectedTxn.platform_fee_gst)}</span>
                       </div>
                       <div className="flex justify-between text-slate-500 text-[11px]">
-                        <span>Razorpay Route Fee (0.25%)</span>
+                        <span>Razorpay Route Fee (0.25% of routed amount)</span>
                         <span>- ₹{formatInr(selectedTxn.route_fee ?? selectedTxn.gateway_fee)}</span>
                       </div>
                       <div className="flex justify-between text-slate-500 text-[11px]">

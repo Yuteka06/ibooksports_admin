@@ -1,7 +1,7 @@
 /**
  * Vendor settlement display helpers. Fees are computed by the backend
- * (backend/src/common/utils/settlement-fees.ts): 0.5% of the amount paid ONLINE, split into
- * platform fee (admin income) + 18% GST + Razorpay Route fee 0.25% + 18% GST. Cash carries no fee.
+ * (backend/src/common/utils/settlement-fees.ts), on the amount paid ONLINE: venue convenience fee 0.1737% (admin
+ * income) + 18% GST, then Razorpay Route fee 0.25% + 18% GST on what is left (≈0.5% in all). Cash carries no fee.
  */
 const round2 = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
 
