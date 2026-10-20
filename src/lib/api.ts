@@ -107,6 +107,17 @@ apiClient.interceptors.response.use(
       customErrorMsg = error.response?.data?.message || 'Bad Request: Please verify submitted information.';
     } else if (status === 401) {
       customErrorMsg = 'Unauthorized: Session expired or invalid credentials.';
+      // Admin login lasts 7 days: an expired / invalid session goes back to the login page instead of
+      // leaving every admin screen empty (the login page itself shows its own error).
+      if (typeof window !== 'undefined') {
+        const path = window.location.pathname;
+        if (path.startsWith('/admin') && !path.startsWith('/admin/login')) {
+          try {
+            localStorage.removeItem('ibooksports_admin_auth');
+          } catch { }
+          window.location.href = '/admin/login?expired=1';
+        }
+      }
     } else if (status === 403) {
       customErrorMsg = 'Forbidden: You do not have permission to access this resource.';
     } else if (status === 404) {
