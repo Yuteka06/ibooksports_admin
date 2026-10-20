@@ -5,8 +5,9 @@
  */
 const round2 = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
 
-/** Total fee deducted from a settlement batch or booking line. */
+/** Total fee deducted from a settlement batch or booking line (venue convenience + Route, not the cash). */
 export const settlementDeduction = (s: {
+  venue_platform_fee?: number;
   total_deduction?: number;
   platform_fee?: number;
   platform_commission_deducted?: number;
@@ -15,7 +16,7 @@ export const settlementDeduction = (s: {
   route_fee_gst?: number;
   tds_deducted?: number;
 }) =>
-  s.total_deduction ??
+  s.venue_platform_fee ??
   round2(
     (s.platform_fee ?? s.platform_commission_deducted ?? 0) +
       (s.platform_fee_gst || 0) +
