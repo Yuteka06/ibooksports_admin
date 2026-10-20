@@ -5,7 +5,7 @@
  */
 const round2 = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
 
-/** Total fee deducted from a settlement batch or booking line (venue convenience + Route, not the cash). */
+/** Total fee deducted from a settlement batch or booking line (venue convenience + Route). */
 export const settlementDeduction = (s: {
   venue_platform_fee?: number;
   total_deduction?: number;
