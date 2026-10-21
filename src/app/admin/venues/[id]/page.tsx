@@ -466,7 +466,7 @@ export default function VenueModularOverviewPage() {
               venue_name: r.venue_name,
               venue_city: r.venue_city || 'Coimbatore',
               owner_name: r.vendor_name || 'Venue Partner',
-              owner_phone: r.vendor_mobile ? `+91 ${r.vendor_mobile}` : '+91 9876543210',
+              owner_phone: r.vendor_mobile ? `+91 ${r.vendor_mobile}` : '—',
               same_physical_sports: r.same_physical_sports ?? false,
               parent_court_name: r.parent_court_name,
               sport: Array.isArray(r.sports) ? r.sports[0] : (r.sports || 'Football'),
@@ -2597,7 +2597,7 @@ export default function VenueModularOverviewPage() {
                     <div className="bg-slate-50/80 rounded-xl p-2.5 border border-slate-100">
                       <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider block">Branch / UPI</span>
                       <span className="font-bold text-slate-900 text-xs mt-0.5 block truncate">
-                        {currentVenue?.bank?.branch_name || currentVenue?.bank?.upi_id || 'Coimbatore Branch'}
+                        {currentVenue?.bank?.branch_name || currentVenue?.bank?.upi_id || 'Not provided'}
                       </span>
                     </div>
                   </div>
@@ -2613,17 +2613,18 @@ export default function VenueModularOverviewPage() {
                   <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/80 border border-slate-100">
                     <div className="flex items-center gap-2">
                       <FileText className="h-3.5 w-3.5 text-emerald-600" />
-                      <span className="text-[11px] font-semibold text-slate-700">Bank Verification Status</span>
+                      <span className="text-[11px] font-semibold text-slate-700">Bank Verification</span>
                     </div>
+                    {/* Bank details are checked by an admin at onboarding approval (changes need admin approval too) */}
                     <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200/80">
-                      Penny Drop Success
+                      Admin-verified at onboarding
                     </span>
                   </div>
 
                   {/* Payout note */}
                   <div className="flex items-center gap-1.5 text-emerald-700 text-[11px] font-medium pt-1">
                     <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-600" />
-                    <span>T+0 Auto IMPS Direct Settlement</span>
+                    <span>Payouts T+2 after the match day (online amount less fees)</span>
                   </div>
                 </div>
               </div>

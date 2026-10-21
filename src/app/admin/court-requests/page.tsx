@@ -276,7 +276,7 @@ export default function CourtRequestsPage() {
           venue_name: r.venue_name,
           venue_city: r.venue_city || 'Coimbatore, Tamil Nadu',
           owner_name: r.vendor_name || 'Venue Owner',
-          owner_phone: r.vendor_mobile ? `+91 ${r.vendor_mobile}` : '+91 9876543210',
+          owner_phone: r.vendor_mobile ? `+91 ${r.vendor_mobile}` : '—',
           same_physical_sports: r.same_physical_sports ?? false,
           parent_court_name: r.parent_court_name,
           sport: Array.isArray(r.sports) ? r.sports[0] : (r.sports || 'Football'),

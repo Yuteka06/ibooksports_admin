@@ -27,6 +27,19 @@ import { RichTextEditor } from '@/components/admin/RichTextEditor';
 
 type SubmoduleTab = 'faq' | 'privacy' | 'terms';
 
+/** Unsaved FAQ document, used until the first publish creates it. */
+const NEW_FAQ_DOC: CmsDocumentItem = {
+  slug: 'vendor-faq',
+  title: 'Vendor Help & FAQs',
+  submodule: 'faq',
+  version: '1.0',
+  effective_date: '',
+  status: 'DRAFT',
+  rich_text_html: '',
+  faqs: [],
+  updated_at: '',
+};
+
 export default function AdminCmsPage() {
   const [activeTab, setActiveTab] = useState<SubmoduleTab>('faq');
   const [loading, setLoading] = useState(true);
@@ -201,7 +214,8 @@ export default function AdminCmsPage() {
       updatedFaqs = [newFaqItem, ...currentFaqs];
     }
 
-    setFaqDoc((prev) => (prev ? { ...prev, faqs: updatedFaqs } : null));
+    // The first FAQ also starts the document (none exists until it is published)
+    setFaqDoc((prev) => ({ ...(prev ?? NEW_FAQ_DOC), faqs: updatedFaqs }));
     setFaqModalOpen(false);
     showToast(editingFaq ? 'FAQ question updated' : 'New FAQ added');
   };
