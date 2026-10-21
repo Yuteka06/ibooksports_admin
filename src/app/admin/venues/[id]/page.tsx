@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { formatIstDate, formatIstDateTime } from '@/lib/datetime';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import {
@@ -70,6 +71,9 @@ import {
   Filter,
   QrCode,
   Printer,
+  MessageSquare,
+  Send,
+  Paperclip,
 } from 'lucide-react';
 
 // Amenity icons by the lucide name the backend stores (Settings > Sports & Amenities).
@@ -125,6 +129,30 @@ const REJECTION_REASONS = [
   { value: 'OPERATING_HOURS_MISMATCH', label: 'Requested peak hours conflict with venue master operating schedule' },
   { value: 'OTHER', label: 'Other specific reason (specify detailed notes below)' },
 ];
+
+const inlineAttachmentUrls = new Map<string, string>();
+const inlineAttachmentUrl = (dataUrl: string): string => {
+  const cached = inlineAttachmentUrls.get(dataUrl);
+  if (cached) return cached;
+  const match = /^data:([\w/+.-]+);base64,([\s\S]+)$/.exec(dataUrl);
+  if (!match || typeof window === 'undefined') return '';
+  try {
+    const bytes = Uint8Array.from(atob(match[2]), (c) => c.charCodeAt(0));
+    const url = URL.createObjectURL(new Blob([bytes], { type: match[1] }));
+    inlineAttachmentUrls.set(dataUrl, url);
+    return url;
+  } catch {
+    return '';
+  }
+};
+
+const attachmentViewUrl = (t: SupportTicketItem): string => {
+  if (t.attachment_id) return onboardingApi.getDocumentUrl(t.attachment_id);
+  if (t.attachment_url?.startsWith('data:')) return inlineAttachmentUrl(t.attachment_url);
+  return t.attachment_url && /^https?:\/\//i.test(t.attachment_url) ? t.attachment_url : '';
+};
+
+const isPdfName = (name?: string) => /\.pdf$/i.test(name || '');
 
 type VenueModularTab =
   | 'overview'
@@ -384,6 +412,15 @@ export default function VenueModularOverviewPage() {
 
   // Selected Support Ticket Drawer State
   const [selectedSupportTicketForDrawer, setSelectedSupportTicketForDrawer] = useState<SupportTicketItem | null>(null);
+  const [supportResolutionNotes, setSupportResolutionNotes] = useState('');
+  const [isSupportResolving, setIsSupportResolving] = useState(false);
+  const [supportResolveError, setSupportResolveError] = useState<string | null>(null);
+  const [isSupportEditingResolution, setIsSupportEditingResolution] = useState(false);
+  const [supportNotifyRequester, setSupportNotifyRequester] = useState(true);
+  const [supportReplyText, setSupportReplyText] = useState('');
+  const [isSupportSendingReply, setIsSupportSendingReply] = useState(false);
+  const [isSupportAttachmentPreviewOpen, setIsSupportAttachmentPreviewOpen] = useState(false);
+  const [supportCopiedField, setSupportCopiedField] = useState<string | null>(null);
 
   // Support ticket filter
   const [ticketFilter, setTicketFilter] = useState<string>('ALL');
@@ -1439,6 +1476,85 @@ export default function VenueModularOverviewPage() {
             Resolved
           </span>
         );
+    }
+  };
+
+  const handleOpenSupportDrawer = (t: SupportTicketItem, startResolve: boolean = false) => {
+    setSelectedSupportTicketForDrawer(t);
+    setSupportResolutionNotes(t.resolution_notes || '');
+    setSupportResolveError(null);
+    setIsSupportEditingResolution(startResolve || (t.status !== 'RESOLVED' && t.status !== 'CLOSED'));
+    setSupportReplyText('');
+    setIsSupportAttachmentPreviewOpen(false);
+  };
+
+  const applySupportTicket = (updated: SupportTicketItem) => {
+    setLiveVenueSupportTickets((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+    setSelectedSupportTicketForDrawer((cur) => (cur && cur.id === updated.id ? updated : cur));
+  };
+
+  const handleSupportChangeStatus = async (ticketId: string, status: 'OPEN' | 'IN_PROGRESS' | 'CLOSED') => {
+    try {
+      const res = await apiClient.patch(`/support/${ticketId}/status`, { status });
+      applySupportTicket(res.data);
+      const label = status === 'IN_PROGRESS' ? 'In Progress' : status === 'OPEN' ? 'Reopened' : 'Closed';
+      setStatusNotification(`Ticket ${label}.`);
+      setTimeout(() => setStatusNotification(null), 3000);
+    } catch (e: any) {
+      setStatusNotification(e?.response?.data?.message || 'Status could not be updated.');
+      setTimeout(() => setStatusNotification(null), 3500);
+    }
+  };
+
+  const handleSupportResolveTicket = async () => {
+    if (!selectedSupportTicketForDrawer || isSupportResolving) return;
+    if (!supportResolutionNotes.trim()) {
+      setSupportResolveError('Resolution notes are mandatory before marking this ticket as resolved.');
+      return;
+    }
+    setIsSupportResolving(true);
+    try {
+      const res = await apiClient.patch(`/support/${selectedSupportTicketForDrawer.id}/resolve`, {
+        resolution_notes: supportResolutionNotes.trim(),
+        resolved_by: 'Super Admin',
+        notify_requester: supportNotifyRequester,
+      });
+      applySupportTicket(res.data);
+      setIsSupportEditingResolution(false);
+      setSupportResolveError(null);
+      setStatusNotification(`Ticket ${res.data?.ticket_number || selectedSupportTicketForDrawer.ticket_number} marked as Resolved.`);
+      setTimeout(() => setStatusNotification(null), 3500);
+    } catch (e: any) {
+      setSupportResolveError(e?.response?.data?.message || 'The ticket could not be resolved.');
+    } finally {
+      setIsSupportResolving(false);
+    }
+  };
+
+  const handleSupportSendReply = async () => {
+    if (!selectedSupportTicketForDrawer || isSupportSendingReply) return;
+    const text = supportReplyText.trim();
+    if (!text) return;
+    setIsSupportSendingReply(true);
+    try {
+      const res = await apiClient.post(`/support/${selectedSupportTicketForDrawer.id}/messages`, { text });
+      applySupportTicket(res.data);
+      setSupportReplyText('');
+      setStatusNotification('Reply sent to venue.');
+      setTimeout(() => setStatusNotification(null), 2500);
+    } catch (e: any) {
+      setStatusNotification(e?.response?.data?.message || 'Reply could not be sent.');
+      setTimeout(() => setStatusNotification(null), 3000);
+    } finally {
+      setIsSupportSendingReply(false);
+    }
+  };
+
+  const handleCopySupportText = (text: string, field: string) => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setSupportCopiedField(field);
+      setTimeout(() => setSupportCopiedField(null), 2000);
     }
   };
 
@@ -4445,8 +4561,7 @@ export default function VenueModularOverviewPage() {
                         <td className="py-3.5 px-4 text-[#5F6368] text-[11px] whitespace-nowrap">
                           {(() => {
                             const raw = t.created_at || '';
-                            if (!raw) return 'Today';
-                            return raw.split('T')[0] || raw.split(' ')[0] || raw;
+                            return raw ? formatIstDate(raw) : 'Today';
                           })()}
                         </td>
 
@@ -4456,7 +4571,7 @@ export default function VenueModularOverviewPage() {
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setSelectedSupportTicketForDrawer(t);
+                              handleOpenSupportDrawer(t);
                             }}
                             className="h-7.5 w-7.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-[#F94001] hover:border-[#F94001]/40 hover:bg-[#FFF1EC] transition-all inline-flex items-center justify-center cursor-pointer shadow-2xs"
                             title="View Support Ticket"
@@ -4997,114 +5112,454 @@ export default function VenueModularOverviewPage() {
       ======================================================== */}
       {selectedSupportTicketForDrawer && (
         <div
-          className="fixed inset-0 z-50 overflow-hidden bg-slate-900/60 backdrop-blur-xs flex justify-end animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 overflow-hidden bg-slate-950/75 backdrop-blur-xs flex justify-end animate-in fade-in duration-200"
           onClick={() => setSelectedSupportTicketForDrawer(null)}
         >
           <div
-            className="w-full max-w-xl bg-white shadow-2xl h-full flex flex-col overflow-hidden animate-in slide-in-from-right duration-300 border-l border-slate-200"
+            className="w-full max-w-xl bg-white shadow-2xl h-full flex flex-col justify-between overflow-hidden animate-in slide-in-from-right duration-300 border-l border-slate-200"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header */}
-            <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-xl bg-orange-50 text-[#F94001] flex items-center justify-center border border-orange-200/60">
-                  <LifeBuoy className="h-5 w-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono font-bold text-xs text-[#021526]">
-                      {selectedSupportTicketForDrawer.ticket_number}
-                    </span>
-                    {renderSupportStatusBadge(selectedSupportTicketForDrawer.status)}
-                  </div>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Support Desk Incident Dossier</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedSupportTicketForDrawer(null)}
-                className="h-8 w-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 flex items-center justify-center cursor-pointer transition-colors"
-                title="Close Drawer"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* Body */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
-              <div>
-                <h3 className="font-bold text-base text-[#021526]">
-                  {selectedSupportTicketForDrawer.subject}
-                </h3>
-                <p className="text-[11px] text-slate-400 mt-0.5">
-                  Reported on {selectedSupportTicketForDrawer.created_at}
-                </p>
-              </div>
-
-              {/* Meta Grid */}
-              <div className="grid grid-cols-2 gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200">
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-400">Category</span>
-                  <div className="mt-1">{renderSupportCategoryBadge(selectedSupportTicketForDrawer.category)}</div>
-                </div>
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-400">Priority</span>
-                  <div className="mt-1">{renderSupportPriorityBadge(selectedSupportTicketForDrawer.priority)}</div>
-                </div>
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-400">Filed By</span>
-                  <p className="font-bold text-slate-900 mt-0.5">{selectedSupportTicketForDrawer.created_person_name}</p>
-                  <p className="text-[11px] text-slate-500">{selectedSupportTicketForDrawer.contact_number}</p>
-                </div>
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-400">Venue</span>
-                  <p className="font-bold text-slate-900 mt-0.5">{selectedSupportTicketForDrawer.venue_name || currentVenue?.venue_name}</p>
-                </div>
-              </div>
-
-              {/* Description */}
-              <div className="space-y-1">
-                <span className="text-[10px] uppercase font-bold text-slate-400">Description</span>
-                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 leading-relaxed text-xs">
-                  {selectedSupportTicketForDrawer.description}
-                </div>
-              </div>
-
-              {/* Associated Booking Code if any */}
-              {selectedSupportTicketForDrawer.related_booking_code && (
-                <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-between">
-                  <span className="text-amber-800 font-medium text-xs">Linked Booking Code:</span>
-                  <span className="font-mono font-bold text-[#F94001] text-xs">
-                    {selectedSupportTicketForDrawer.related_booking_code}
+            {/* Top Drawer Header Bar */}
+            <div className="p-5 border-b border-[#E5E7EB] bg-white sticky top-0 z-10 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-bold text-xs text-[#021526] bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
+                    {selectedSupportTicketForDrawer.ticket_number}
+                  </span>
+                  <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200/60">
+                    Venue App
                   </span>
                 </div>
-              )}
 
-              {/* Resolution Notes if any */}
-              {selectedSupportTicketForDrawer.resolution_notes && (
-                <div className="space-y-1">
-                  <span className="text-[10px] uppercase font-bold text-emerald-700">Resolution Notes</span>
-                  <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 leading-relaxed text-xs">
-                    {selectedSupportTicketForDrawer.resolution_notes}
-                    {selectedSupportTicketForDrawer.resolved_at && (
-                      <p className="text-[10px] text-emerald-700 mt-1.5 font-medium">
-                        Resolved on {selectedSupportTicketForDrawer.resolved_at}
-                      </p>
+                <div className="flex items-center gap-2">
+                  {/* 3-stage Status Switcher */}
+                  <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => handleSupportChangeStatus(selectedSupportTicketForDrawer.id, 'OPEN')}
+                      className={`py-1 px-2.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                        selectedSupportTicketForDrawer.status === 'OPEN'
+                          ? 'bg-amber-500 text-white shadow-2xs'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-white'
+                      }`}
+                    >
+                      Open
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSupportChangeStatus(selectedSupportTicketForDrawer.id, 'IN_PROGRESS')}
+                      className={`py-1 px-2.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                        selectedSupportTicketForDrawer.status === 'IN_PROGRESS'
+                          ? 'bg-blue-600 text-white shadow-2xs'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-white'
+                      }`}
+                    >
+                      In Progress
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsSupportEditingResolution(true)}
+                      className={`py-1 px-2.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                        selectedSupportTicketForDrawer.status === 'RESOLVED'
+                          ? 'bg-emerald-600 text-white shadow-2xs'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-white'
+                      }`}
+                    >
+                      Resolved
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSupportTicketForDrawer(null)}
+                    className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                    title="Close drawer"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Ticket Title & Timestamp */}
+              <div>
+                <h2 className="text-base sm:text-lg font-bold text-[#021526] leading-snug font-display">
+                  {selectedSupportTicketForDrawer.subject}
+                </h2>
+                <p className="text-[11px] text-[#5F6368] mt-1">
+                  Reported on {formatIstDateTime(selectedSupportTicketForDrawer.created_at)}
+                </p>
+              </div>
+            </div>
+
+            {/* Drawer Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
+              {/* 1. Ticket Properties Inspector */}
+              <div className="rounded-2xl bg-slate-50/70 border border-slate-200/80 p-4 space-y-3">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                  Ticket Properties &amp; Requester Profile
+                </span>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-medium">Associated Venue</span>
+                    <p className="font-bold text-[#021526] text-xs truncate mt-0.5">
+                      {selectedSupportTicketForDrawer.venue_name || currentVenue?.venue_name}
+                    </p>
+                    <span className="font-mono text-[10px] text-slate-500">
+                      {selectedSupportTicketForDrawer.venue_id || currentVenue?.id}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-medium">Dispute Category</span>
+                    <div className="mt-0.5">
+                      {renderSupportCategoryBadge(selectedSupportTicketForDrawer.category)}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-medium">Requester Name</span>
+                    <p className="font-bold text-[#021526] text-xs mt-0.5">
+                      {selectedSupportTicketForDrawer.created_person_name || 'Venue Manager'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-medium">Priority Level</span>
+                    <div className="mt-0.5">
+                      {renderSupportPriorityBadge(selectedSupportTicketForDrawer.priority)}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-medium">Contact Phone</span>
+                    {selectedSupportTicketForDrawer.contact_number ? (
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <a
+                          href={`tel:${selectedSupportTicketForDrawer.contact_number}`}
+                          className="font-mono text-[#F94001] hover:underline font-bold text-xs"
+                        >
+                          {selectedSupportTicketForDrawer.contact_number.startsWith('+91')
+                            ? selectedSupportTicketForDrawer.contact_number
+                            : `+91 ${selectedSupportTicketForDrawer.contact_number}`}
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => handleCopySupportText(selectedSupportTicketForDrawer.contact_number, 'phone')}
+                          className="p-1 rounded hover:bg-slate-200/60 text-slate-400 hover:text-slate-600 cursor-pointer"
+                          title="Copy phone"
+                        >
+                          {supportCopiedField === 'phone' ? (
+                            <Check className="h-3 w-3 text-emerald-600" />
+                          ) : (
+                            <Copy className="h-3 w-3" />
+                          )}
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-slate-400 italic">Not provided</span>
+                    )}
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-medium">Linked Booking Code</span>
+                    {selectedSupportTicketForDrawer.related_booking_code ? (
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="font-mono text-xs font-bold text-[#F94001] bg-[#FFF1EC] px-2 py-0.5 rounded border border-[#F94001]/20">
+                          {selectedSupportTicketForDrawer.related_booking_code}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopySupportText(selectedSupportTicketForDrawer.related_booking_code!, 'booking')}
+                          className="p-1 rounded hover:bg-slate-200/60 text-slate-400 hover:text-slate-600 cursor-pointer"
+                          title="Copy booking code"
+                        >
+                          {supportCopiedField === 'booking' ? (
+                            <Check className="h-3 w-3 text-emerald-600" />
+                          ) : (
+                            <Copy className="h-3 w-3" />
+                          )}
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="font-mono text-xs text-slate-400 mt-0.5 block">None</span>
                     )}
                   </div>
                 </div>
+              </div>
+
+              {/* 2. Issue Description */}
+              <div className="p-4 rounded-2xl bg-white border border-[#E5E7EB] space-y-1.5 shadow-2xs">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                  Dispute / Request Details
+                </span>
+                <p className="text-slate-800 leading-relaxed font-medium text-xs whitespace-pre-wrap">
+                  {selectedSupportTicketForDrawer.description}
+                </p>
+              </div>
+
+              {/* 3. Attachment Proof (if present) */}
+              {(selectedSupportTicketForDrawer.attachment_name || selectedSupportTicketForDrawer.attachment_url || selectedSupportTicketForDrawer.attachment_id) && (
+                <div className="p-3.5 rounded-2xl bg-white border border-slate-200 flex items-center justify-between gap-3 shadow-2xs">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="p-2 rounded-xl bg-blue-50 text-blue-600 shrink-0">
+                      <Paperclip className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="font-bold text-xs text-[#021526] block truncate max-w-[260px]">
+                        {selectedSupportTicketForDrawer.attachment_name || 'Uploaded Document'}
+                      </span>
+                      <span className="text-[10px] text-[#5F6368]">
+                        {attachmentViewUrl(selectedSupportTicketForDrawer) ? 'Attached by the venue' : 'File attached'}
+                      </span>
+                    </div>
+                  </div>
+                  {attachmentViewUrl(selectedSupportTicketForDrawer) && (
+                    <button
+                      type="button"
+                      onClick={() => setIsSupportAttachmentPreviewOpen(true)}
+                      className="inline-flex items-center gap-1.5 shrink-0 text-[11px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-100 cursor-pointer transition-colors"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      View
+                    </button>
+                  )}
+                </div>
               )}
+
+              {/* 4. Live Conversation with the Venue + Admin Reply */}
+              <div className="rounded-2xl border border-[#E5E7EB] bg-white p-4 space-y-3 shadow-2xs">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <MessageSquare className="h-3.5 w-3.5" /> Conversation ({selectedSupportTicketForDrawer.conversation?.length || 0})
+                </span>
+                <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                  {(selectedSupportTicketForDrawer.conversation || []).map((m, idx) => (
+                    <div key={idx} className={`flex ${m.sender === 'ADMIN' ? 'justify-end' : 'justify-start'}`}>
+                      <div
+                        className={`max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed ${
+                          m.sender === 'ADMIN'
+                            ? 'bg-[#021526] text-white'
+                            : 'bg-slate-100 text-slate-800 border border-slate-200'
+                        }`}
+                      >
+                        <p className="whitespace-pre-wrap">{m.message}</p>
+                        <p className={`mt-1 text-[10px] ${m.sender === 'ADMIN' ? 'text-slate-300' : 'text-slate-500'}`}>
+                          {m.sender === 'ADMIN' ? 'You' : m.sender_name} · {m.timestamp || (m.sent_at ? formatIstDateTime(m.sent_at) : '')}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                  {(!selectedSupportTicketForDrawer.conversation || selectedSupportTicketForDrawer.conversation.length === 0) && (
+                    <p className="text-slate-400 italic text-[11px] py-1 text-center">No messages yet. Reply below to initiate communication.</p>
+                  )}
+                </div>
+
+                {selectedSupportTicketForDrawer.status !== 'CLOSED' && (
+                  <div className="flex items-end gap-2 pt-1">
+                    <textarea
+                      rows={2}
+                      value={supportReplyText}
+                      onChange={(e) => setSupportReplyText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSupportSendReply();
+                      }}
+                      placeholder="Reply to the venue… (Ctrl+Enter to send)"
+                      className="flex-1 rounded-xl border border-[#CBD5E1] bg-white p-2.5 text-xs text-[#021526] placeholder-slate-400 focus:outline-none focus:border-[#F94001]"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSupportSendReply}
+                      disabled={!supportReplyText.trim() || isSupportSendingReply}
+                      className="px-3.5 py-2.5 rounded-xl bg-[#F94001] hover:bg-[#e03a00] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all shadow-xs"
+                    >
+                      <Send className="h-3.5 w-3.5" />
+                      <span>{isSupportSendingReply ? 'Sending…' : 'Send'}</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* 5. Resolution Console (Directly inside Drawer) */}
+              <div className="rounded-2xl border border-[#E5E7EB] bg-white p-4 space-y-3 shadow-2xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className={`p-1.5 rounded-lg ${selectedSupportTicketForDrawer.status === 'RESOLVED' ? 'bg-emerald-100 text-emerald-700' : 'bg-[#021526] text-white'}`}>
+                      <CheckCircle2 className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <span className="font-bold text-xs text-[#021526] block font-display">
+                        Resolution Outcome &amp; Notes
+                      </span>
+                      <span className="text-[10px] text-[#5F6368]">
+                        {selectedSupportTicketForDrawer.status === 'RESOLVED'
+                          ? 'Audit documented and ticket marked resolved'
+                          : 'Log mandatory audit notes directly here to resolve ticket'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {selectedSupportTicketForDrawer.status === 'RESOLVED' && (
+                    <button
+                      type="button"
+                      onClick={() => handleSupportChangeStatus(selectedSupportTicketForDrawer.id, 'OPEN')}
+                      className="text-[11px] font-bold text-slate-700 hover:text-[#F94001] bg-white border border-slate-200 rounded-lg px-2.5 py-1 transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                      <span>Reopen</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Read-only notes display when resolved */}
+                {selectedSupportTicketForDrawer.status === 'RESOLVED' || selectedSupportTicketForDrawer.status === 'CLOSED' ? (
+                  <div className="p-3.5 rounded-xl bg-emerald-50/80 border border-emerald-200 space-y-2">
+                    <p className="text-emerald-950 text-xs leading-relaxed font-medium">
+                      {selectedSupportTicketForDrawer.resolution_notes || 'Issue resolved successfully by operations team.'}
+                    </p>
+                    <div className="flex flex-wrap items-center justify-between text-[10px] text-emerald-700 font-mono pt-1.5 border-t border-emerald-200/60">
+                      <span>Resolved by: {selectedSupportTicketForDrawer.resolved_by || 'Super Admin'}</span>
+                      {selectedSupportTicketForDrawer.resolved_at && (
+                        <span>{formatIstDateTime(selectedSupportTicketForDrawer.resolved_at)}</span>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  /* Edit / Log resolution notes */
+                  <div className="space-y-3 pt-1">
+                    <div className="space-y-1">
+                      <textarea
+                        rows={3}
+                        value={supportResolutionNotes}
+                        onChange={(e) => {
+                          setSupportResolutionNotes(e.target.value);
+                          if (supportResolveError) setSupportResolveError(null);
+                        }}
+                        placeholder="Enter resolution notes: refund UTR number, reschedule booking code, bug patch deployed, or outcome communicated..."
+                        className="w-full rounded-xl border border-[#CBD5E1] bg-white p-3 text-xs text-[#021526] placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 leading-relaxed shadow-2xs"
+                      />
+                      {supportResolveError && (
+                        <p className="text-rose-600 font-semibold text-[11px] flex items-center gap-1 pt-0.5">
+                          <AlertCircle className="h-3.5 w-3.5" /> {supportResolveError}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Quick Presets */}
+                    <div className="space-y-1">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">
+                        Quick Presets:
+                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {[
+                          'Refund UTR reference credited to customer bank account.',
+                          'Slot rescheduled on venue calendar with customer consent.',
+                          'TDS statement & tax reconciliation verified with finance.',
+                          'Software bug patch deployed on Vendor App.',
+                        ].map((preset, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setSupportResolutionNotes(preset)}
+                            className="text-[10px] bg-slate-50 hover:bg-emerald-50 hover:text-emerald-800 border border-slate-200 rounded-md px-2 py-0.5 transition-colors text-left cursor-pointer"
+                          >
+                            + {typeof preset === 'string' ? preset.split(' ').slice(0, 3).join(' ') : 'Preset note'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Notify Checkbox */}
+                    <label className="flex items-center gap-2 cursor-pointer pt-0.5">
+                      <input
+                        type="checkbox"
+                        checked={supportNotifyRequester}
+                        onChange={(e) => setSupportNotifyRequester(e.target.checked)}
+                        className="rounded text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <span className="text-[11px] text-slate-600 font-medium">
+                        Email the resolution to the venue{selectedSupportTicketForDrawer.email ? ` (${selectedSupportTicketForDrawer.email})` : ' (onboarding email)'}
+                      </span>
+                    </label>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={handleSupportResolveTicket}
+                        disabled={isSupportResolving}
+                        className="flex-1 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <Check className="h-4 w-4" />
+                        <span>{isSupportResolving ? 'Resolving…' : 'Mark as Resolved & Notify'}</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Footer */}
-            <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-end">
+            {/* Clean Drawer Footer */}
+            <div className="p-4 bg-slate-50 border-t border-[#E5E7EB] flex items-center justify-between sticky bottom-0">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-[#5F6368] font-medium">Current Status:</span>
+                {renderSupportStatusBadge(selectedSupportTicketForDrawer.status)}
+              </div>
               <button
                 type="button"
                 onClick={() => setSelectedSupportTicketForDrawer(null)}
-                className="px-4 py-2 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-[#F94001] transition-colors cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-[#021526] hover:bg-slate-100 text-xs font-bold transition-all shadow-2xs cursor-pointer"
               >
-                Close Dossier
+                Close Drawer
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Attachment preview popup (above the drawer) */}
+      {selectedSupportTicketForDrawer && isSupportAttachmentPreviewOpen && attachmentViewUrl(selectedSupportTicketForDrawer) && (
+        <div
+          className="fixed inset-0 z-[100] bg-slate-950/85 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={() => setIsSupportAttachmentPreviewOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-3xl w-full p-5 shadow-2xl space-y-3 border border-slate-200 flex flex-col max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+              <div className="flex items-center gap-2">
+                <Paperclip className="h-4 w-4 text-[#F94001]" />
+                <span className="font-bold text-xs text-[#021526] truncate max-w-md">
+                  {selectedSupportTicketForDrawer.attachment_name || 'Attached File'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={attachmentViewUrl(selectedSupportTicketForDrawer)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-2.5 py-1 rounded-lg text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors inline-flex items-center gap-1"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  <span>Open in Tab</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setIsSupportAttachmentPreviewOpen(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto bg-slate-50 rounded-xl p-2 flex items-center justify-center min-h-[350px]">
+              {selectedSupportTicketForDrawer.attachment_name && isPdfName(selectedSupportTicketForDrawer.attachment_name) ? (
+                <iframe
+                  src={attachmentViewUrl(selectedSupportTicketForDrawer)}
+                  title="PDF preview"
+                  className="w-full h-full min-h-[500px] rounded-lg border-0"
+                />
+              ) : (
+                <img
+                  src={attachmentViewUrl(selectedSupportTicketForDrawer)}
+                  alt="Attachment preview"
+                  className="max-h-[70vh] max-w-full object-contain rounded-lg shadow-sm"
+                />
+              )}
             </div>
           </div>
         </div>

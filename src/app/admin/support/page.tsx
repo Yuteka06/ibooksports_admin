@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { formatIstDate, formatIstDateTime } from '@/lib/datetime';
 import {
   Headphones,
   Search,
@@ -916,10 +917,7 @@ export default function SupportHelpdeskPage() {
                     <td className="py-3.5 px-4 text-[#5F6368] text-[11px]">
                       {(() => {
                         const raw = t.created_at || '';
-                        if (!raw) return 'Today';
-                        return typeof raw === 'string'
-                          ? (raw.includes(' ') ? raw.split(' ')[0] : (raw.includes('T') ? raw.split('T')[0] : raw))
-                          : 'Today';
+                        return raw ? formatIstDate(raw) : 'Today';
                       })()}
                     </td>
 
@@ -1272,7 +1270,7 @@ export default function SupportHelpdeskPage() {
                     {selectedTicket.subject}
                   </h2>
                   <p className="text-[11px] text-[#5F6368] mt-1">
-                    Reported on {selectedTicket.created_at}
+                    Reported on {formatIstDateTime(selectedTicket.created_at)}
                   </p>
                 </div>
               </div>
@@ -1378,7 +1376,7 @@ export default function SupportHelpdeskPage() {
                         >
                           <p className="whitespace-pre-wrap">{m.message}</p>
                           <p className={`mt-1 text-[10px] ${m.sender === 'ADMIN' ? 'text-slate-300' : 'text-slate-500'}`}>
-                            {m.sender === 'ADMIN' ? 'You' : m.sender_name} · {m.timestamp}
+                            {m.sender === 'ADMIN' ? 'You' : m.sender_name} · {formatIstDateTime(m.sent_at || m.timestamp)}
                           </p>
                         </div>
                       </div>
@@ -1448,7 +1446,7 @@ export default function SupportHelpdeskPage() {
                       </p>
                       <div className="flex flex-wrap items-center justify-between text-[10px] text-emerald-700 font-mono pt-1.5 border-t border-emerald-200/60">
                         <span>Resolved by: {selectedTicket.resolved_by || 'Super Admin'}</span>
-                        {selectedTicket.resolved_at && <span>{selectedTicket.resolved_at}</span>}
+                        {selectedTicket.resolved_at && <span>{formatIstDateTime(selectedTicket.resolved_at)}</span>}
                       </div>
                     </div>
                   ) : (

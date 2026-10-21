@@ -353,7 +353,10 @@ export interface SupportTicketItem {
     sender: 'VENUE' | 'CUSTOMER' | 'ADMIN';
     sender_name: string;
     message: string;
-    timestamp: string;
+    /** ISO 8601 time the message was sent */
+    sent_at?: string;
+    /** Display time (older API responses) */
+    timestamp?: string;
   }[];
 }
 
