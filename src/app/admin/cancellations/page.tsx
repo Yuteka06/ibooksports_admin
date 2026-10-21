@@ -44,6 +44,8 @@ const REFUND_STATUS_LABEL: Record<string, string> = {
 };
 
 export interface CancellationItem extends BookingItem {
+  /** What the customer had paid before cancelling (the refund is part of this). */
+  paid_amount: number;
   cancellation_id?: string;
   refund_channel?: string;
   state?: string;
@@ -112,7 +114,6 @@ export default function CancellationManagementPage() {
       const venueMap = new Map<string, any>();
       backendVenues.forEach((v) => {
         if (v.id) venueMap.set(String(v.id).toLowerCase(), v);
-        if (v.venue_name) venueMap.set(String(v.venue_name).toLowerCase(), v);
       });
 
       // Filter only cancelled bookings or bookings with refund records
@@ -129,47 +130,40 @@ export default function CancellationManagementPage() {
       {
         const mapped: CancellationItem[] = cancelledRows.map((r: any) => {
           const parsed = parseCancellationNotes(r.notes, r.payment_status || r.paymentStatus);
-          const vName = r.venue_name || r.venueName || 'Snow White';
-          const matchedVenue =
-            venueMap.get(String(r.venue_id || r.venueId || '').toLowerCase()) ||
-            venueMap.get(String(vName).toLowerCase());
-
-          const st = r.state || r.venue_state || matchedVenue?.state || (vName === 'Rex Arena' ? 'Kerala' : 'Tamil Nadu');
-          const dist =
-            r.district ||
-            r.venue_district ||
-            matchedVenue?.district ||
-            (vName === 'Rex Arena' ? 'Kozhikode' : vName === 'Amithap Mama' ? 'Coimbatore' : 'Chennai');
+          const venueId = String(r.venueId || r.venue_id || '');
+          const matchedVenue = venueMap.get(venueId.toLowerCase());
 
           return {
             id: String(r.id),
-            booking_code: r.booking_code || r.booking_number || `BK-${r.id}`,
-            customer_id: r.customer_id || r.customerId || `CUST-${String(r.id).slice(-6)}`,
-            customer_name: r.customer_name || r.customerName || 'Player',
-            customer_phone: r.customer_phone || r.customerPhone || '',
-            venue_id: r.venue_id || r.venueId || 'APP68267',
-            venue_name: vName,
-            court_id: r.court_id || r.courtId || 'court-1',
-            court_name: r.court_name || r.courtName || 'Main Court',
-            sport: r.sport || 'FOOTBALL',
-            booking_date: r.booking_date || r.date || '',
-            time_slot: r.time_slot || r.timeSlot || '06:00 PM - 07:00 PM',
-            duration_minutes: Number(r.duration_minutes || r.durationMinutes) || 60,
-            total_amount: Number(r.total_amount || r.totalAmount) || 0,
-            platform_fee: Number(r.platform_fee || r.platformFee) || 0,
-            venue_share: Number(r.venue_share || r.venueShare) || 0,
+            // The booking number (BK-27891); the database id is never shown as a booking code
+            booking_code: r.bookingNumber || r.booking_number || r.booking_code || '—',
+            customer_id: '',
+            customer_name: r.customerName || r.customer_name || '—',
+            customer_phone: r.customerPhone || r.customer_phone || '',
+            venue_id: venueId,
+            venue_name: r.venueName || r.venue_name || matchedVenue?.venue_name || '—',
+            court_id: r.courtId || r.court_id || '',
+            court_name: r.courtName || r.court_name || '—',
+            sport: r.sport || '—',
+            booking_date: r.date || r.booking_date || '',
+            time_slot: r.timeSlot || r.time_slot || '',
+            duration_minutes: 0,
+            total_amount: Number(r.totalAmount ?? r.total_amount) || 0,
+            paid_amount: Number(r.paidAmount ?? r.paid_amount) || 0,
+            platform_fee: 0,
+            venue_share: 0,
             payment_status: parsed.refundStatus === 'NOT_APPLICABLE' ? 'PAID' : 'REFUNDED',
             booking_status: 'CANCELLED',
-            payment_method: r.payment_method || r.paymentMethod || 'UPI',
-            transaction_id: r.transaction_id || r.transactionId || `TXN-${r.id}`,
-            created_at: r.created_at || r.createdAt || new Date().toISOString(),
-            cancellation_reason: parsed.reason || 'Not recorded',
-            cancelled_at: (parsed.cancelledAt || r.updated_at || r.updatedAt || '').slice(0, 10),
+            payment_method: r.paymentMethod || r.payment_method || '—',
+            transaction_id: '',
+            created_at: r.createdAt || r.created_at || '',
+            cancellation_reason: parsed.reason || '',
+            cancelled_at: (parsed.cancelledAt || r.updatedAt || r.updated_at || '').slice(0, 10),
             refund_amount: parsed.refundAmount,
             refund_status: parsed.refundStatus,
             refund_utr: parsed.refundReference,
-            state: st,
-            district: dist,
+            state: matchedVenue?.state || '—',
+            district: matchedVenue?.district || '—',
           };
         });
 
@@ -231,11 +225,10 @@ export default function CancellationManagementPage() {
         const matchCode = c.booking_code.toLowerCase().includes(q);
         const matchName = c.customer_name.toLowerCase().includes(q);
         const matchPhone = c.customer_phone.toLowerCase().includes(q);
-        const matchCustId = c.customer_id.toLowerCase().includes(q);
         const matchReason = (c.cancellation_reason || '').toLowerCase().includes(q);
         const matchUtr = (c.refund_utr || '').toLowerCase().includes(q);
         const matchVenue = c.venue_name.toLowerCase().includes(q);
-        if (!matchCode && !matchName && !matchPhone && !matchCustId && !matchReason && !matchUtr && !matchVenue) {
+        if (!matchCode && !matchName && !matchPhone && !matchReason && !matchUtr && !matchVenue) {
           return false;
         }
       }
@@ -577,7 +570,7 @@ export default function CancellationManagementPage() {
                     {/* Customer ID & Name */}
                     <td className="py-2.5 px-3">
                       <div className="font-bold text-slate-900">{c.customer_name}</div>
-                      <div className="text-[10px] font-mono text-slate-400">{c.customer_id}</div>
+                      <div className="text-[10px] font-mono text-slate-400">{c.customer_phone || '—'}</div>
                     </td>
 
                     {/* Booking Code */}
@@ -594,10 +587,10 @@ export default function CancellationManagementPage() {
                     {/* Original Paid */}
                     <td className="py-2.5 px-3">
                       <div className="font-mono font-bold text-slate-900">
-                        ₹{c.total_amount?.toLocaleString('en-IN') || 0}
+                        ₹{c.paid_amount.toLocaleString('en-IN')}
                       </div>
                       <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wider uppercase bg-slate-100 text-slate-600 border border-slate-200">
-                        {c.payment_method || 'UPI'}
+                        {c.payment_method}
                       </span>
                     </td>
 
@@ -609,16 +602,18 @@ export default function CancellationManagementPage() {
                     {/* Refund Amount */}
                     <td className="py-2.5 px-3">
                       <div className="font-mono font-black text-rose-600">
-                        ₹{(c.refund_amount || c.total_amount)?.toLocaleString('en-IN')}
+                        ₹{(c.refund_amount || 0).toLocaleString('en-IN')}
                       </div>
-                      <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wider uppercase bg-rose-50 text-rose-700 border border-rose-200">
-                        {c.payment_method ? `${c.payment_method} (Reversed)` : 'UPI (Reversed)'}
-                      </span>
+                      {c.refund_status !== 'NOT_APPLICABLE' && (
+                        <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wider uppercase bg-rose-50 text-rose-700 border border-rose-200">
+                          {c.payment_method} (Reversed)
+                        </span>
+                      )}
                     </td>
 
                     {/* Reason */}
                     <td className="py-2.5 px-3 text-slate-600 max-w-[220px] truncate" title={c.cancellation_reason}>
-                      {c.cancellation_reason || 'Player requested schedule cancellation'}
+                      {c.cancellation_reason || '—'}
                     </td>
 
                     {/* Status Badge */}
@@ -795,7 +790,7 @@ export default function CancellationManagementPage() {
                     </span>
                   </div>
                   <span className="font-mono text-[10px] text-slate-400">
-                    ID: {selectedCancellation.customer_id}
+                    {selectedCancellation.customer_phone || '—'}
                   </span>
                 </div>
 
@@ -887,8 +882,8 @@ export default function CancellationManagementPage() {
                       Payment &amp; Refund Audit Breakdown
                     </span>
                   </div>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold">
-                    Reversal Verified
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-50 text-slate-600 border border-slate-200 font-bold">
+                    {REFUND_STATUS_LABEL[selectedCancellation.refund_status || 'NOT_APPLICABLE']}
                   </span>
                 </div>
 
@@ -897,13 +892,13 @@ export default function CancellationManagementPage() {
                     <div>
                       <span className="text-[10px] text-slate-400 block font-medium">Original Paid Amount</span>
                       <span className="font-mono font-bold text-slate-900 text-sm">
-                        ₹{selectedCancellation.total_amount?.toLocaleString('en-IN') || 0}
+                        ₹{selectedCancellation.paid_amount.toLocaleString('en-IN')}
                       </span>
                     </div>
                     <div className="text-right">
                       <span className="text-[10px] text-slate-400 block font-medium">Payment Mode</span>
                       <span className="font-bold text-slate-800 uppercase text-xs mt-0.5 block">
-                        {selectedCancellation.payment_method || 'ONLINE LINK'}
+                        {selectedCancellation.payment_method}
                       </span>
                     </div>
                   </div>
@@ -912,33 +907,28 @@ export default function CancellationManagementPage() {
                     <div>
                       <span className="text-[10px] text-emerald-800 block font-medium">Total Refund Reversal</span>
                       <span className="font-mono font-black text-emerald-700 text-base">
-                        ₹{(selectedCancellation.refund_amount || selectedCancellation.total_amount)?.toLocaleString('en-IN')}
+                        ₹{(selectedCancellation.refund_amount || 0).toLocaleString('en-IN')}
                       </span>
                     </div>
                     <div className="text-right">
                       <span className="text-[10px] text-emerald-800 block font-medium">Refund Channel</span>
                       <span className="font-bold text-emerald-900 text-xs mt-0.5 block">
-                        {selectedCancellation.payment_method ? (selectedCancellation.payment_method.toLowerCase().includes('reversal') ? selectedCancellation.payment_method : `${selectedCancellation.payment_method} Reversal`) : 'Online Link Reversal'}
+                        {selectedCancellation.refund_status === 'NOT_APPLICABLE' ? 'No refund' : 'Razorpay (to the original payment)'}
                       </span>
                     </div>
                   </div>
 
                   <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5 text-[11px]">
                     <div className="flex items-center justify-between text-slate-500">
-                      <span>Original Transaction ID:</span>
-                      <span className="font-mono font-bold text-slate-800">
-                        {selectedCancellation.transaction_id || `TXN-${selectedCancellation.id}`}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-slate-500">
                       <span>Refund Reference / UTR:</span>
                       <div className="flex items-center gap-1.5">
                         <span className="font-mono font-bold text-emerald-700">
-                          {selectedCancellation.refund_utr || `REF-UTR-${selectedCancellation.booking_code.replace(/[^a-zA-Z0-9]/g, '')}`}
+                          {selectedCancellation.refund_utr || '—'}
                         </span>
+                        {selectedCancellation.refund_utr && (
                         <button
                           type="button"
-                          onClick={() => handleCopy(selectedCancellation.refund_utr || `REF-UTR-${selectedCancellation.booking_code.replace(/[^a-zA-Z0-9]/g, '')}`, 'utr')}
+                          onClick={() => handleCopy(selectedCancellation.refund_utr || '', 'utr')}
                           className="text-slate-400 hover:text-slate-700 p-0.5 rounded cursor-pointer"
                           title="Copy UTR Reference"
                         >
@@ -948,18 +938,13 @@ export default function CancellationManagementPage() {
                             <Copy className="h-3 w-3" />
                           )}
                         </button>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center justify-between text-slate-500 pt-1 border-t border-slate-200/60">
-                      <span>Venue Payout Deducted:</span>
+                      <span>Not refunded (paid − refund):</span>
                       <span className="font-mono font-semibold text-slate-700">
-                        ₹{(selectedCancellation.venue_share || Math.round((selectedCancellation.total_amount || 0) * 0.9)).toLocaleString('en-IN')}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-slate-500">
-                      <span>Platform Commission Reversed:</span>
-                      <span className="font-mono font-semibold text-slate-700">
-                        ₹{(selectedCancellation.platform_fee || Math.round((selectedCancellation.total_amount || 0) * 0.1)).toLocaleString('en-IN')}
+                        ₹{(Math.round((selectedCancellation.paid_amount - (selectedCancellation.refund_amount || 0)) * 100) / 100).toLocaleString('en-IN')}
                       </span>
                     </div>
                   </div>
