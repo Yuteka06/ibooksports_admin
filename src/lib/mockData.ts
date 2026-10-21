@@ -270,17 +270,25 @@ export interface SettlementBookingItem {
   slot_time: string;
   court_name: string;
   sport: string;
-  actual_court_price: number;
-  online_advance_paid: number;
-  cash_collected_at_venue: number;
   // UNVERIFIED_ONLINE: marked paid online but no Razorpay payment exists (never paid out)
   payment_mode: 'ONLINE_FULL' | 'ONLINE_ADVANCE' | 'ONLINE_ADVANCE_PLUS_CASH' | 'ONLINE_ADVANCE_PLUS_ONLINE' | 'CASH' | 'UNVERIFIED_ONLINE' | 'UNPAID';
-  platform_fee: number;
-  platform_fee_gst: number;
-  route_fee?: number;
-  route_fee_gst?: number;
-  total_deduction?: number;
-  net_venue_share: number;
+  actual_court_price: number;
+  // Amounts (each once, in the names agreed with management)
+  venue_amount: number; // collected: online + cash
+  online_amount: number;
+  cash_amount: number; // already with the vendor, never paid out again
+  customer_cash_convenience_fee: number; // always 0 (no fee on cash)
+  customer_cash_convenience_fee_gst: number; // always 0
+  cash_collection: number; // always 0
+  venue_convenience_fee: number; // platform fee (admin income)
+  venue_convenience_fee_gst: number;
+  venue_convenience: number; // fee + GST
+  route_amount: number; // online − venue convenience (sent through Razorpay Route)
+  route_fee: number;
+  route_fee_gst: number;
+  razorpay_route: number; // Route fee + GST
+  venue_platform_fee: number; // total deduction
+  actual_owner_payout: number;
 }
 
 export interface SettlementBatchItem {
@@ -299,18 +307,23 @@ export interface SettlementBatchItem {
   cycle_year: number;
   t_plus_days: number;
   bookings_count: number;
-  actual_court_price_total: number;
-  gross_booking_amount: number;
-  online_advance_held: number;
-  cash_collected_at_venue: number;
-  platform_commission_deducted: number;
-  platform_fee_gst: number;
-  route_amount?: number; // online − venue convenience fee − GST (what goes through Razorpay Route)
-  route_fee?: number;
-  route_fee_gst?: number;
-  total_deduction?: number;
-  tds_deducted: number;
-  net_payable: number;
+  actual_court_price_total: number; // court price of the bookings
+  // Amounts (each once, in the names agreed with management)
+  venue_amount: number; // collected: online + cash
+  online_amount: number;
+  cash_amount: number; // already with the vendor, never paid out again
+  customer_cash_convenience_fee: number; // always 0 (no fee on cash)
+  customer_cash_convenience_fee_gst: number; // always 0
+  cash_collection: number; // always 0
+  venue_convenience_fee: number; // platform fee (admin income)
+  venue_convenience_fee_gst: number;
+  venue_convenience: number; // fee + GST
+  route_amount: number; // online − venue convenience (sent through Razorpay Route)
+  route_fee: number;
+  route_fee_gst: number;
+  razorpay_route: number; // Route fee + GST
+  venue_platform_fee: number; // total deduction
+  actual_owner_payout: number;
   status: 'SETTLED' | 'PROCESSING' | 'PENDING_APPROVAL';
   is_live?: boolean; // payable bookings not yet claimed by a stored batch
   utr_number?: string;

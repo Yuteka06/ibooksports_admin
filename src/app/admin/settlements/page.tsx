@@ -130,19 +130,19 @@ export default function SettlementManagementPage() {
 
   // 2. DYNAMIC KPIS CALCULATED FROM DATE/MONTH FILTERED SETTLEMENTS
   const totalActualCourtPrice = useMemo(
-    () => dateOrMonthFilteredSettlements.reduce((acc, s) => acc + (s.actual_court_price_total || s.gross_booking_amount), 0),
+    () => dateOrMonthFilteredSettlements.reduce((acc, s) => acc + s.actual_court_price_total, 0),
     [dateOrMonthFilteredSettlements]
   );
   const totalSettledToBanks = useMemo(
-    () => dateOrMonthFilteredSettlements.filter((s) => s.status === 'SETTLED').reduce((acc, s) => acc + s.net_payable, 0),
+    () => dateOrMonthFilteredSettlements.filter((s) => s.status === 'SETTLED').reduce((acc, s) => acc + s.actual_owner_payout, 0),
     [dateOrMonthFilteredSettlements]
   );
   const totalOnlineAdvanceHeld = useMemo(
-    () => dateOrMonthFilteredSettlements.reduce((acc, s) => acc + (s.online_advance_held || 0), 0),
+    () => dateOrMonthFilteredSettlements.reduce((acc, s) => acc + (s.online_amount || 0), 0),
     [dateOrMonthFilteredSettlements]
   );
   const totalCashCollectedAtVenue = useMemo(
-    () => dateOrMonthFilteredSettlements.reduce((acc, s) => acc + (s.cash_collected_at_venue || 0), 0),
+    () => dateOrMonthFilteredSettlements.reduce((acc, s) => acc + (s.cash_amount || 0), 0),
     [dateOrMonthFilteredSettlements]
   );
   const totalDeductions = useMemo(
@@ -205,7 +205,7 @@ export default function SettlementManagementPage() {
     }
     const utr = (utrInputs[batch.id] || '').trim();
     // A cash-only batch has nothing to transfer and closes without a UTR
-    if ((utr || batch.net_payable > 0) && !/^[A-Za-z0-9]{6,30}$/.test(utr)) {
+    if ((utr || batch.actual_owner_payout > 0) && !/^[A-Za-z0-9]{6,30}$/.test(utr)) {
       showToast('error', 'Bank UTR Required', 'Enter the UTR / reference number of the bank transfer (6–30 letters or digits).');
       return;
     }
@@ -216,7 +216,7 @@ export default function SettlementManagementPage() {
       showToast(
         'success',
         'Settlement Marked as Paid',
-        `₹${formatInr(settled?.netPayoutAmount ?? batch.net_payable)} to ${batch.bank_name} (${batch.account_number_masked}) · UTR: ${utr}`
+        `₹${formatInr(settled?.netPayoutAmount ?? batch.actual_owner_payout)} to ${batch.bank_name} (${batch.account_number_masked}) · UTR: ${utr}`
       );
       setUtrInputs((prev) => ({ ...prev, [batch.id]: '' }));
       setSelectedBatch(null);
@@ -253,7 +253,7 @@ export default function SettlementManagementPage() {
   const handlePayViaRoute = (batch: SettlementBatchItem) =>
     runBatchAction(
       () => apiClient.post(`/payments/settlements/${encodeURIComponent(batch.id)}/pay-route`, {}),
-      { title: 'Razorpay Transfer Started', description: `₹${formatInr(batch.net_payable)} to ${batch.venue_name}` },
+      { title: 'Razorpay Transfer Started', description: `₹${formatInr(batch.actual_owner_payout)} to ${batch.venue_name}` },
       'Razorpay Transfer Failed'
     );
 
@@ -721,7 +721,7 @@ export default function SettlementManagementPage() {
               ) : (
                 paginatedSettlements.map((s, index) => {
                   const isCopied = copiedText === s.batch_number;
-                  const courtPrice = s.actual_court_price_total || s.gross_booking_amount;
+                  const courtPrice = s.actual_court_price_total;
                   const totalDeduction = settlementDeduction(s);
 
                   return (
@@ -808,11 +808,11 @@ export default function SettlementManagementPage() {
                         <div className="space-y-0.5 text-xs">
                           <div className="flex items-center justify-between text-emerald-700 font-bold gap-1">
                             <span className="text-[10px] font-sans text-slate-500 font-normal">Online:</span>
-                            <span>₹{(s.online_advance_held || 0).toLocaleString('en-IN')}</span>
+                            <span>₹{(s.online_amount || 0).toLocaleString('en-IN')}</span>
                           </div>
                           <div className="flex items-center justify-between text-amber-700 font-semibold gap-1 text-[11px]">
                             <span className="text-[10px] font-sans text-slate-500 font-normal">Cash:</span>
-                            <span>₹{(s.cash_collected_at_venue || 0).toLocaleString('en-IN')}</span>
+                            <span>₹{(s.cash_amount || 0).toLocaleString('en-IN')}</span>
                           </div>
                         </div>
                       </td>
@@ -824,7 +824,7 @@ export default function SettlementManagementPage() {
                             - ₹{formatInr(totalDeduction)}
                           </p>
                           <p className="text-[10px] text-slate-400 font-sans truncate">
-                            Platform ₹{formatInr(s.platform_commission_deducted + (s.platform_fee_gst || 0))} &bull; Route ₹{formatInr((s.route_fee || 0) + (s.route_fee_gst || 0))}
+                            Platform ₹{formatInr(s.venue_convenience)} &bull; Route ₹{formatInr(s.razorpay_route)}
                           </p>
                         </div>
                       </td>
@@ -834,7 +834,7 @@ export default function SettlementManagementPage() {
                         <div className="space-y-1 font-mono">
                           <div>
                             <span className="font-black text-sm text-emerald-700 block leading-tight">
-                              ₹{formatInr(s.net_payable)}
+                              ₹{formatInr(s.actual_owner_payout)}
                             </span>
                             <span className="text-[10px] font-sans text-slate-400">
                               Bank IMPS
@@ -1065,34 +1065,34 @@ export default function SettlementManagementPage() {
                       {/* 1. Actual Court Price Total */}
                       <div className="flex justify-between text-slate-800 font-bold text-sm">
                         <span className="font-sans">Actual Court Price Total</span>
-                        <span>₹{(selectedBatch.actual_court_price_total || selectedBatch.gross_booking_amount).toLocaleString('en-IN')}</span>
+                        <span>₹{selectedBatch.actual_court_price_total.toLocaleString('en-IN')}</span>
                       </div>
 
                       {/* 2. Online Advance Held */}
                       <div className="flex justify-between text-emerald-700 font-semibold">
                         <span className="font-sans">Online Advance Held by Platform</span>
-                        <span>+ ₹{(selectedBatch.online_advance_held || 0).toLocaleString('en-IN')}</span>
+                        <span>+ ₹{(selectedBatch.online_amount || 0).toLocaleString('en-IN')}</span>
                       </div>
 
                       {/* 3. Cash Collected at Venue Desk */}
                       <div className="flex justify-between text-amber-700 font-semibold">
                         <span className="font-sans">Cash Directly Collected by Venue Owner</span>
-                        <span>+ ₹{(selectedBatch.cash_collected_at_venue || 0).toLocaleString('en-IN')}</span>
+                        <span>+ ₹{(selectedBatch.cash_amount || 0).toLocaleString('en-IN')}</span>
                       </div>
 
                       {/* Deductions breakdown */}
                       <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5 text-[11px] text-slate-600">
                         <div className="flex justify-between">
                           <span className="font-sans">Venue Convenience Fee (0.1737% of online):</span>
-                          <span className="text-rose-600 font-bold">- ₹{formatInr(selectedBatch.platform_commission_deducted)}</span>
+                          <span className="text-rose-600 font-bold">- ₹{formatInr(selectedBatch.venue_convenience_fee)}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="font-sans">GST on Venue Convenience Fee (18%):</span>
-                          <span className="text-rose-600 font-bold">- ₹{formatInr(selectedBatch.platform_fee_gst)}</span>
+                          <span className="text-rose-600 font-bold">- ₹{formatInr(selectedBatch.venue_convenience_fee_gst)}</span>
                         </div>
                         <div className="flex justify-between font-semibold text-slate-700">
                           <span className="font-sans">Amount Routed to Vendor (online − fee − GST):</span>
-                          <span>₹{formatInr(selectedBatch.route_amount ?? (selectedBatch.online_advance_held || 0) - selectedBatch.platform_commission_deducted - (selectedBatch.platform_fee_gst || 0))}</span>
+                          <span>₹{formatInr(selectedBatch.route_amount)}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="font-sans">Razorpay Route Fee (0.25% of routed amount):</span>
@@ -1114,7 +1114,7 @@ export default function SettlementManagementPage() {
                       {/* Net Transferred to Bank */}
                       <div className="flex justify-between pt-2 border-t border-slate-200 text-base font-black text-emerald-700">
                         <span className="font-sans">Net Disbursed to Bank</span>
-                        <span>₹{formatInr(selectedBatch.net_payable)}</span>
+                        <span>₹{formatInr(selectedBatch.actual_owner_payout)}</span>
                       </div>
                     </div>
 
@@ -1218,14 +1218,14 @@ export default function SettlementManagementPage() {
                                   {/* Online vs Cash */}
                                   <td className="py-2.5 px-3 align-middle text-right whitespace-nowrap">
                                     <p className="text-emerald-700 font-semibold text-[11px]">
-                                      Onl: ₹{item.online_advance_paid}
+                                      Onl: ₹{item.online_amount}
                                     </p>
-                                    {item.cash_collected_at_venue > 0 && (
+                                    {item.cash_amount > 0 && (
                                       <p
                                         className={`text-[10px] ${item.payment_mode === 'UNVERIFIED_ONLINE' ? 'text-rose-600 font-semibold' : 'text-amber-700'}`}
                                         title={item.payment_mode === 'UNVERIFIED_ONLINE' ? 'Marked paid online, but no Razorpay payment exists. Not paid out.' : undefined}
                                       >
-                                        {item.payment_mode === 'UNVERIFIED_ONLINE' ? 'Unverified online' : 'Cash'}: ₹{item.cash_collected_at_venue}
+                                        {item.payment_mode === 'UNVERIFIED_ONLINE' ? 'Unverified online' : 'Cash'}: ₹{item.cash_amount}
                                       </p>
                                     )}
                                   </td>
@@ -1237,7 +1237,7 @@ export default function SettlementManagementPage() {
 
                                   {/* Net Share */}
                                   <td className="py-2.5 px-3 align-middle text-right font-bold text-emerald-700 whitespace-nowrap">
-                                    ₹{formatInr(item.net_venue_share)}
+                                    ₹{formatInr(item.actual_owner_payout)}
                                   </td>
                                 </tr>
                               );
@@ -1273,7 +1273,7 @@ export default function SettlementManagementPage() {
                         </div>
                         <div className="text-right font-mono">
                           <span className="text-xs font-bold text-[#021526] block">{selectedBatch.batch_number}</span>
-                          <span className="text-[10px] text-slate-500">Date: {selectedBatch.settlement_date || '08 Mar 2026'}</span>
+                          <span className="text-[10px] text-slate-500">Date: {selectedBatch.settlement_date || '—'}</span>
                         </div>
                       </div>
 
@@ -1305,23 +1305,23 @@ export default function SettlementManagementPage() {
                         <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2 font-mono text-xs">
                           <div className="flex justify-between text-slate-800 font-bold">
                             <span className="font-sans">1. Actual Court Playtime Cost:</span>
-                            <span>₹{(selectedBatch.actual_court_price_total || selectedBatch.gross_booking_amount).toLocaleString('en-IN')}</span>
+                            <span>₹{selectedBatch.actual_court_price_total.toLocaleString('en-IN')}</span>
                           </div>
                           <div className="flex justify-between text-emerald-700">
                             <span className="font-sans">2. Online Advance Held by Platform:</span>
-                            <span>+ ₹{(selectedBatch.online_advance_held || 0).toLocaleString('en-IN')}</span>
+                            <span>+ ₹{(selectedBatch.online_amount || 0).toLocaleString('en-IN')}</span>
                           </div>
                           <div className="flex justify-between text-amber-700">
                             <span className="font-sans">3. Cash Collected Directly at Venue:</span>
-                            <span>+ ₹{(selectedBatch.cash_collected_at_venue || 0).toLocaleString('en-IN')}</span>
+                            <span>+ ₹{(selectedBatch.cash_amount || 0).toLocaleString('en-IN')}</span>
                           </div>
                           <div className="flex justify-between text-rose-600">
                             <span className="font-sans">4. Less: Venue Convenience Fee (0.1737% of online):</span>
-                            <span>- ₹{formatInr(selectedBatch.platform_commission_deducted)}</span>
+                            <span>- ₹{formatInr(selectedBatch.venue_convenience_fee)}</span>
                           </div>
                           <div className="flex justify-between text-rose-600">
                             <span className="font-sans">5. Less: GST on Venue Convenience Fee (18%):</span>
-                            <span>- ₹{formatInr(selectedBatch.platform_fee_gst)}</span>
+                            <span>- ₹{formatInr(selectedBatch.venue_convenience_fee_gst)}</span>
                           </div>
                           <div className="flex justify-between text-rose-600">
                             <span className="font-sans">6. Less: Razorpay Route Fee (0.25% of routed amount):</span>
@@ -1333,7 +1333,7 @@ export default function SettlementManagementPage() {
                           </div>
                           <div className="flex justify-between pt-2 border-t border-slate-300 font-black text-sm text-emerald-700">
                             <span className="font-sans">Net Disbursed via Bank IMPS:</span>
-                            <span>₹{formatInr(selectedBatch.net_payable)}</span>
+                            <span>₹{formatInr(selectedBatch.actual_owner_payout)}</span>
                           </div>
                         </div>
                       </div>
@@ -1342,7 +1342,7 @@ export default function SettlementManagementPage() {
                       <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 flex items-center justify-between font-mono">
                         <div>
                           <span className="text-slate-400 block text-[9px] uppercase font-sans">Bank Transfer UTR</span>
-                          <span className="font-bold text-slate-900">{selectedBatch.utr_number || 'HDFCR20260308912048'}</span>
+                          <span className="font-bold text-slate-900">{selectedBatch.utr_number || '—'}</span>
                         </div>
                         <div className="text-right">
                           <span className="text-slate-400 block text-[9px] uppercase font-sans">Status</span>
@@ -1488,7 +1488,7 @@ export default function SettlementManagementPage() {
                       )}
                     </>
                   )}
-                  {selectedBatch.status === 'PENDING_APPROVAL' && selectedBatch.net_payable > 0 && (
+                  {selectedBatch.status === 'PENDING_APPROVAL' && selectedBatch.actual_owner_payout > 0 && (
                     <button
                       type="button"
                       disabled={actionBusy || selectedBatch.linked_account?.status !== 'ACTIVATED'}
@@ -1501,7 +1501,7 @@ export default function SettlementManagementPage() {
                       className="px-4 py-2 rounded-xl bg-[#021526] hover:bg-[#F94001] text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <CreditCard className="h-4 w-4" />
-                      <span>Pay via Razorpay (₹{formatInr(selectedBatch.net_payable)})</span>
+                      <span>Pay via Razorpay (₹{formatInr(selectedBatch.actual_owner_payout)})</span>
                     </button>
                   )}
                   {selectedBatch.status === 'PENDING_APPROVAL' && (
@@ -1510,7 +1510,7 @@ export default function SettlementManagementPage() {
                         type="text"
                         value={utrInputs[selectedBatch.id] || ''}
                         onChange={(e) => setUtrInputs((prev) => ({ ...prev, [selectedBatch.id]: e.target.value }))}
-                        placeholder={selectedBatch.net_payable > 0 ? 'Paid outside? Bank UTR' : 'UTR (not needed)'}
+                        placeholder={selectedBatch.actual_owner_payout > 0 ? 'Paid outside? Bank UTR' : 'UTR (not needed)'}
                         aria-label="Bank transfer UTR / reference number"
                         className="h-9 w-44 rounded-xl border border-slate-300 bg-white px-3 text-xs font-mono text-slate-800 focus:outline-none focus:border-emerald-500"
                       />

@@ -1576,6 +1576,18 @@ export default function VenueModularOverviewPage() {
     return liveVenueSettlements;
   }, [liveVenueSettlements]);
 
+  // Payout totals from this venue's settlement batches
+  const venueFinancials = useMemo(() => {
+    const sum = (list: SettlementBatchItem[], pick: (s: SettlementBatchItem) => number) =>
+      Math.round(list.reduce((acc, s) => acc + (pick(s) || 0), 0) * 100) / 100;
+    const settled = venueSettlements.filter((s) => s.status === 'SETTLED');
+    return {
+      total_settled: sum(settled, (s) => s.actual_owner_payout),
+      platform_fees: sum(settled, (s) => s.venue_platform_fee),
+      unsettled_balance: sum(venueSettlements.filter((s) => s.status !== 'SETTLED'), (s) => s.actual_owner_payout),
+    };
+  }, [venueSettlements]);
+
   // Filtered Support Tickets (Real live data only)
   const venueSupportTickets = useMemo<SupportTicketItem[]>(() => {
     return liveVenueSupportTickets;
@@ -1947,7 +1959,7 @@ export default function VenueModularOverviewPage() {
           </div>
           <div className="mt-1 flex items-baseline gap-2">
             <span className="text-xl font-black text-amber-700 font-mono">
-              ₹{(currentVenue.financials?.unsettled_balance || 42500).toLocaleString('en-IN')}
+              ₹{venueFinancials.unsettled_balance.toLocaleString('en-IN')}
             </span>
             <span className="text-[10px] font-medium text-slate-400">Next cycle</span>
           </div>
@@ -3582,19 +3594,19 @@ export default function VenueModularOverviewPage() {
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
                 <span className="text-[10px] text-slate-400 uppercase font-medium">Gross Bookings Settled</span>
                 <p className="text-lg font-black text-slate-900 font-mono mt-0.5">
-                  ₹{(currentVenue.financials?.total_settled || 303100).toLocaleString('en-IN')}
+                  ₹{venueFinancials.total_settled.toLocaleString('en-IN')}
                 </p>
               </div>
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
                 <span className="text-[10px] text-slate-400 uppercase font-medium">Platform Fees Deducted</span>
                 <p className="text-lg font-black text-slate-700 font-mono mt-0.5">
-                  ₹{(currentVenue.financials?.platform_commission || 38400).toLocaleString('en-IN')}
+                  ₹{venueFinancials.platform_fees.toLocaleString('en-IN')}
                 </p>
               </div>
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
                 <span className="text-[10px] text-slate-400 uppercase font-medium">Unsettled Accrual</span>
                 <p className="text-lg font-black text-amber-700 font-mono mt-0.5">
-                  ₹{(currentVenue.financials?.unsettled_balance || 42500).toLocaleString('en-IN')}
+                  ₹{venueFinancials.unsettled_balance.toLocaleString('en-IN')}
                 </p>
               </div>
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
@@ -3616,16 +3628,14 @@ export default function VenueModularOverviewPage() {
                     <th className="py-2.5 px-3">Disbursal Date</th>
                     <th className="py-2.5 px-3">Target Bank Account</th>
                     <th className="py-2.5 px-3">Gross Amount</th>
-                    <th className="py-2.5 px-3">Online Plat. Fee</th>
-                    <th className="py-2.5 px-3">Cash Col. Deduction</th>
-                    <th className="py-2.5 px-3">TDS (1%)</th>
+                    <th className="py-2.5 px-3">Platform Fee</th>
+                    <th className="py-2.5 px-3">Cash at Venue</th>
                     <th className="py-2.5 px-3">Net Payout</th>
                     <th className="py-2.5 px-3">Status & UTR</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {venueSettlements.map((s: SettlementBatchItem, index: number) => {
-                    const cashCollectionDeduction = index === 0 ? 800 : 0;
+                  {venueSettlements.map((s: SettlementBatchItem) => {
                     return (
                       <tr key={s.id} className="hover:bg-slate-50/70 transition-colors">
                         <td className="py-2.5 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
@@ -3639,23 +3649,19 @@ export default function VenueModularOverviewPage() {
                           <div className="text-[10px] font-mono text-slate-400">{s.account_number_masked}</div>
                         </td>
                         <td className="py-2.5 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
-                          ₹{s.gross_booking_amount.toLocaleString('en-IN')}
+                          ₹{s.actual_court_price_total.toLocaleString('en-IN')}
                         </td>
                         <td className="py-2.5 px-3 font-mono text-rose-600 whitespace-nowrap">
-                          -₹{s.platform_commission_deducted.toLocaleString('en-IN')}
+                          -₹{s.venue_platform_fee.toLocaleString('en-IN')}
                         </td>
-                        <td className="py-2.5 px-3 font-mono text-rose-600 whitespace-nowrap">
-                          {cashCollectionDeduction > 0 ? (
-                            <span>-₹{cashCollectionDeduction}</span>
-                          ) : (
-                            <span className="text-slate-400">₹0</span>
-                          )}
-                        </td>
-                        <td className="py-2.5 px-3 font-mono text-slate-500 whitespace-nowrap">
-                          -₹{s.tds_deducted}
+                        <td className="py-2.5 px-3 font-mono whitespace-nowrap">
+                          {/* Already with the vendor: not a deduction, not paid out again */}
+                          <span className={s.cash_amount > 0 ? 'text-slate-700' : 'text-slate-400'}>
+                            ₹{s.cash_amount.toLocaleString('en-IN')}
+                          </span>
                         </td>
                         <td className="py-2.5 px-3 font-mono font-black text-emerald-700 whitespace-nowrap">
-                          ₹{(s.net_payable - cashCollectionDeduction).toLocaleString('en-IN')}
+                          ₹{s.actual_owner_payout.toLocaleString('en-IN')}
                         </td>
                         <td className="py-2.5 px-3 whitespace-nowrap">
                           <span
