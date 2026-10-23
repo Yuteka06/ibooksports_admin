@@ -382,7 +382,7 @@ export default function SettlementManagementPage() {
             Settlement Management
           </h1>
           <p className="text-xs sm:text-sm text-[#5F6368] mt-1 font-medium">
-            Automated T+2 settlement cycles. On money collected online: venue convenience fee 0.1737% + GST, then Razorpay Route fee 0.25% + GST on the routed amount.
+            Automated T+2 settlement cycles. Venue convenience fee 0.75% + GST on everything collected (online + cash), the cash already with the venue deducted, then Razorpay Route fee 0.25% + GST on the balance.
           </p>
         </div>
 
@@ -634,7 +634,7 @@ export default function SettlementManagementPage() {
               ₹{formatInr(totalDeductions)}
             </span>
             <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
-              ≈0.5% of online
+              0.885% of collected + Route
             </span>
           </div>
         </div>
@@ -727,7 +727,7 @@ export default function SettlementManagementPage() {
                 <th className="py-3 px-3 w-[11%]">Cycle Date</th>
                 <th className="py-3 px-3 w-[10%]">Court Price</th>
                 <th className="py-3 px-3 w-[13%]">Online &amp; Cash Split</th>
-                <th className="py-3 px-3 w-[12%]">Deductions (≈0.5%)</th>
+                <th className="py-3 px-3 w-[12%]">Deductions (all fees)</th>
                 <th className="py-3 px-3 w-[10%]">Net Payout &amp; Status</th>
                 <th className="py-3 px-3 text-left w-[6%]">Action</th>
               </tr>
@@ -849,7 +849,7 @@ export default function SettlementManagementPage() {
                             - ₹{formatInr(totalDeduction)}
                           </p>
                           <p className="text-[10px] text-slate-400 font-sans truncate">
-                            Platform ₹{formatInr(s.venue_convenience)} &bull; Route ₹{formatInr(s.razorpay_route)}
+                            Venue fee ₹{formatInr((s.venue_convenience || 0) + (s.cash_collection || 0))} &bull; Route ₹{formatInr(s.razorpay_route)}
                           </p>
                         </div>
                       </td>
@@ -870,6 +870,15 @@ export default function SettlementManagementPage() {
                               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 font-sans">
                                 <CheckCircle2 className="h-3 w-3 text-emerald-600" />
                                 <span>Settled</span>
+                              </span>
+                            )}
+                            {s.status === 'CARRIED_FORWARD' && (
+                              <span
+                                title="The venue owes its fee on cash; it is deducted from its next settlement"
+                                className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 font-sans"
+                              >
+                                <Clock className="h-3 w-3 text-amber-600" />
+                                <span>Carried Forward</span>
                               </span>
                             )}
                             {s.status === 'PROCESSING' && (
@@ -1038,7 +1047,7 @@ export default function SettlementManagementPage() {
                     ) : (
                       <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-700 bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
                         <Clock className="h-3.5 w-3.5 text-amber-600" />
-                        <span>{selectedBatch.status === 'PROCESSING' ? 'Processing' : 'Pending'}</span>
+                        <span>{selectedBatch.status === 'PROCESSING' ? 'Processing' : selectedBatch.status === 'CARRIED_FORWARD' ? 'Carried Forward' : 'Pending'}</span>
                       </span>
                     )}
                   </div>
@@ -1108,19 +1117,37 @@ export default function SettlementManagementPage() {
                       {/* Deductions breakdown */}
                       <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5 text-[11px] text-slate-600">
                         <div className="flex justify-between">
-                          <span className="font-sans">Venue Convenience Fee (0.1737% of online):</span>
+                          <span className="font-sans">Venue Convenience Fee (0.75% of online):</span>
                           <span className="text-rose-600 font-bold">- ₹{formatInr(selectedBatch.venue_convenience_fee)}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="font-sans">GST on Venue Convenience Fee (18%):</span>
                           <span className="text-rose-600 font-bold">- ₹{formatInr(selectedBatch.venue_convenience_fee_gst)}</span>
                         </div>
+                        {(selectedBatch.cash_collection || 0) > 0 && (
+                          <>
+                            <div className="flex justify-between">
+                              <span className="font-sans">Venue Convenience Fee on Cash (0.75% of cash):</span>
+                              <span className="text-rose-600 font-bold">- ₹{formatInr(selectedBatch.customer_cash_convenience_fee)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="font-sans">GST on Fee on Cash (18%):</span>
+                              <span className="text-rose-600 font-bold">- ₹{formatInr(selectedBatch.customer_cash_convenience_fee_gst)}</span>
+                            </div>
+                          </>
+                        )}
+                        {(selectedBatch.carried_in || 0) > 0 && (
+                          <div className="flex justify-between">
+                            <span className="font-sans">Fees Owed from Earlier Settlements:</span>
+                            <span className="text-rose-600 font-bold">- ₹{formatInr(selectedBatch.carried_in)}</span>
+                          </div>
+                        )}
                         <div className="flex justify-between font-semibold text-slate-700">
-                          <span className="font-sans">Amount Routed to Vendor (online − fee − GST):</span>
+                          <span className="font-sans">Balance Routed to Vendor (online − all fees):</span>
                           <span>₹{formatInr(selectedBatch.route_amount)}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="font-sans">Razorpay Route Fee (0.25% of routed amount):</span>
+                          <span className="font-sans">Razorpay Route Fee (0.25% of the balance):</span>
                           <span className="text-rose-600 font-bold">- ₹{formatInr(selectedBatch.route_fee)}</span>
                         </div>
                         <div className="flex justify-between">
@@ -1128,11 +1155,11 @@ export default function SettlementManagementPage() {
                           <span className="text-rose-600 font-bold">- ₹{formatInr(selectedBatch.route_fee_gst)}</span>
                         </div>
                         <div className="flex justify-between pt-1.5 border-t border-slate-200 font-bold text-slate-700">
-                          <span className="font-sans">Total Deduction (≈0.5% of online)</span>
+                          <span className="font-sans">Total Deduction (all fees)</span>
                           <span className="text-rose-600">- ₹{formatInr(settlementDeduction(selectedBatch))}</span>
                         </div>
                         <div className="pt-1.5 border-t border-slate-200 text-[10px] text-slate-500 font-sans">
-                          &bull; Fees apply only to money collected online through Razorpay. Cash collected at the venue carries no fee.
+                          &bull; The venue convenience fee applies to everything collected (online and cash). Cash is already with the venue, so it is deducted from the payout. A negative payout is carried to the venue&apos;s next settlement.
                         </div>
                       </div>
 
@@ -1341,15 +1368,27 @@ export default function SettlementManagementPage() {
                             <span>+ ₹{(selectedBatch.cash_amount || 0).toLocaleString('en-IN')}</span>
                           </div>
                           <div className="flex justify-between text-rose-600">
-                            <span className="font-sans">4. Less: Venue Convenience Fee (0.1737% of online):</span>
+                            <span className="font-sans">4. Less: Venue Convenience Fee (0.75% of online):</span>
                             <span>- ₹{formatInr(selectedBatch.venue_convenience_fee)}</span>
                           </div>
                           <div className="flex justify-between text-rose-600">
                             <span className="font-sans">5. Less: GST on Venue Convenience Fee (18%):</span>
                             <span>- ₹{formatInr(selectedBatch.venue_convenience_fee_gst)}</span>
                           </div>
+                          {(selectedBatch.cash_collection || 0) > 0 && (
+                            <div className="flex justify-between text-rose-600">
+                              <span className="font-sans">5a. Less: Venue Convenience Fee on Cash + GST (0.885% of cash):</span>
+                              <span>- ₹{formatInr(selectedBatch.cash_collection)}</span>
+                            </div>
+                          )}
+                          {(selectedBatch.carried_in || 0) > 0 && (
+                            <div className="flex justify-between text-rose-600">
+                              <span className="font-sans">5b. Less: Fees Owed from Earlier Settlements:</span>
+                              <span>- ₹{formatInr(selectedBatch.carried_in)}</span>
+                            </div>
+                          )}
                           <div className="flex justify-between text-rose-600">
-                            <span className="font-sans">6. Less: Razorpay Route Fee (0.25% of routed amount):</span>
+                            <span className="font-sans">6. Less: Razorpay Route Fee (0.25% of the balance):</span>
                             <span>- ₹{formatInr(selectedBatch.route_fee)}</span>
                           </div>
                           <div className="flex justify-between text-rose-600">
@@ -1527,9 +1566,11 @@ export default function SettlementManagementPage() {
                       : 'Completed Disbursal'
                     : selectedBatch.status === 'PROCESSING'
                       ? `Razorpay transfer ${selectedBatch.transfer_id || '(unconfirmed)'} · ${selectedBatch.transfer_status || 'processing'}`
-                      : selectedBatch.is_live
-                        ? 'Payable now · not in a batch yet'
-                        : 'Awaiting payout'}
+                      : selectedBatch.status === 'CARRIED_FORWARD'
+                        ? `Nothing to pay: the venue owes ₹${formatInr(-selectedBatch.actual_owner_payout)}, deducted from its next settlement`
+                        : selectedBatch.is_live
+                          ? 'Payable now · not in a batch yet'
+                          : 'Awaiting payout'}
                 </span>
                 <div className="flex flex-wrap items-center gap-2">
                   {selectedBatch.status === 'PROCESSING' && (

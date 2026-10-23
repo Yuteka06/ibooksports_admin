@@ -468,7 +468,7 @@ export default function PaymentManagementPage() {
           </div>
         </div>
 
-        {/* Platform Revenue: platform fee share of the 0.5% on online money */}
+        {/* Platform Revenue: the venue convenience fee (0.75% + GST on online + cash) */}
         <div className="bg-white rounded-2xl p-4 border border-[#E5E7EB] shadow-2xs hover:border-blue-400/50 transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-[#5F6368] uppercase tracking-wider">
@@ -1247,7 +1247,7 @@ export default function PaymentManagementPage() {
                         <span className="text-xs font-black uppercase tracking-wider text-[#021526] font-display">
                           Revenue &amp; Payout Audit
                         </span>
-                        <span className="text-[10px] text-slate-400">0.5% on online only</span>
+                        <span className="text-[10px] text-slate-400">0.885% on online + cash, plus Route fee</span>
                       </div>
 
                       <div className="flex justify-between text-slate-600">
@@ -1255,13 +1255,19 @@ export default function PaymentManagementPage() {
                         <span className="font-black text-[#021526]">₹{formatInr(selectedTxn.online_amount)}</span>
                       </div>
                       {(selectedTxn.cash_amount || 0) > 0 && (
-                        <div className="flex justify-between text-slate-500 text-[11px]">
-                          <span>Cash / Counter (no fee)</span>
-                          <span>₹{formatInr(selectedTxn.cash_amount)}</span>
-                        </div>
+                        <>
+                          <div className="flex justify-between text-slate-500 text-[11px]">
+                            <span>Cash / Counter (already with the venue)</span>
+                            <span>₹{formatInr(selectedTxn.cash_amount)}</span>
+                          </div>
+                          <div className="flex justify-between text-emerald-600 font-bold text-[11px]">
+                            <span>Venue Convenience Fee on Cash (0.75%) + GST</span>
+                            <span>- ₹{formatInr((selectedTxn.cash_fee || 0) + (selectedTxn.cash_fee_gst || 0))}</span>
+                          </div>
+                        </>
                       )}
                       <div className="flex justify-between text-emerald-600 font-bold text-[11px]">
-                        <span>Venue Convenience Fee (0.1737%)</span>
+                        <span>Venue Convenience Fee (0.75% of online)</span>
                         <span>- ₹{formatInr(selectedTxn.platform_fee ?? selectedTxn.platform_commission)}</span>
                       </div>
                       <div className="flex justify-between text-slate-500 text-[11px]">
@@ -1269,7 +1275,7 @@ export default function PaymentManagementPage() {
                         <span>- ₹{formatInr(selectedTxn.platform_fee_gst)}</span>
                       </div>
                       <div className="flex justify-between text-slate-500 text-[11px]">
-                        <span>Razorpay Route Fee (0.25% of routed amount)</span>
+                        <span>Razorpay Route Fee (0.25% of the balance)</span>
                         <span>- ₹{formatInr(selectedTxn.route_fee ?? selectedTxn.gateway_fee)}</span>
                       </div>
                       <div className="flex justify-between text-slate-500 text-[11px]">

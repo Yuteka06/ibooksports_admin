@@ -245,6 +245,8 @@ export interface PaymentTransactionItem {
   cash_amount?: number;
   platform_fee?: number;
   platform_fee_gst?: number;
+  cash_fee?: number; // venue fee 0.75% on the cash part
+  cash_fee_gst?: number;
   route_fee?: number;
   route_fee_gst?: number;
   total_deduction?: number;
@@ -312,19 +314,21 @@ export interface SettlementBatchItem {
   venue_amount: number; // collected: online + cash
   online_amount: number;
   cash_amount: number; // already with the vendor, never paid out again
-  customer_cash_convenience_fee: number; // always 0 (no fee on cash)
-  customer_cash_convenience_fee_gst: number; // always 0
-  cash_collection: number; // always 0
-  venue_convenience_fee: number; // platform fee (admin income)
+  customer_cash_convenience_fee: number; // venue fee 0.75% on the cash / QR part (admin income)
+  customer_cash_convenience_fee_gst: number;
+  cash_collection: number; // fee on cash + GST
+  venue_convenience_fee: number; // venue fee 0.75% on the online part (admin income)
   venue_convenience_fee_gst: number;
   venue_convenience: number; // fee + GST
-  route_amount: number; // online − venue convenience (sent through Razorpay Route)
+  carried_in?: number; // fees owed from earlier cash-only settlements, taken here
+  route_amount: number; // balance sent through Razorpay Route: online − all venue fees − dues
   route_fee: number;
   route_fee_gst: number;
   razorpay_route: number; // Route fee + GST
-  venue_platform_fee: number; // total deduction
-  actual_owner_payout: number;
-  status: 'SETTLED' | 'PROCESSING' | 'PENDING_APPROVAL';
+  venue_platform_fee: number; // venue convenience (online) + Razorpay Route
+  total_deduction?: number; // all fees: cash_collection + venue_platform_fee
+  actual_owner_payout: number; // negative = the venue owes (carried forward)
+  status: 'SETTLED' | 'PROCESSING' | 'PENDING_APPROVAL' | 'CARRIED_FORWARD';
   is_live?: boolean; // payable bookings not yet claimed by a stored batch
   utr_number?: string;
   transfer_id?: string; // Razorpay Route direct transfer

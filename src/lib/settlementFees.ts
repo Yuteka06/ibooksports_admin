@@ -1,10 +1,11 @@
 /**
- * Vendor settlement display helpers. Fees are computed by the backend
- * (backend/src/common/utils/settlement-fees.ts), on the amount paid ONLINE: venue convenience fee 0.1737% (admin
- * income) + 18% GST, then Razorpay Route fee 0.25% + 18% GST on what is left (≈0.5% in all). Cash carries no fee.
+ * Vendor settlement display helpers. Fees are computed by the backend (backend/src/common/utils/settlement-fees.ts):
+ * venue convenience fee 0.75% + 18% GST on everything the venue collected (online + cash), the cash already with the
+ * venue is deducted, then Razorpay Route fee 0.25% + 18% GST on the balance that is transferred.
  */
-/** Total fee deducted from a settlement batch or booking line (venue convenience + Route). */
-export const settlementDeduction = (s: { venue_platform_fee: number }) => s.venue_platform_fee;
+/** All fees of a settlement batch or booking line: venue fee on online + on cash, and the Route fee. */
+export const settlementDeduction = (s: { venue_platform_fee: number; total_deduction?: number }) =>
+  s.total_deduction ?? s.venue_platform_fee;
 
 /** ₹ amount with paise, e.g. 1234.5 → "1,234.50". */
 export const formatInr = (value?: number) =>
