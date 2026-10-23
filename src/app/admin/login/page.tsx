@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
@@ -25,8 +25,8 @@ import { apiClient } from '@/lib/api';
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('admin@ibooksports.com');
-  const [password, setPassword] = useState('Admin@12345');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
@@ -107,12 +107,15 @@ export default function AdminLoginPage() {
     }
   };
 
-  const handleFillDemo = (demoEmail: string, demoPass: string) => {
-    setEmail(demoEmail);
-    setPassword(demoPass);
-    setError(null);
-    setSuccessMsg(null);
-  };
+  // "Remember me" keeps only the email, never the password
+  useEffect(() => {
+    try {
+      const remembered = localStorage.getItem('ibooksports_admin_remember_email');
+      if (remembered) setEmail(remembered);
+    } catch {
+      // storage blocked: start with an empty form
+    }
+  }, []);
 
   return (
     <div suppressHydrationWarning className="min-h-screen w-full bg-[#021526] text-white flex flex-col justify-between relative overflow-hidden font-sans select-none">
@@ -294,14 +297,6 @@ export default function AdminLoginPage() {
                     <label htmlFor="admin-email-input" className="text-xs font-bold uppercase tracking-wider text-slate-300 cursor-pointer">
                       Email / Gmail Address
                     </label>
-                    <button
-                      type="button"
-                      suppressHydrationWarning
-                      onClick={() => handleFillDemo('admin@ibooksports.com', 'Admin@12345')}
-                      className="text-[11px] font-bold text-[#F94001] hover:underline cursor-pointer"
-                    >
-                      Fill Master Credentials
-                    </button>
                   </div>
                   <div className="relative flex items-center">
                     <div className="absolute left-3.5 flex items-center text-slate-400 pointer-events-none">
