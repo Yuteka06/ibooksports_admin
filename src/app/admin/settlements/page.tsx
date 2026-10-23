@@ -1013,7 +1013,7 @@ export default function SettlementManagementPage() {
                     ) : (
                       <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-700 bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
                         <Clock className="h-3.5 w-3.5 text-amber-600" />
-                        <span>Processing</span>
+                        <span>{selectedBatch.status === 'PROCESSING' ? 'Processing' : 'Pending'}</span>
                       </span>
                     )}
                   </div>
@@ -1476,7 +1476,19 @@ export default function SettlementManagementPage() {
                       >
                         Refresh Transfer Status
                       </button>
-                      {!selectedBatch.transfer_id && (
+                      {selectedBatch.transfer_status === 'partial' && (
+                        <button
+                          type="button"
+                          disabled={actionBusy || selectedBatch.linked_account?.status !== 'ACTIVATED'}
+                          onClick={() => handlePayViaRoute(selectedBatch)}
+                          title="Sends only the shares that were not transferred yet"
+                          className="px-4 py-2 rounded-xl bg-[#021526] hover:bg-[#F94001] text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <CreditCard className="h-4 w-4" />
+                          <span>Pay the Rest via Razorpay</span>
+                        </button>
+                      )}
+                      {(!selectedBatch.transfer_id || selectedBatch.transfer_status === 'unknown') && (
                         <button
                           type="button"
                           disabled={actionBusy}
@@ -1495,7 +1507,7 @@ export default function SettlementManagementPage() {
                       onClick={() => handlePayViaRoute(selectedBatch)}
                       title={
                         selectedBatch.linked_account?.status === 'ACTIVATED'
-                          ? 'One Razorpay Route transfer to the venue\'s linked account'
+                          ? 'Razorpay Route transfers from the customers\' payments to the venue\'s linked account'
                           : 'The venue\'s Razorpay linked account must be activated first'
                       }
                       className="px-4 py-2 rounded-xl bg-[#021526] hover:bg-[#F94001] text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
