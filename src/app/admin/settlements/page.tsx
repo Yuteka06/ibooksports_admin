@@ -68,6 +68,9 @@ export default function SettlementManagementPage() {
   // Bank UTR typed per batch in the drawer, and a lock while a settlement action is running
   const [utrInputs, setUtrInputs] = useState<Record<string, string>>({});
   const [actionBusy, setActionBusy] = useState(false);
+  // "Link Razorpay account": an account made in the Razorpay dashboard (Route → Accounts) for the open batch's venue
+  const [linkAccountId, setLinkAccountId] = useState('');
+  const [linkBankConfirmed, setLinkBankConfirmed] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -80,6 +83,12 @@ export default function SettlementManagementPage() {
 
   // Slide-out Drawer (Slide Bar) State
   const [selectedBatch, setSelectedBatch] = useState<SettlementBatchItem | null>(null);
+  // A typed account id belongs to one venue: clear it whenever another batch is opened
+  const selectedVenueId = selectedBatch?.venue_id;
+  useEffect(() => {
+    setLinkAccountId('');
+    setLinkBankConfirmed(false);
+  }, [selectedVenueId]);
   const [drawerTab, setDrawerTab] = useState<'summary' | 'bookings' | 'slip'>('summary');
 
   // Interactive copy feedback
@@ -290,6 +299,22 @@ export default function SettlementManagementPage() {
       'Linked Account Setup Failed',
       false
     );
+
+  // Links a Razorpay dashboard-made account; the server accepts it only if Razorpay reports it activated
+  const handleLinkAccount = async (batch: SettlementBatchItem) => {
+    await runBatchAction(
+      () =>
+        apiClient.post(`/payments/linked-accounts/${encodeURIComponent(batch.venue_id)}/link`, {
+          accountId: linkAccountId.trim(),
+          bankConfirmed: linkBankConfirmed,
+        }),
+      { title: 'Razorpay Account Linked', description: `${linkAccountId.trim()} is now the payout account of ${batch.venue_name}` },
+      'Could Not Link Account',
+      false
+    );
+    setLinkAccountId('');
+    setLinkBankConfirmed(false);
+  };
 
   // Cancels a stored PENDING batch; its bookings go back to unsettled for the next batch
   const handleCancelBatch = async (batch: SettlementBatchItem) => {
@@ -1443,6 +1468,47 @@ export default function SettlementManagementPage() {
                       )}
                     </div>
                     {linked?.last_error && <p className="text-rose-600 text-[11px]">{linked.last_error}</p>}
+                    {status !== 'ACTIVATED' && (
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 space-y-2">
+                        <p className="text-[11px] font-bold text-slate-700">
+                          Link an account made in the Razorpay dashboard{' '}
+                          <span className="font-normal text-slate-500">(Route → Accounts → Add Account, KYC form submitted)</span>
+                        </p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <input
+                            type="text"
+                            value={linkAccountId}
+                            onChange={(e) => setLinkAccountId(e.target.value)}
+                            placeholder="acc_XXXXXXXXXXXXXX"
+                            aria-label="Razorpay account id"
+                            className="h-8 w-48 rounded-lg border border-slate-300 bg-white px-2.5 text-[11px] font-mono text-slate-800 focus:outline-none focus:border-[#F94001]"
+                          />
+                          <button
+                            type="button"
+                            disabled={actionBusy || !linkAccountId.trim() || !linkBankConfirmed}
+                            onClick={() => handleLinkAccount(selectedBatch)}
+                            className="px-3 py-1.5 rounded-lg bg-[#021526] hover:bg-[#F94001] text-white text-[11px] font-bold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Link Account
+                          </button>
+                        </div>
+                        <label className="flex items-start gap-2 text-[11px] text-slate-600 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={linkBankConfirmed}
+                            onChange={(e) => setLinkBankConfirmed(e.target.checked)}
+                            className="mt-0.5"
+                          />
+                          <span>
+                            I checked that this Razorpay account&apos;s bank details are the venue&apos;s approved bank account:{' '}
+                            <strong className="font-mono text-slate-800">
+                              {selectedBatch.owner_name} · {selectedBatch.account_number_masked} · {selectedBatch.ifsc_code}
+                            </strong>
+                          </span>
+                        </label>
+                        <p className="text-[10px] text-slate-500">Only an account Razorpay shows as Activated is accepted.</p>
+                      </div>
+                    )}
                     {selectedBatch.failure_reason && (
                       <p className="text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 text-[11px]">
                         {selectedBatch.failure_reason}
