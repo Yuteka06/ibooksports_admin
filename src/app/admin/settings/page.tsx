@@ -271,8 +271,11 @@ export default function AdminSettingsPage() {
     phone_number: '',
     role: 'OPERATIONS_MANAGER',
     department: '',
+    password: '',
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  // Optional new login password in the Edit Staff modal
+  const [newStaffPassword, setNewStaffPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Toast Banner State
@@ -289,6 +292,7 @@ export default function AdminSettingsPage() {
   const phoneInputId = useId();
   const roleSelectId = useId();
   const departmentInputId = useId();
+  const passwordInputId = useId();
 
   // Load staff data
   const loadStaffData = useCallback(async () => {
@@ -354,6 +358,10 @@ export default function AdminSettingsPage() {
       errors.role = 'Please select a role from the dropdown';
     }
 
+    if ((data.password || '').length < 8) {
+      errors.password = 'Password must be at least 8 characters';
+    }
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -374,7 +382,7 @@ export default function AdminSettingsPage() {
       showToast(
         'success',
         'Staff Member Created',
-        `Successfully registered ${created.name} as ${created.role_title}. Invitation sent to ${created.email}`,
+        `${created.name} can now log in as ${created.role_title} with ${created.email}. Share the password with them privately.`,
       );
 
       setIsCreateModalOpen(false);
@@ -384,6 +392,7 @@ export default function AdminSettingsPage() {
         phone_number: '',
         role: 'OPERATIONS_MANAGER',
         department: '',
+        password: '',
       });
       setFormErrors({});
       loadStaffData();
@@ -398,6 +407,10 @@ export default function AdminSettingsPage() {
   const handleUpdateStaff = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingStaff) return;
+    if (newStaffPassword && newStaffPassword.length < 8) {
+      showToast('error', 'Password Too Short', 'The new password must be at least 8 characters');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -409,9 +422,17 @@ export default function AdminSettingsPage() {
         role: editingStaff.role,
         department: editingStaff.department,
         status: editingStaff.status,
+        ...(newStaffPassword ? { password: newStaffPassword } : {}),
       });
 
-      showToast('success', 'Staff Member Updated', `Successfully updated profile for ${updated.name}`);
+      showToast(
+        'success',
+        'Staff Member Updated',
+        newStaffPassword
+          ? `Updated ${updated.name}. Share the new password with them privately.`
+          : `Successfully updated profile for ${updated.name}`,
+      );
+      setNewStaffPassword('');
       setEditingStaff(null);
       loadStaffData();
     } catch (err: unknown) {
@@ -698,6 +719,7 @@ export default function AdminSettingsPage() {
                   phone_number: '',
                   role: 'OPERATIONS_MANAGER',
                   department: '',
+                  password: '',
                 });
                 setFormErrors({});
                 setIsCreateModalOpen(true);
@@ -2088,6 +2110,29 @@ export default function AdminSettingsPage() {
                 )}
               </div>
 
+              {/* Login password */}
+              <div>
+                <label htmlFor={passwordInputId} className="block text-xs font-bold text-[#021526] mb-1">
+                  Login Password <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  id={passwordInputId}
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder="At least 8 characters"
+                  value={formData.password || ''}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className={`w-full px-3.5 py-2.5 rounded-xl text-xs bg-[#F8F9FA] border text-[#021526] focus:outline-none focus:border-[#F94001] focus:bg-white transition-all ${
+                    formErrors.password ? 'border-rose-500 bg-rose-50/50' : 'border-[#E5E7EB]'
+                  }`}
+                />
+                {formErrors.password ? (
+                  <p className="text-[11px] text-rose-600 mt-1 font-semibold">{formErrors.password}</p>
+                ) : (
+                  <p className="text-[11px] text-[#5F6368] mt-1">They log in to this admin panel with their email and this password.</p>
+                )}
+              </div>
+
               {/* 5. Department (Optional) */}
               <div>
                 <label htmlFor={departmentInputId} className="block text-xs font-bold text-[#021526] mb-1">
@@ -2154,7 +2199,10 @@ export default function AdminSettingsPage() {
               </div>
               <button
                 type="button"
-                onClick={() => setEditingStaff(null)}
+                onClick={() => {
+                  setNewStaffPassword('');
+                  setEditingStaff(null);
+                }}
                 className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
               >
                 <X className="h-5 w-5" />
@@ -2231,10 +2279,25 @@ export default function AdminSettingsPage() {
                 />
               </div>
 
+              <div>
+                <label className="block text-xs font-bold text-[#021526] mb-1">New Login Password (optional)</label>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder="Leave empty to keep the current password"
+                  value={newStaffPassword}
+                  onChange={(e) => setNewStaffPassword(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-[#F8F9FA] border border-[#E5E7EB] text-[#021526] focus:outline-none focus:border-[#F94001]"
+                />
+              </div>
+
               <div className="pt-4 border-t border-[#E5E7EB] flex items-center justify-end gap-2.5">
                 <button
                   type="button"
-                  onClick={() => setEditingStaff(null)}
+                  onClick={() => {
+                  setNewStaffPassword('');
+                  setEditingStaff(null);
+                }}
                   className="px-4 py-2.5 rounded-xl border border-[#E5E7EB] text-xs font-bold text-[#5F6368] hover:bg-[#F8F9FA]"
                 >
                   Cancel

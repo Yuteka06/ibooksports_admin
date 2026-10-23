@@ -1210,6 +1210,8 @@ export interface CreateStaffPayload {
   phone_number: string;
   role: string;
   department?: string;
+  /** Admin panel login password (min 8 characters) */
+  password?: string;
 }
 
 export interface UpdateStaffPayload {
@@ -1219,6 +1221,8 @@ export interface UpdateStaffPayload {
   role?: string;
   department?: string;
   status?: 'ACTIVE' | 'INACTIVE';
+  /** New admin panel login password; leave out to keep the current one */
+  password?: string;
 }
 
 export const staffApi = {
