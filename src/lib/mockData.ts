@@ -338,6 +338,8 @@ export interface SettlementBatchItem {
     status: 'NOT_STARTED' | 'IN_PROGRESS' | 'UNDER_REVIEW' | 'NEEDS_CLARIFICATION' | 'ACTIVATED' | 'SUSPENDED' | 'FAILED';
     account_id?: string;
     last_error?: string;
+    /** What the status means and what to do (from the backend) */
+    message?: string;
   };
   settled_at?: string;
   itemized_bookings?: SettlementBookingItem[];

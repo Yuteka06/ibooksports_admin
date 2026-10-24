@@ -1506,7 +1506,13 @@ export default function SettlementManagementPage() {
                         </button>
                       )}
                     </div>
-                    {linked?.last_error && <p className="text-rose-600 text-[11px]">{linked.last_error}</p>}
+                    {linked?.message ? (
+                      <p className={`text-[11px] ${status === 'FAILED' || status === 'SUSPENDED' ? 'text-rose-600' : 'text-slate-600'}`}>
+                        {linked.message}
+                      </p>
+                    ) : (
+                      linked?.last_error && <p className="text-rose-600 text-[11px]">{linked.last_error}</p>
+                    )}
                     {status !== 'ACTIVATED' && (
                       <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 space-y-2">
                         <p className="text-[11px] font-bold text-slate-700">
